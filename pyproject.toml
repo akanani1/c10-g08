@@ -26,9 +26,11 @@ dependencies = [
     "langchain-core>=1.6",
     "langchain-openai>=1.7",
     "langgraph>=1.2",
+    "openai>=3.0",
     "pyarrow>=25",
     "pydantic>=2.14",
     "python-dotenv>=1.2",
+    "pyyaml>=6.0",
     "streamlit>=1.65",
 ]
 
@@ -42,6 +44,7 @@ dev = [
     "pre-commit>=4.6",
     "pytest>=9.1",
     "pytest-cov>=7.1",
+    "types-pyyaml>=6.0",
     "ruff>=0.17",
     "vulture>=2.16",
 ]
@@ -85,6 +88,9 @@ ignore = [
     "PLR2004",  # magic values in comparisons are fine in tests and bounds
     "PLR0911",  # early returns read better than nested branches in parsers
 ]
+
+[tool.ruff.lint.pylint]
+max-args = 6
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S311", "PLR2004", "PLR0913"]
@@ -133,7 +139,8 @@ fail_under = 85
 [tool.vulture]
 paths = ["app.py", "incident_suite", "tests", "vulture_whitelist.py"]
 min_confidence = 60
-ignore_names = ["pytestmark"]
+# pytest markers and LangChain interface methods are called by the frameworks
+ignore_names = ["pytestmark", "embed_documents", "embed_query"]
 ignore_decorators = ["@field_validator", "@model_validator", "@pytest.fixture"]
 
 # ---------------------------------------------------------------- bandit
