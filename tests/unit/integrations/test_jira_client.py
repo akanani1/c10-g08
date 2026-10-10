@@ -10,9 +10,10 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
+from incident_suite.agents.assistant import ReaderError, TicketUpdate
 from incident_suite.agents.jira_agent import ExistingTicket, TicketDraft, TrackerError
 from incident_suite.config import AppConfig
-from incident_suite.integrations.jira_client import JiraClient
+from incident_suite.integrations.jira_client import JiraClient, adf_text
 from incident_suite.state import Category, Issue, Severity
 
 SITE = "https://team.atlassian.net"
@@ -248,3 +249,91 @@ def test_a_read_timeout_is_not_retried(make_client: MakeClient) -> None:
         client.create(DRAFT, regression_of=None)
     assert len(requests) == 1
     client.close()
+
+
+def _adf(*paragraphs: str) -> dict[str, Any]:
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": text}]}
+            for text in paragraphs
+        ],
+    }
+
+
+def test_store_and_read_the_slack_thread(make_client: MakeClient) -> None:
+    client, requests, _ = make_client(
+        httpx.Response(200),
+        httpx.Response(
+            200, json={"key": "incident_suite.slack", "value": {"channel": "C1", "ts": "1.2"}}
+        ),
+        httpx.Response(404, json={"errorMessages": ["not found"]}),
+        httpx.Response(200, json={"value": {"channel": "c1; drop", "ts": "x"}}),
+    )
+    client.set_slack_thread("SCRUM-1", "C1", "1.2")
+    assert client.slack_thread("SCRUM-1") == ("C1", "1.2")
+    assert client.slack_thread("SCRUM-2") is None  # never stored
+    assert client.slack_thread("SCRUM-3") is None  # stored value isn't a real thread
+
+    put = requests[0]
+    assert put.method == "PUT"
+    assert put.url.path == "/rest/api/3/issue/SCRUM-1/properties/incident_suite.slack"
+    assert _body(put) == {"channel": "C1", "ts": "1.2"}
+
+
+def test_reading_the_thread_when_jira_is_down(make_client: MakeClient) -> None:
+    client, _, _ = make_client(httpx.Response(401))
+    with pytest.raises(ReaderError, match="JIRA returned 401"):
+        client.slack_thread("SCRUM-1")
+
+
+def test_updates(make_client: MakeClient) -> None:
+    fields = {
+        "labels": ["incident-suite", "sig-a1b2c3d4e5f6"],
+        "status": {"name": "In Progress"},
+        "assignee": {"displayName": "Priya"},
+        "comment": {
+            "comments": [
+                {"body": _adf("old")},
+                {"body": _adf("Pool raised", "to 50")},
+                {"body": _adf("Watching")},
+                {"body": _adf("Errors gone")},
+            ]
+        },
+    }
+    client, requests, _ = make_client(
+        httpx.Response(200, json={"key": "SCRUM-1", "fields": fields})
+    )
+    update = client.updates("SCRUM-1")
+
+    assert update == TicketUpdate(
+        key="SCRUM-1",
+        status="In Progress",
+        assignee="Priya",
+        comments=("Pool raised\nto 50", "Watching", "Errors gone"),
+    )
+    assert requests[0].url.params["fields"] == "status,assignee,labels,comment"
+
+
+def test_updates_unassigned_and_not_ours(make_client: MakeClient) -> None:
+    ours = {"labels": ["incident-suite"], "status": {"name": "To Do"}, "assignee": None}
+    client, _, _ = make_client(
+        httpx.Response(200, json={"fields": ours}),
+        httpx.Response(200, json={"fields": {"labels": ["finance"]}}),
+        httpx.Response(503),
+        httpx.Response(503),
+        httpx.Response(503),
+    )
+    update = client.updates("SCRUM-1")
+    assert (update.assignee, update.comments) == ("unassigned", ())
+    with pytest.raises(ReaderError, match="isn't an Incident Suite ticket"):
+        client.updates("FIN-9")
+    with pytest.raises(ReaderError, match="JIRA returned 503"):
+        client.updates("SCRUM-1")
+
+
+def test_adf_text() -> None:
+    assert adf_text(_adf("a", "b")) == "a\nb"
+    assert adf_text({"type": "bulletList", "content": [{"type": "listItem", "content": []}]}) == ""
+    assert adf_text(None) == ""

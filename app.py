@@ -16,6 +16,7 @@ import streamlit as st
 
 from incident_suite import __version__, ui
 from incident_suite.agents import OpenRouterLLM, make_embeddings
+from incident_suite.agents.assistant import AssistantInput, AssistantResult, latest_updates
 from incident_suite.config import AppConfig, admin_overrides, effective_config, load_config
 from incident_suite.graph import (
     RunContext,
@@ -25,6 +26,7 @@ from incident_suite.graph import (
     start_run,
 )
 from incident_suite.parsing.readers import ReadError, parse_upload
+from incident_suite.parsing.redact import Redactor
 from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.rag.runbooks import load_runbooks
 from incident_suite.security import (
@@ -44,7 +46,7 @@ from incident_suite.state import (
     RunSettings,
     RunStep,
 )
-from incident_suite.telemetry import enable_tracing, new_run_id, trace_link
+from incident_suite.telemetry import enable_tracing, merge_usage, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
 TEXT_FORMATS = {
@@ -212,7 +214,9 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         chart.graphviz_chart(ui.pipeline_dot(steps, running=True))
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
-    st.session_state.update(context=context, run_id=run_id, result=result, run_note=note)
+    st.session_state.update(
+        context=context, run_id=run_id, result=result, run_note=note, assistant=None
+    )
     st.rerun()
 
 
@@ -369,6 +373,63 @@ def _results(result: RunResult, context: RunContext) -> None:
     _tabs(result, context)
 
 
+# ------------------------------------------------------------------ assistant
+
+
+def _ask_assistant(config: AppConfig) -> None:
+    """Read this run's Slack threads and tickets, and keep the answer and its cost."""
+    state = st.session_state
+    result: RunResult = state.result
+    settings: RunSettings = state.context.settings
+    tracker, messenger = connect_services(config, settings.model_copy(update={"live": True}))
+    try:
+        answer = latest_updates(
+            AssistantInput(
+                result=result,
+                threads=messenger,
+                tickets=tracker,
+                llm=OpenRouterLLM(config),
+                redactor=Redactor(settings.redaction),
+                token_budget=settings.token_budget,
+            )
+        )
+    finally:
+        for client in (tracker, messenger):
+            if client is not None:
+                client.close()
+    state.assistant = answer
+    if answer.usage is not None:
+        state.result = result.model_copy(
+            update={"usage": merge_usage([*result.usage, answer.usage])}
+        )
+
+
+def _assistant(config: AppConfig) -> None:
+    """Sidebar: what has happened in Slack and JIRA since this run posted (plan 17.2)."""
+    result: RunResult = st.session_state.result
+    with st.sidebar:
+        st.subheader("Assistant")
+        if not (result.slack.sent or any(t.sent for t in result.tickets)):
+            st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
+            return
+        if not st.session_state.get("admin_ok"):
+            st.caption("Enter the admin passcode above to ask about Slack and JIRA.")
+            return
+        st.button("What's happened since?", on_click=_ask_assistant, args=(config,))
+        answer: AssistantResult | None = st.session_state.get("assistant")
+        if answer is None:
+            return
+        if answer.error:
+            st.warning(ui.md(answer.error))
+        if answer.answer is not None:
+            st.markdown(ui.md(answer.answer.summary))
+            st.markdown("\n".join(f"- {ui.md(line)}" for line in answer.answer.updates))
+            if answer.answer.next_step:
+                st.markdown(f"**Next:** {ui.md(answer.answer.next_step)}")
+        if answer.sources:
+            st.caption("Read: " + ui.md("; ".join(answer.sources)))
+
+
 # ------------------------------------------------------------------ page
 
 
@@ -386,6 +447,7 @@ def main() -> None:
     if st.button("Analyse", type="primary", disabled=picked is None) and picked is not None:
         _start(config, live, *picked)
     if "result" in st.session_state:
+        _assistant(config)
         _results(st.session_state.result, st.session_state.context)
 
 

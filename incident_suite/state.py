@@ -354,6 +354,8 @@ class SlackOutcome(StrictModel):
 
     sent: bool = False
     permalink: str | None = None
+    channel: str | None = Field(default=None, pattern=r"^[A-Z0-9]{2,20}$")
+    ts: str | None = Field(default=None, pattern=r"^\d+\.\d+$")
     error: str | None = None
 
 

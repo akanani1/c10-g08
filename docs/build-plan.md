@@ -4,7 +4,7 @@ Version 10, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H8 (the whole core) are merged, and the Slack and JIRA clients passed a live test on 10 Oct. Extra 1, the agent settings page, is in review. Next: Gulam runs the eval, Raphael redeploys, then the next extra in section 17. Section 16 has the full timeline.
+**Status:** H1 to H8 (the whole core) and extra 1 (agent settings, with the Admin card) are merged. Extras 2 onwards are in review as stacked PRs, one per extra, to merge in order. Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -183,6 +183,7 @@ The search goes through `GET /rest/api/3/search/jql`. Atlassian has removed the 
 3. Slack: reply in that thread with the checklist and the fix for each issue.
 4. Slack: get the message link with `chat.getPermalink`.
 5. JIRA: on each ticket from step 1, add remote links to the Slack message and the LangSmith trace. The Slack link is in from H5. The trace link joins in H8, through the same call.
+6. JIRA: on each ticket this run opened, store the Slack channel and `ts` as the issue property `incident_suite.slack`. A ticket that only got a comment keeps the thread where it was first reported. The assistant uses this (section 17.2).
 
 Both clients send every call through one helper, `send_with_retry` in `integrations/__init__.py`:
 
@@ -440,7 +441,7 @@ c10-g08/
 └── README.md
 ```
 
-Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `incident_suite/prompts/assistant.md` if they ship (section 17).
+Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant.py` and `incident_suite/prompts/assistant.md` (shipped with extra 2) (section 17).
 
 **Why it looks like this**
 
@@ -524,7 +525,7 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 (settings page with the Admin card) in review |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2 in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -596,10 +597,12 @@ The assistant is a small, read-only LangGraph agent in the sidebar. It uses the 
 
 This first assistant feature answers "what's happened since?" for this run's incident:
 
-- **Slack:** it reads replies in the app's own thread for this run. When a ticket was seen before, it also reads the original incident's thread. To find that thread, we store the Slack channel and `ts` on the ticket (as a JIRA issue property, `incident_suite.slack`) when we first post. The same stored value lets the Notification agent reply in the original thread when an open ticket is seen again.
+- **Slack:** it reads replies in the app's own thread for this run. When a ticket was seen before, it also reads the original incident's thread. To find that thread, we store the Slack channel and `ts` on the ticket (as a JIRA issue property, `incident_suite.slack`) when we first post. Replying in the original thread from the Notification agent is not built; the run still posts its own summary.
 - **JIRA:** it reads status, assignee and the latest comments, only for this run's tickets labelled `incident-suite`. The query is fixed in code, so the model can't write its own JQL.
 - **Limits:** it only works in live mode with the admin passcode entered. Everything it reads is redacted and treated as data. It can't browse Slack or JIRA, or answer open questions like "what's in Slack".
-- **Needs:** Raphael adds the `channels:history` scope to the Slack app.
+- **Needs:** the `channels:history` scope on the Slack app (done on 10 Oct).
+- **How it's built:** `agents/assistant.py` is a three-step LangGraph: read the Slack threads, read the tickets, summarise with `openai/gpt-5-nano`. If nothing could be read, it says why and makes no model call. The readers are protocols that the Slack client (`conversations.replies`) and the JIRA client (issue property, then status, assignee and the last 3 comments, refused for tickets without the `incident-suite` label) implement. The prompt is `prompts/assistant.md`.
+- **On screen:** the sidebar's **Assistant** section appears after a run. The **What's happened since?** button only shows once the run posted to Slack or JIRA and the admin passcode is entered. Its cost goes into the run's Cost tab as "Assistant".
 
 ### 17.3 Assistant: draft a runbook when none matches
 
@@ -715,6 +718,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | H8: we choose the trace ID before each run, so the LangSmith link goes into the app, Slack and JIRA. The eval script scores against `labels.json` and prints the README table. Security pass: when `ADMIN_PASSCODE` is set, live sending needs it; a shared cap of 60 runs an hour; file names, errors and the service name in the Remediation prompt are now escaped. `langsmith` is declared as a direct dependency |
 | 11 Oct | Extra 1, the agent settings page, ships in full (export and import included). The admin passcode stays unlocked for the session once entered. `pages/` joins the CI tools |
 | 11 Oct | Extra 1 gets an Admin card. With the passcode, an admin changes live mode, approval, the upload limit, tickets per run, the token budget and the JIRA project and issue type for everyone, until the app sleeps or restarts. Defaults come from env. Where secrets are sent (JIRA URL and email, Slack channel) stays env-only. `MAX_UPLOAD_MB` is now 1 to 5, Streamlit's own cap |
+| 11 Oct | Extra 2, the assistant, ships read-only. It's a three-step LangGraph on the cheap model; it reads only this run's threads and tickets, redacted and inside tags. New tickets store their Slack thread as a JIRA issue property. Replying in the original Slack thread is left out for time. Extras go up as stacked PRs overnight, to merge in order |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

@@ -77,6 +77,10 @@ class TicketTracker(Protocol):
         """Add a link to something outside JIRA, such as the Slack thread."""
         ...
 
+    def set_slack_thread(self, key: str, channel: str, ts: str) -> None:
+        """Remember which Slack message first reported this ticket."""
+        ...
+
 
 def _candidates(issues: Sequence[Issue], settings: RunSettings) -> list[Issue]:
     threshold = settings.jira.min_severity.rank
@@ -176,4 +180,18 @@ def link_back(
                 tracker.add_remote_link(ticket.key, url, title)
             except TrackerError as exc:
                 errors.append(f"JIRA ({ticket.key}): link to {title} not added: {exc}")
+    return errors
+
+
+def remember_thread(
+    tickets: Sequence[TicketOutcome], channel: str, ts: str, tracker: TicketTracker
+) -> list[str]:
+    """Store the Slack thread on each ticket this run opened. Comments keep their first thread."""
+    errors = []
+    for ticket in tickets:
+        if ticket.sent and ticket.key and ticket.action is not TicketAction.COMMENT:
+            try:
+                tracker.set_slack_thread(ticket.key, channel, ts)
+            except TrackerError as exc:
+                errors.append(f"JIRA ({ticket.key}): Slack thread not stored: {exc}")
     return errors
