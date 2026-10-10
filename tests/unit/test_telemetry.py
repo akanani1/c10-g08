@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 
 import pytest
 
+from incident_suite.agents import LLMError, LLMReply
 from incident_suite.agents.log_reader import ClassifierAnswer
-from incident_suite.llm import LLMError, LLMReply
 from incident_suite.telemetry import UsageMeter, cost_usd, new_run_id
 
 

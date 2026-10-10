@@ -8,16 +8,15 @@ from typing import Any
 
 import pytest
 
-from incident_suite.agents import log_reader
+from incident_suite.agents import LLMError, StructuredLLM, log_reader
 from incident_suite.agents.log_reader import (
     ClassifierAnswer,
     IssueDraft,
     classify,
     widen_context,
 )
-from incident_suite.llm import LLMError, StructuredLLM
 from incident_suite.parsing.grouping import group_lines
-from incident_suite.parsing.pipeline import parse_upload
+from incident_suite.parsing.readers import parse_upload
 from incident_suite.state import (
     AgentSettings,
     Category,

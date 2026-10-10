@@ -9,12 +9,12 @@ import pytest
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
+from incident_suite.agents import LLMError, StructuredLLM
 from incident_suite.agents.remediation import (
     RemediationAnswer,
     remediate,
     search_query,
 )
-from incident_suite.llm import LLMError, StructuredLLM
 from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.state import Category, Issue, LogLevel, LogLine, RunSettings, Severity
 from incident_suite.telemetry import UsageMeter

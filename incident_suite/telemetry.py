@@ -9,8 +9,8 @@ import secrets
 from datetime import UTC, datetime
 from typing import Any
 
+from incident_suite.agents import LLMError, LLMReply
 from incident_suite.config import CHAT_MODELS
-from incident_suite.llm import LLMError, LLMReply
 from incident_suite.state import AgentUsage
 
 _PER_MILLION = 1_000_000

@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 
 from incident_suite.parsing.grouping import group_lines
-from incident_suite.parsing.pipeline import parse_upload
+from incident_suite.parsing.readers import parse_upload
 from incident_suite.state import LogLevel
 
 TEMPLATES = Path(__file__).resolve().parents[2] / "docs" / "templates" / "gulam"

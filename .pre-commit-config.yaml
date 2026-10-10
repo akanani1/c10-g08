@@ -1,4 +1,4 @@
-# Install once with `make setup` (or `pre-commit install`). Runs on every commit.
+# Install once with `pre-commit install`. Runs on every commit.
 default_language_version:
   python: python3
 

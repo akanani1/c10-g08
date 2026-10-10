@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # pyproject.toml is the source; after merging, run `make lock` so requirements*.txt follow.
+  # pyproject.toml is the source; requirements.txt is regenerated with pip-compile (see README).
   - package-ecosystem: pip
     directory: /
     schedule:

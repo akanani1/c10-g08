@@ -1,7 +1,7 @@
 """OpenRouter smoke test (build plan section 22.3): real chat, embedding and classifier calls.
 
 Opt-in: marked ``live``, so the default test run deselects it, and it skips when no
-OPENROUTER_API_KEY is set. Run it with ``make smoke``. Costs a fraction of a cent.
+OPENROUTER_API_KEY is set. Run it with ``pytest -m live``. Costs a fraction of a cent.
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
+from incident_suite.agents import OpenRouterLLM, make_chat_model, make_embeddings
 from incident_suite.agents.log_reader import classify
 from incident_suite.config import AppConfig, load_config
-from incident_suite.llm import OpenRouterLLM, make_chat_model, make_embeddings
 from incident_suite.parsing.grouping import group_lines
-from incident_suite.parsing.pipeline import parse_upload
+from incident_suite.parsing.readers import parse_upload
 from incident_suite.state import Category, RunSettings
 from incident_suite.telemetry import UsageMeter
 
