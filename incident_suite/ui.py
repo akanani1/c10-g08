@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Sequence
+from datetime import UTC, timedelta
 from typing import Any
 
 from pydantic import ValidationError
@@ -22,6 +23,7 @@ from incident_suite.state import (
     AgentUsage,
     Issue,
     LogFormat,
+    LogLevel,
     LogLine,
     Pattern,
     Remediation,
@@ -447,3 +449,125 @@ def postmortem_markdown(result: RunResult, lines: Sequence[LogLine]) -> str:
         out.append("- None suggested.")
     out += ["", f"Cost of this analysis: {money(result.total_cost_usd)}.", ""]
     return "\n".join(out)
+
+
+# ------------------------------------------------------------------ error timeline
+
+# Status colours from the dataviz palette: serious for ERROR, critical for FATAL. WARN is left
+# out: it's mostly noise, and its warning colour is too close to serious to tell apart.
+TIMELINE_LEVELS = {LogLevel.ERROR: "#ec835a", LogLevel.FATAL: "#d03b3b"}
+TIMELINE_BUCKETS_MINUTES = (1, 5, 15, 60, 240)
+MAX_TIMELINE_BUCKETS = 180
+CHANGE_LOOKBACK = timedelta(hours=1)
+_MUTED = "#898781"
+_GRID = "#2c2c2a"
+
+
+def _bucket_minutes(span_minutes: float) -> int:
+    for size in TIMELINE_BUCKETS_MINUTES:
+        if span_minutes / size <= MAX_TIMELINE_BUCKETS:
+            return size
+    return TIMELINE_BUCKETS_MINUTES[-1]
+
+
+def timeline_spec(lines: Sequence[LogLine]) -> tuple[dict[str, Any], int] | None:
+    """A Vega-Lite chart of errors over time with change events marked, and its bucket size.
+
+    ``None`` when the log has fewer than two timestamped errors, so there's nothing to plot.
+    """
+    errors = [
+        (line.timestamp.astimezone(UTC), str(line.level))
+        for line in lines
+        if line.level in TIMELINE_LEVELS and line.timestamp is not None
+    ]
+    times = sorted({stamp for stamp, _ in errors})
+    if len(times) < 2:
+        return None
+    # Changes shortly before the first error matter most: they're often the cause.
+    earliest = times[0] - CHANGE_LOOKBACK
+    changes = [
+        (line.timestamp.astimezone(UTC), defang(line.message)[:120])
+        for line in group_lines(lines).change_lines
+        if line.timestamp is not None and earliest <= line.timestamp <= times[-1]
+    ]
+    first = min([times[0], *(stamp for stamp, _ in changes)])
+    bucket = _bucket_minutes((times[-1] - first).total_seconds() / 60)
+    counts: dict[tuple[str, str], int] = {}
+    for stamp, level in errors:
+        start = stamp.replace(second=0, microsecond=0)
+        start -= timedelta(minutes=(start.hour * 60 + start.minute) % bucket)
+        counts[(start.isoformat(), level)] = counts.get((start.isoformat(), level), 0) + 1
+    bars = [{"time": t, "level": level, "count": n} for (t, level), n in sorted(counts.items())]
+    marks = [{"time": stamp.isoformat(), "change": text} for stamp, text in changes]
+    unit = {"unit": "utcyearmonthdatehoursminutes", "step": bucket}
+    axis = {"labelColor": _MUTED, "titleColor": _MUTED, "gridColor": _GRID, "domainColor": _GRID}
+    time_axis = {**axis, "format": "%H:%M" if bucket < 60 else "%d %b %H:%M", "labelOverlap": True}
+    spec: dict[str, Any] = {
+        "height": 220,
+        "width": "container",
+        "background": None,
+        "layer": [
+            {
+                "data": {"values": bars},
+                "mark": {"type": "bar", "stroke": "#0e1117", "strokeWidth": 1},
+                "encoding": {
+                    "x": {
+                        "field": "time",
+                        "timeUnit": unit,
+                        "type": "temporal",
+                        "title": None,
+                        "axis": time_axis,
+                        "scale": {"type": "utc"},
+                    },
+                    "y": {
+                        "field": "count",
+                        "aggregate": "sum",
+                        "type": "quantitative",
+                        "title": "Error lines",
+                        "axis": axis,
+                    },
+                    "color": {
+                        "field": "level",
+                        "type": "nominal",
+                        "scale": {
+                            "domain": [str(level) for level in TIMELINE_LEVELS],
+                            "range": list(TIMELINE_LEVELS.values()),
+                        },
+                        "legend": {"title": None, "orient": "top", "labelColor": _MUTED},
+                    },
+                    "tooltip": [
+                        {
+                            "field": "time",
+                            "timeUnit": unit,
+                            "type": "temporal",
+                            "title": "From (UTC)",
+                        },
+                        {"field": "level", "type": "nominal", "title": "Level"},
+                        {
+                            "field": "count",
+                            "aggregate": "sum",
+                            "type": "quantitative",
+                            "title": "Lines",
+                        },
+                    ],
+                },
+            },
+            {
+                "data": {"values": marks},
+                "mark": {"type": "rule", "color": _MUTED, "strokeWidth": 2, "strokeDash": [4, 3]},
+                "encoding": {
+                    "x": {"field": "time", "type": "temporal", "scale": {"type": "utc"}},
+                    "tooltip": [
+                        {"field": "change", "type": "nominal", "title": "Change"},
+                        {
+                            "field": "time",
+                            "type": "temporal",
+                            "title": "At (UTC)",
+                            "format": "%H:%M:%S",
+                        },
+                    ],
+                },
+            },
+        ],
+    }
+    return spec, bucket

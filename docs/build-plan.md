@@ -525,7 +525,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4, 5a (paste), 5b (postmortem) and 5c (seen before) in review |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4 and all of 5 (paste, postmortem, seen before, timeline) in review. 6 (replay) not started |
 
 **Sunday 11 Oct (IST)**
 
@@ -630,7 +630,7 @@ A chat box in the sidebar that answers questions about this run only. It uses to
 | Paste logs as text | about 15 min | A third choice, **Paste text**, next to the sample picker and the uploader. Pasted text becomes `pasted.log` (at most 1,000,000 characters) and goes through the same checks, redaction and format detection as an upload, so pasted JSON lines or CSV work too. In review |
 | Postmortem download | about 30 min | A markdown postmortem (summary, timeline, root cause, fixes, follow-ups) built from the run. No model call: `ui.postmortem_markdown` uses only the run's results. The timeline puts deploy and config-change lines next to when each issue was first and last seen. Root causes are marked as hypotheses, log URLs are defanged, and the file says it's a draft to review. In review |
 | "Seen before" fix | 30 to 45 min | When a closed ticket has the same signature, show its resolution comment: "last time this was fixed by…". It's also another real reason for the confidence score. The JIRA search already made by the plan step now also asks for `comment`, so there's no extra call. Only a closed ticket's last comment counts. It's redacted, cut to 500 characters, kept on the plan as `previous_fix`, and shown on the card. In review |
-| Error timeline | about 45 min | Errors per minute across the log, with deploy and config-change lines marked |
+| Error timeline | about 45 min | Errors per minute across the log, with deploy and config-change lines marked. A **Timeline** tab shows ERROR and FATAL lines per bucket, in UTC. Buckets are 1, 5, 15, 60 or 240 minutes, so there are never more than 180 bars. Dashed lines mark deploys and config changes, including any up to an hour before the first error, since they're often the cause. Colours are the status colours from our dataviz palette, checked with its validator on the app's dark background. WARN is left out because it's mostly noise and its colour is too close to ERROR's. The chart is a Vega-Lite spec built by `ui.timeline_spec`, so it's unit-tested and needs no new dependency. In review |
 
 ### 17.6 Run replay, only if time allows
 

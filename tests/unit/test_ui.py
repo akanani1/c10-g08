@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -369,3 +369,70 @@ def test_previous_fix_is_a_confidence_reason() -> None:
     )
     reasons = ui.confidence_reasons(ISSUE, FIX, regression, dry_run=False)
     assert reasons[-1] == "Last time it was fixed: Raised the pool to 50 and restarted payment-api"
+
+
+# ------------------------------------------------------------------ error timeline
+
+
+def _line(n: int, when: datetime, level: LogLevel, message: str = "boom") -> LogLine:
+    return LogLine(line_no=n, raw=message, message=message, level=level, timestamp=when)
+
+
+def test_timeline_counts_errors_per_minute_and_marks_changes() -> None:
+    start = datetime(2026, 10, 11, 3, 0, 15, tzinfo=UTC)
+    lines = [
+        _line(1, start, LogLevel.INFO, "deploy payment-api v2.15 see https://ci.example/1"),
+        _line(2, start + timedelta(seconds=30), LogLevel.ERROR),
+        _line(3, start + timedelta(seconds=40), LogLevel.ERROR),
+        _line(4, start + timedelta(minutes=2), LogLevel.FATAL),
+        _line(5, start + timedelta(minutes=3), LogLevel.WARN),  # warnings aren't plotted
+        _line(6, start + timedelta(minutes=9), LogLevel.ERROR),
+    ]
+    timeline = ui.timeline_spec(lines)
+    assert timeline is not None
+    spec, bucket = timeline
+    assert bucket == 1
+    bars, changes = (layer["data"]["values"] for layer in spec["layer"])
+    assert bars == [
+        {"time": "2026-10-11T03:00:00+00:00", "level": "ERROR", "count": 2},
+        {"time": "2026-10-11T03:02:00+00:00", "level": "FATAL", "count": 1},
+        {"time": "2026-10-11T03:09:00+00:00", "level": "ERROR", "count": 1},
+    ]
+    (deploy,) = changes  # the deploy just before the errors is marked: it's often the cause
+    assert deploy == {
+        "time": "2026-10-11T03:00:15+00:00",
+        "change": "deploy payment-api v2.15 see https[:]//ci.example/1",
+    }
+    long_before = start - timedelta(hours=3)
+    early = [_line(9, long_before, LogLevel.INFO, "config reloaded"), *lines[1:]]
+    early_spec, _ = ui.timeline_spec(early) or ({}, 0)
+    assert early_spec["layer"][1]["data"]["values"] == []  # hours earlier: not shown
+    color = spec["layer"][0]["encoding"]["color"]["scale"]
+    assert color == {"domain": ["ERROR", "FATAL"], "range": ["#ec835a", "#d03b3b"]}
+
+
+def test_timeline_buckets_grow_with_the_span() -> None:
+    start = datetime(2026, 10, 11, 0, 0, tzinfo=UTC)
+    day = [_line(n, start + timedelta(minutes=17 * n), LogLevel.ERROR) for n in range(1, 86)]
+    spec, bucket = ui.timeline_spec(day) or ({}, 0)
+    assert bucket == 15
+    week = [
+        _line(1, start, LogLevel.ERROR),
+        _line(2, start + timedelta(days=6, hours=5), LogLevel.ERROR),
+    ]
+    assert (ui.timeline_spec(week) or ({}, 0))[1] == 60
+    fortnight = [
+        _line(1, start, LogLevel.ERROR),
+        _line(2, start + timedelta(days=12, hours=5), LogLevel.ERROR),
+    ]
+    spec, bucket = ui.timeline_spec(fortnight) or ({}, 0)
+    assert bucket == 240
+    assert spec["layer"][0]["data"]["values"][-1]["time"] == "2026-10-23T04:00:00+00:00"
+
+
+def test_no_timeline_without_timestamped_errors() -> None:
+    when = datetime(2026, 10, 11, tzinfo=UTC)
+    assert ui.timeline_spec([]) is None
+    assert ui.timeline_spec([_line(1, when, LogLevel.ERROR)]) is None
+    undated = LogLine(line_no=2, raw="x", message="x", level=LogLevel.ERROR)
+    assert ui.timeline_spec([_line(1, when, LogLevel.ERROR), undated]) is None
