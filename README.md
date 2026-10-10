@@ -119,7 +119,7 @@ Open `.env` and set `OPENROUTER_API_KEY`. Then:
 streamlit run app.py
 ```
 
-The app opens at http://localhost:8501. Pick a sample log (or upload your own) and press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
+The app opens at http://localhost:8501. Pick a sample log, upload your own, or paste log lines, then press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
 After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
@@ -338,7 +338,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+1. A postmortem download, "last time this was fixed by…", and an error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.
