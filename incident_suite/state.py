@@ -278,10 +278,9 @@ class Issue(StrictModel):
 
 
 class RunbookSource(StrictModel):
-    """A runbook chunk the fix was based on, with its similarity score."""
+    """A runbook the fix was based on, with its match score."""
 
     runbook: str
-    section: str | None = None
     score: Confidence
 
 

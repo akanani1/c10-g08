@@ -1,7 +1,8 @@
 """The 17 sample logs parse the way labels.json says, and match what make_samples.py writes.
 
 Each labelled evidence line must survive the pre-filter (WARN or worse), each context line must
-be kept as context or as a change event, and the repeat log must share the original's signature.
+be kept as context or as a change event, the repeat log must share the original's signature, and
+every labelled issue must find a runbook of its category, with its fix steps, in data/runbooks.
 """
 
 from __future__ import annotations
@@ -15,9 +16,13 @@ from types import ModuleType
 from typing import Any
 
 import pytest
+from langchain_core.embeddings import Embeddings
 
+from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
 from incident_suite.parsing.grouping import group_lines
 from incident_suite.parsing.readers import parse_upload
+from incident_suite.rag.retriever import RunbookRetriever
+from incident_suite.rag.runbooks import RUNBOOK_DIR, load_runbooks
 from incident_suite.state import GroupedLog, LogLevel, ParsedLog
 
 SAMPLES = Path(__file__).resolve().parents[2] / "sample_logs"
@@ -87,3 +92,29 @@ def test_the_large_log_has_50k_rows() -> None:
 def test_committed_files_match_the_generator() -> None:
     for name, data in _generator().build().items():
         assert (SAMPLES / name).read_bytes() == data, f"{name} is stale: run make_samples.py"
+
+
+ISSUES = [(label, issue) for label in LABELS for issue in label["expected_issues"]]
+
+
+@pytest.mark.parametrize(
+    ("label", "issue"),
+    ISSUES,
+    ids=[f"{label['file']}-{issue['category']}" for label, issue in ISSUES],
+)
+def test_every_labelled_issue_finds_its_runbook(
+    label: dict[str, Any], issue: dict[str, Any], embeddings: Embeddings
+) -> None:
+    runbooks = load_runbooks(RUNBOOK_DIR)
+    categories = {runbook.id: runbook.categories for runbook in runbooks}
+    parsed, _ = _load(label["file"])
+    by_number = {line.line_no: line for line in parsed.lines}
+    messages = [by_number[number].message for number in issue["evidence_lines"][:3]]
+    query = "\n".join([issue["category"].replace("_", " "), *messages])
+
+    hits = RunbookRetriever(runbooks, embeddings).search(query, k=3)
+
+    assert len({hit.runbook for hit in hits}) == 3
+    assert issue["category"] in categories[hits[0].runbook]
+    assert hits[0].score >= MIN_RUNBOOK_SCORE
+    assert "## Fix now" in hits[0].text

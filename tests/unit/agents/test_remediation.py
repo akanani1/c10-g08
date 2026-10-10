@@ -6,7 +6,6 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import pytest
-from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from incident_suite.agents import LLMError, StructuredLLM
@@ -16,6 +15,7 @@ from incident_suite.agents.remediation import (
     search_query,
 )
 from incident_suite.rag.retriever import RunbookRetriever
+from incident_suite.rag.runbooks import Runbook
 from incident_suite.state import Category, Issue, LogLevel, LogLine, RunSettings, Severity
 from incident_suite.telemetry import UsageMeter
 
@@ -38,14 +38,23 @@ EVIDENCE = [
         level=LogLevel.ERROR,
     )
 ]
-DOCS = [
-    Document(
-        page_content="Database pool exhausted: Fix now\nConnection refused pool database",
-        metadata={"runbook": "db-pool-exhausted", "title": "DB pool", "section": "Fix now"},
+RUNBOOKS = [
+    Runbook(
+        id="db-pool-exhausted",
+        title="DB pool",
+        categories=("database",),
+        signals=("Connection refused",),
+        sections=(
+            ("Symptoms", "Connection refused pool database"),
+            ("Fix now", "Raise db.pool.max_size or roll back."),
+        ),
     ),
-    Document(
-        page_content="Disk full: Fix now\nNo space left on device",
-        metadata={"runbook": "disk-full", "title": "Disk full", "section": "Fix now"},
+    Runbook(
+        id="disk-full",
+        title="Disk full",
+        categories=("disk",),
+        signals=("No space left on device",),
+        sections=(("Fix now", "No space left on device: free space."),),
     ),
 ]
 
@@ -63,7 +72,7 @@ def _answer(**overrides: Any) -> RemediationAnswer:
 
 @pytest.fixture
 def retriever(embeddings: Embeddings) -> RunbookRetriever:
-    return RunbookRetriever(DOCS, embeddings)
+    return RunbookRetriever(RUNBOOKS, embeddings)
 
 
 def _meter(settings: RunSettings) -> UsageMeter:
@@ -81,14 +90,14 @@ def test_fix_cites_only_retrieved_runbooks(
     assert result.remediation.issue_id == "ISS-1"
     (source,) = result.remediation.sources
     assert source.runbook == "db-pool-exhausted"
-    assert source.section == "Fix now"
     assert 0 < source.score <= 1
     assert not result.needs_more_context
 
     model, system, user = calls[0]
     assert model == settings.remediation.model
     assert "Remediation agent" in system
-    assert "[R1] DB pool > Fix now" in user
+    assert "[R1] DB pool (score" in user
+    assert "## Fix now\nRaise db.pool.max_size or roll back." in user
     assert user.count("</evidence>") == 1  # log text can't close the tag
 
 
@@ -106,7 +115,7 @@ def test_low_confidence_asks_for_more_context(
 def test_weak_match_asks_for_more_context(
     embeddings: Embeddings, settings: RunSettings, make_llm: MakeLLM
 ) -> None:
-    unrelated = RunbookRetriever(DOCS[1:], embeddings)
+    unrelated = RunbookRetriever(RUNBOOKS[1:], embeddings)
     llm, _ = make_llm([_answer(source_ids=[])])
     result = remediate(
         ISSUE, EVIDENCE, retriever=unrelated, settings=settings, llm=llm, meter=_meter(settings)

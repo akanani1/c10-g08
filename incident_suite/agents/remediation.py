@@ -71,8 +71,7 @@ def _user_message(issue: Issue, evidence: Sequence[LogLine], hits: Sequence[Runb
         for line in evidence[:MAX_EVIDENCE_LINES]
     )
     runbooks = "\n\n".join(
-        f"[{hit.id}] {hit.title} > {hit.section} (score {hit.score:.2f})\n{_escape(hit.text)}"
-        for hit in hits
+        f"[{hit.id}] {hit.title} (score {hit.score:.2f})\n{_escape(hit.text)}" for hit in hits
     )
     return (
         f"<issue>\n{issue.id}: {_escape(issue.title)}\ncategory={issue.category} "
@@ -85,7 +84,7 @@ def _user_message(issue: Issue, evidence: Sequence[LogLine], hits: Sequence[Runb
 def _sources(answer: RemediationAnswer, hits: Sequence[RunbookHit]) -> list[RunbookSource]:
     by_id = {hit.id: hit for hit in hits}
     return [
-        RunbookSource(runbook=hit.runbook, section=hit.section, score=hit.score)
+        RunbookSource(runbook=hit.runbook, score=hit.score)
         for hit in (by_id[sid] for sid in dict.fromkeys(answer.source_ids) if sid in by_id)
     ]
 
