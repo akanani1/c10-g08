@@ -13,15 +13,20 @@ from incident_suite import ui
 from incident_suite.state import (
     AgentUsage,
     Category,
+    Checklist,
+    ChecklistItem,
     Issue,
+    LogFormat,
     LogLevel,
     LogLine,
     Pattern,
     Remediation,
     RunbookSource,
+    RunResult,
     RunSettings,
     RunStep,
     Severity,
+    SlackOutcome,
     StepStatus,
     TicketAction,
     TicketOutcome,
@@ -282,3 +287,74 @@ def test_needs_runbook() -> None:
     weak = [RunbookSource(runbook="x", score=0.2)]
     assert ui.needs_runbook(FIX.model_copy(update={"sources": weak}))
     assert not ui.needs_runbook(FIX)
+
+
+# ------------------------------------------------------------------ postmortem
+
+
+def _when(minute: int) -> datetime:
+    return datetime(2026, 10, 11, 3, minute, tzinfo=UTC)
+
+
+def test_postmortem_from_a_run() -> None:
+    lines = [
+        LogLine(
+            line_no=1,
+            raw="deploy",
+            message="deploy payment-api v2.15.0 started",
+            timestamp=_when(0),
+        ),
+        LogLine(line_no=12, raw="err", message="Connection refused", timestamp=_when(5)),
+        LogLine(line_no=13, raw="err", message="Connection refused", timestamp=_when(9)),
+    ]
+    issue = ISSUE.model_copy(update={"title": "DB pool exhausted, see http://evil.example"})
+    result = RunResult(
+        run_id="run-9",
+        log_name="app.log",
+        log_fingerprint="0" * 16,
+        log_format=LogFormat.PLAIN,
+        line_count=3,
+        issues=[issue],
+        remediations=[FIX],
+        tickets=[
+            TicketOutcome(issue_id="ISS-1", action=TicketAction.CREATE, key="SCRUM-7", sent=True)
+        ],
+        checklist=Checklist(prevent=[ChecklistItem(text="Alert on pool use", issue_ids=["ISS-1"])]),
+        slack=SlackOutcome(sent=True, permalink="https://team.slack.com/archives/C1/p1"),
+        dry_run=False,
+    )
+    text = ui.postmortem_markdown(result, lines)
+
+    assert text.startswith("# Postmortem draft: app.log")
+    assert "- Run: run-9 (live)" in text
+    assert "- SCRUM-7: create (sent)" in text
+    assert "- Slack: https://team.slack.com/archives/C1/p1" in text
+    timeline = text.split("## Timeline")[1].split("##")[0]
+    assert timeline.index("Change: deploy payment-api") < timeline.index("ISS-1 first seen")
+    assert "2026-10-11 03:09:00 (L13): ISS-1 last seen (L13)" in timeline
+    assert "http[:]//evil.example" in text
+    assert "http://evil" not in text
+    assert "- Evidence: lines 12, 13" in text
+    assert "1. Roll back" in text
+    assert "Runbooks: db_connection_pool, deploy_rollback. Confidence 85%." in text
+    assert "- [ ] Alert on pool use (ISS-1)" in text
+
+
+def test_postmortem_with_little_to_say() -> None:
+    issue = ISSUE.model_copy(update={"evidence_lines": [4]})
+    result = RunResult(
+        run_id="run-10",
+        log_name="t.csv",
+        log_fingerprint="0" * 16,
+        log_format=LogFormat.CSV,
+        line_count=1,
+        issues=[issue],
+    )
+    text = ui.postmortem_markdown(result, [LogLine(line_no=4, raw="x", message="x")])
+    assert "- Evidence: rows 4" in text
+    assert "time unknown (L4): ISS-1 first seen" in text
+    assert "- No fix was suggested." in text
+    assert "- None suggested." in text
+    assert "- No timestamps or change events in the log." in ui.postmortem_markdown(
+        result.model_copy(update={"issues": []}), []
+    )
