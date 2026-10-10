@@ -1492,7 +1492,19 @@ def render(log: Log) -> bytes:
         out = pa.BufferOutputStream()
         pq.write_table(pa.Table.from_pylist(log.entries), out)
         data = out.getvalue().to_pybytes()
-    return gzip.compress(data, mtime=0) if log.compressed else data
+    return _gzip(data) if log.compressed else data
+
+
+def _gzip(data: bytes) -> bytes:
+    """Gzip with the same bytes on every OS: no timestamp, and the "unknown OS" header byte.
+
+    ``gzip.compress`` lets zlib write the header, which records the OS (3 on Linux, other
+    values on Windows), so the file would differ by one byte between machines.
+    """
+    buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=buffer, mode="wb", mtime=0, filename="") as stream:
+        stream.write(data)
+    return buffer.getvalue()
 
 
 def build() -> dict[str, bytes]:
