@@ -77,7 +77,7 @@ class LogLevel(StrEnum):
 
 
 class LogFormat(StrEnum):
-    """Formats the readers understand (build plan section 23). Gzip is a wrapper, not a format."""
+    """Formats the readers understand. Gzip is a wrapper, not a format."""
 
     PLAIN = "plain"
     NGINX_ACCESS = "nginx_access"
@@ -92,7 +92,7 @@ class LogFormat(StrEnum):
 
 
 class RedactionType(StrEnum):
-    """Kinds of secret or personal data masked before the model sees a log (section 18.2)."""
+    """Kinds of secret or personal data masked before the model sees a log."""
 
     EMAIL = "email"
     # Labels, not secrets:
@@ -104,7 +104,7 @@ class RedactionType(StrEnum):
 
 
 class TicketAction(StrEnum):
-    """What the JIRA agent decided for one critical issue (section 4.2)."""
+    """What the JIRA agent decided for one critical issue."""
 
     CREATE = "create"
     COMMENT = "comment"
@@ -113,7 +113,7 @@ class TicketAction(StrEnum):
 
 
 class ApprovalStatus(StrEnum):
-    """Where a run stands at the human approval gate (section 18.3)."""
+    """Where a run stands at the human approval gate."""
 
     NOT_NEEDED = "not_needed"
     PENDING = "pending"
@@ -122,7 +122,7 @@ class ApprovalStatus(StrEnum):
 
 
 class StepStatus(StrEnum):
-    """How one graph step ended, for the pipeline strip and run log (section 18.4)."""
+    """How one graph step ended, for the pipeline strip and run log."""
 
     DONE = "done"
     SKIPPED = "skipped"
@@ -168,10 +168,10 @@ class JiraSettings(StrictModel):
 
 
 class RunSettings(StrictModel):
-    """Everything a single run can be tuned with. Travels in the graph state.
+    """Everything a single run can be tuned with. Travels with the run.
 
     Agents read their options from here, never from config directly, so the Agent settings page
-    (section 20) only has to produce a valid ``RunSettings``. Bounds live on the fields, so an
+    only has to produce a valid ``RunSettings``. Bounds live on the fields, so an
     imported JSON file can't get around them.
     """
 
@@ -369,7 +369,7 @@ class AgentUsage(StrictModel):
 
 
 class RunStep(StrictModel):
-    """One step of a run, recorded as it happens (section 17.4)."""
+    """One step of a run, recorded as it happens."""
 
     node: str
     status: StepStatus

@@ -52,7 +52,7 @@ dev = [
 [project.urls]
 Repository = "https://github.com/akanani1/c10-g08"
 
-# Flat layout: the package lives at the repo root (see docs/build-plan.md, section 9).
+# Flat layout: the package lives at the repo root (see "Repo layout" in docs/build-plan.md).
 [tool.setuptools.packages.find]
 include = ["incident_suite*"]
 

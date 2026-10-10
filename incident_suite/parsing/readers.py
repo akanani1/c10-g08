@@ -1,4 +1,4 @@
-"""Read uploaded bytes into records, whatever the file format (build plan section 23).
+"""Read uploaded bytes into records, whatever the file format.
 
 The content decides the format, not the extension: Parquet starts with ``PAR1``, gzip with
 ``1f 8b``, JSON with ``{`` or ``[``, and CSV/TSV is confirmed by a consistent header and column
@@ -64,7 +64,7 @@ class ReadError(ValueError):
 
 @dataclass(frozen=True)
 class ReadLimits:
-    """Caps applied while reading (section 23.4)."""
+    """Caps applied while reading."""
 
     max_decompressed_bytes: int = 50 * 1024 * 1024
     max_records: int = 200_000

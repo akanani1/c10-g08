@@ -1,4 +1,4 @@
-"""Notification agent (build plan sections 4.2 to 4.4 and 18.3).
+"""Notification agent.
 
 ``plan_notification`` decides whether the run is worth a Slack post (at least one medium issue)
 and writes the summary and the thread reply. ``send_notification`` posts it after approval,

@@ -1,4 +1,4 @@
-"""LangGraph orchestrator (build plan sections 3, 4.3, 17.4 and 18.3).
+"""LangGraph orchestrator.
 
     log_reader -> remediation -> [cookbook || jira_plan*] -> notify_plan -> approval** -> send
                      ^      |
@@ -248,7 +248,7 @@ def notify_plan(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]
 
 
 def approval(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
-    """Pause for a person when something would really be sent (section 18.3)."""
+    """Pause for a person when something would really be sent."""
     started = time.perf_counter()
     ctx = runtime.context
     jira_ready = ctx.tracker is not None and _sendable(state.get("tickets", []))
@@ -272,7 +272,7 @@ def approval(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
 
 
 def send(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
-    """JIRA first, so the Slack post can carry the ticket links (section 4.3)."""
+    """JIRA first, so the Slack post can carry the ticket links."""
     started = time.perf_counter()
     ctx = runtime.context
     tickets = state.get("tickets", [])

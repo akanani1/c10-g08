@@ -1,4 +1,4 @@
-"""Run IDs, and tokens, cost and time per agent (build plan sections 5 and 12.1).
+"""Run IDs, and tokens, cost and time per agent.
 
 The LangSmith trace link joins this module when tracing is wired up (H8).
 """

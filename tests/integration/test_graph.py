@@ -1,7 +1,7 @@
 """The LangGraph run end to end, with a fake model, offline embeddings and fake Slack and JIRA.
 
-Covers the routing in build plan section 3 (feedback loop, JIRA skipped when nothing is
-critical) and the approval gate in 18.3 (dry run stops at the gate, reject sends nothing,
+Covers the routing (feedback loop, JIRA skipped when nothing is
+critical) and the approval gate (dry run stops at the gate, reject sends nothing,
 approve sends once, a paused run resumes with a rebuilt context).
 """
 

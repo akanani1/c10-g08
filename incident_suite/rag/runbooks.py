@@ -1,4 +1,4 @@
-"""Load the markdown runbooks and split them into searchable sections (build plan section 2).
+"""Load the markdown runbooks and split them into searchable sections.
 
 Each runbook has YAML front matter (``id``, ``title``, ``categories``, ``signals``) and ``##``
 sections, as in ``docs/templates/gulam/runbook_template.md``. Every section becomes one search

@@ -3,7 +3,7 @@
 Text logs: the format is detected from a sample of lines (app logs, nginx access and error,
 syslog, Kubernetes), and each line is parsed with that format first, then any other known
 format, then as plain text. Structured records (JSON, CSV, TSV, Parquet) have their columns
-mapped onto ``LogLine`` fields by common names (section 23.3).
+mapped onto ``LogLine`` fields by common names.
 
 A line that matches nothing is still kept, with the whole text as the message, so nothing
 is silently dropped.

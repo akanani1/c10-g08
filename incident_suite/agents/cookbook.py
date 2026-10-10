@@ -1,4 +1,4 @@
-"""Cookbook Synthesizer agent (build plan section 3, step 4).
+"""Cookbook Synthesizer agent.
 
 Turns the fixes into one checklist: do now, this week, prevent next time. Items may only point
 at issues that exist, so every line of the checklist traces back to evidence.

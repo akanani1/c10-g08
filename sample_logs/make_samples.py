@@ -1,4 +1,4 @@
-"""Generate the 17 sample logs and labels.json (build plan sections 7 and 23.6).
+"""Generate the 17 sample logs and labels.json.
 
 Run from anywhere:  python sample_logs/make_samples.py
 
