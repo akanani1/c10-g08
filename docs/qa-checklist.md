@@ -44,7 +44,8 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
    before submission.
 2. Use dry run by default. Enable live integrations only with Raphael for a planned
    demo test, and never with real secrets in screenshots or recordings.
-3. Test against the deployed commit shown in the app footer or deployment metadata.
+3. Test against the deployed commit: the latest `main` commit on GitHub, as shown under
+   Streamlit Cloud's app settings.
 4. A failed test requires a separate GitHub issue using the bug template in section 10.
 5. Do not mark a feature `FAIL` when it has not landed. Mark it `NOT LANDED` and
    identify the owner or dependency.
@@ -58,7 +59,7 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 | SMK-03 | Inspect the integrations panel | Models, Slack, and JIRA show connected/not connected status; no key or token is displayed | |
 | SMK-04 | Inspect public mode | Public deployment reports `dry run` | |
 | SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | |
-| SMK-06 | Confirm the tested commit | App footer/deployment metadata matches the SHA in this record | |
+| SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | |
 
 ## 4. Current repository verification
 
@@ -71,12 +72,14 @@ run before the complete agent flow lands.
 | REP-02 | Run `pytest tests/unit/parsing/test_readers.py` | Plain text, JSONL, JSON, CSV, TSV, Parquet, gzip, detection, row/line, and size limits pass | |
 | REP-03 | Run `pytest tests/unit/parsing/test_parser.py` | Supported log formats, fields, levels, timestamps, and column mapping pass | |
 | REP-04 | Run `pytest tests/unit/parsing/test_grouping.py` | Pattern grouping, signatures, context, sorting, and caps pass | |
-| REP-05 | Run `pytest tests/unit/parsing/test_redact.py tests/unit/parsing/test_pipeline.py` | Fake secrets are redacted before parsed output; counts and disabled types behave correctly | |
+| REP-05 | Run `pytest tests/unit/parsing/test_redact.py tests/unit/parsing/test_readers.py` | Fake secrets are redacted before parsed output; counts and disabled types behave correctly | |
 | REP-06 | Run `pytest tests/unit/test_security.py` | Allowed formats pass; disallowed formats, empty files, and upload caps fail clearly | |
 | REP-07 | Run `pytest tests/unit/test_state.py` | State validation, evidence requirements, severity ordering, settings bounds, and result totals pass | |
-| REP-08 | Run `pytest tests/integration/test_example_logs.py` | Every supplied template example matches its declared format and labelled evidence | |
+| REP-08 | Run `pytest tests/integration/test_sample_logs.py` | All 17 sample logs match their format and labelled evidence, the files match `make_samples.py`, and every labelled issue finds its runbook | |
 | REP-09 | Run `pytest tests/integration/test_app.py` | Streamlit renders without API keys or an exception | |
-| REP-10 | Run the repository's documented test command | `make test` or the documented Windows equivalent completes successfully | |
+| REP-10 | Run `pytest tests/unit/agents tests/unit/rag tests/unit/prompts tests/unit/test_telemetry.py` | Log Reader, Remediation, Cookbook, runbook search, prompts and cost tracking pass with a fake model | |
+| REP-11 | Run `pytest` | The whole suite passes without an API key | |
+| REP-12 | Run `pytest -m live -v` (local only, needs `OPENROUTER_API_KEY` in `.env`) | 4 passed: two chat models, embeddings, and one real classification of `payment_db_conn_refused.log` | |
 
 ## 5. Upload and parsing acceptance tests
 
@@ -115,7 +118,7 @@ credential key/value, named secret columns, and a private-key block.
 | SEC-04 | Inspect the redaction summary | Count by type is shown, for example `3 emails, 1 AWS key redacted` | |
 | SEC-05 | Search the page with Ctrl+F | Each planted secret is absent from the rendered page | |
 | SEC-06 | Inspect logs, errors, and screenshots | No API key, token, `.env` content, or private key is exposed | |
-| SEC-07 | Run the redaction and pipeline unit tests | `test_redact.py` and `test_pipeline.py` pass | |
+| SEC-07 | Run the redaction and reader unit tests | `test_redact.py` and `test_readers.py` pass | |
 
 ## 7. End-to-end flow and approval gate
 
@@ -123,8 +126,8 @@ These tests are `NOT LANDED` until the final graph and UI are available.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| E2E-01 | Run critical sample #1 | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | |
-| E2E-02 | Run a healthy sample | No JIRA ticket is planned and the app says nothing would be sent to Slack | |
+| E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | |
+| E2E-02 | Run the healthy sample `healthy_service.csv` (#13) | No JIRA ticket is planned and the app says nothing would be sent to Slack | |
 | E2E-03 | Observe an uncertain remediation | Remediation requests more context from Log Reader and then continues | |
 | E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | |
 | E2E-05 | Reject a prepared live run (local/demo only) | Nothing is sent and rejection is recorded in the run log | |
@@ -159,7 +162,7 @@ Run on a machine that has not previously installed this repository.
 | WIN-02 | Create and activate `.venv` | Activation and dependency installation succeed | |
 | WIN-03 | Run the documented test command | All non-live tests pass without an API key | |
 | WIN-04 | Start the app | Streamlit starts and opens the documented local URL | |
-| WIN-05 | Run `make setup`, `make test`, and `make run` where GNU Make is installed | Commands work with the Windows-aware `Makefile` | |
+| WIN-05 | Run the README's developer commands (`pip install -c requirements.txt -e ".[dev]"`, `pre-commit install`, `pytest`) | Each works in PowerShell as written | |
 | WIN-06 | Record friction | Every guess, missing dependency, platform mismatch, or unclear README step is documented | |
 | WIN-07 | Run final CI checks | CI is green; no lockfile, lint, type, security, test, or secret-scan failure remains | |
 
