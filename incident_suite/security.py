@@ -1,4 +1,4 @@
-"""Upload checks before anything is read (build plan section 12.1).
+"""Upload checks before anything is read.
 
 Rate limiting and output escaping join this module in later builds.
 """

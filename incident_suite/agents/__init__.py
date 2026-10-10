@@ -1,4 +1,4 @@
-"""Model clients. Every chat and embedding call goes through OpenRouter (build plan section 22).
+"""Model clients. Every chat and embedding call goes through OpenRouter.
 
 LangChain's OpenAI classes work against OpenRouter by changing the base URL, so agents use
 these factories and never set URLs or keys themselves. Agents talk to a :class:`StructuredLLM`:
@@ -32,7 +32,7 @@ OPENROUTER_HEADERS = {
 }
 
 
-ATTEMPTS = 2  # one retry when the answer doesn't match the schema (section 12.1)
+ATTEMPTS = 2  # one retry when the answer doesn't match the schema
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 

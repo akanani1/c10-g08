@@ -5,7 +5,7 @@
 **Hard limit:** 3:00  
 **Recording target:** deployed Streamlit app, 1080p, clean browser profile  
 **Primary demo:** critical payment database incident, followed by repeat-run memory and scale  
-**Source requirements:** `docs/build-plan.md` sections 3, 4, 12.3, 18.2, 18.3, 18.4, and 21
+**Source requirements:** `docs/build-plan.md` sections 4, 6, 9, 15 and 18
 
 The recording must show the product working, not only describe it. Replace bracketed
 placeholders with measured values from the final run. If an integration or feature has

@@ -1,4 +1,4 @@
-"""Tests for incident_suite/agents/jira_agent.py: the rules in build plan section 4.2."""
+"""Tests for incident_suite/agents/jira_agent.py: when to create, comment, reopen or skip."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Remediation agent (build plan section 3, step 3).
+"""Remediation agent.
 
 For each issue: search the runbooks, then ask the model for a root cause, fix steps, rationale and
 the runbook sections it used. Sources and their scores come from the retriever, never from the

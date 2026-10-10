@@ -1,4 +1,4 @@
-"""JIRA Ticket agent (build plan sections 4.2, 4.3 and 18.3).
+"""JIRA Ticket agent.
 
 Split in two, so nothing is written before a person approves:
 

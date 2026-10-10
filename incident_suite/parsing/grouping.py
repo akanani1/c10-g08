@@ -1,4 +1,4 @@
-"""Group lines by error signature and keep only what the model needs (build plan section 3).
+"""Group lines by error signature and keep only what the model needs.
 
 Numbers, IDs, IPs, hashes and ports are masked, so 412 lines of
 ``Connection refused to payments-db.internal:5432 (attempt 2/3)`` become one pattern. Only

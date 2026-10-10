@@ -1,4 +1,4 @@
-"""Mask secrets and personal data before any model, screen, Slack or JIRA sees them (section 18.2).
+"""Mask secrets and personal data before any model, screen, Slack or JIRA sees them.
 
 Regex only, so it is cheap even on the 50k-line log. Each match becomes ``[REDACTED:<type>]``.
 It is pattern-based and can miss formats it doesn't know; the README says so.

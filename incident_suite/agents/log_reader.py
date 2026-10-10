@@ -1,4 +1,4 @@
-"""Log Reader / Classifier agent (build plan section 3, step 2).
+"""Log Reader / Classifier agent.
 
 Turns the pre-filtered patterns into classified issues. The model sees a compact digest wrapped
 in ``<log>`` delimiters, never the raw upload, and big logs are split into chunks that are

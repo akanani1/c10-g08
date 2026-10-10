@@ -1,4 +1,4 @@
-"""OpenRouter smoke test (build plan section 22.3): real chat, embedding and classifier calls.
+"""OpenRouter smoke test: real chat, embedding and classifier calls.
 
 Opt-in: marked ``live``, so the default test run deselects it, and it skips when no
 OPENROUTER_API_KEY is set. Run it with ``pytest -m live``. Costs a fraction of a cent.
