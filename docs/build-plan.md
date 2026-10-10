@@ -487,3 +487,183 @@ Three panels, plus controls and counters at the top.
 - **Cut-off:** if the core UI isn't done by the end of H7, Stretch B is dropped. Feature freeze at H8 doesn't move.
 - **Fallback:** if there's only a little time, ship a simple step slider with the highlighted (not animated) diagram and the captions.
 - **If it ships:** the README gets a short "Replay a run" section, and the demo video can pause on the feedback-loop step.
+
+---
+
+## 18. Additions from the team's UI mockups (v7, 10 Oct 2026)
+
+Status: agreed. This section adds to sections 0 to 17 without rewriting them. Where it changes something earlier, it says so, and 18.5 lists every such change in one place. Everything else in the earlier sections stays as it is.
+
+### 18.1 What we're adopting and what we're not
+
+| From the mockups | Decision | Why |
+|---|---|---|
+| Secret and PII redaction before the model sees the log | Adopt (18.2) | Small, and it strengthens the security criterion |
+| Human approval before anything is sent to Slack or JIRA | Adopt (18.3) | Cheap with LangGraph `interrupt()`, and it demos well |
+| Incident card, pipeline strip, Slack and JIRA previews, runbook sources, run log table, severity legend | Adopt (18.4) | Matches what our run already produces |
+| Next.js, FastAPI, Vercel, LlamaIndex, LanceDB, Slack webhook for posting | Skip | Dropped on purpose in v5 and v6 (section 2) |
+| Separate Guardrails and Policy/Compliance agents | Skip | Upload checks and redaction cover it without extra agents |
+| Multi-tenancy, malware scanning, WORM audit store, Microsoft Teams | Skip | Days of work, not hours. Teams stays in "Ideas for later" (4.7) |
+| Fleet KPIs, trend charts, environment and service filters | Skip | Need a history of runs, and we deliberately store none (4.1). Filling them with made-up numbers would hurt us |
+
+### 18.2 Secret and PII redaction
+
+- **Where:** a new step between Upload and the Log Reader. Module `incident_suite/parsing/redact.py`.
+- **What it masks:** email addresses, bearer tokens and JWTs, AWS access keys, private key blocks, and the values in `password=`, `passwd=`, `secret=`, `token=`, `api_key=` and similar key/value pairs. Each match becomes `[REDACTED:<type>]`.
+- **How:** regex only, run on every line before grouping, so it's cheap even on the 50k-line log. The signature masking in section 3 (numbers, IDs, IPs) is unchanged and runs after it.
+- **Everything downstream sees redacted text:** the model, evidence lines in the app, Slack, JIRA, and recorded replays (section 17).
+- **On screen:** a count per type, for example "3 emails, 1 AWS key redacted".
+- **Tests:** a positive and a negative example for each pattern, plus a test that no Slack payload, JIRA payload or recorded replay contains a planted sample secret.
+- **Limits:** pattern-based, so it can miss things. The README says so.
+- **Time:** about 30 minutes, in H2.
+
+### 18.3 Approval gate
+
+When `REQUIRE_APPROVAL` is true (the default), the flow in section 3 becomes:
+
+```
+Upload -> Redact -> Log Reader -> Remediation -> [Cookbook || JIRA plan*] -> Notification plan -> Approval gate** -> JIRA send* -> Slack send -> Results
+                        ^                |
+                        +-- more context-+   (unchanged: one retry per issue at most)
+
+*  JIRA only runs if at least one issue is critical (unchanged)
+** Only pauses when something would actually be sent
+```
+
+- **Plan and send.** The JIRA and Notification agents each split into two halves. The plan half is read-only: the JQL search, the create / comment / regression decision, and building the Slack blocks and JIRA documents. The send half does the writes, exactly as in section 4.3 steps 1 to 5.
+- **How it pauses.** LangGraph `interrupt()` with the in-memory checkpointer (`MemorySaver`). The thread ID is the run ID. The compiled graph and checkpointer live in `st.session_state`, so a Streamlit rerun doesn't lose the paused run.
+- **Approve** resumes the graph and sends. **Reject** ends the run with nothing sent, and the rejection is recorded in the run log and shown in the app.
+- **When it pauses.** Only when live integrations are on, credentials are present, and the run found at least one medium issue. In dry run, the run ends at the gate with the previews on screen and nothing to approve.
+- **Identity.** Approval is per session and there are no user accounts. We record the time and "approved in app", not a verified approver.
+- **New row for the table in 4.2:** rejected at the approval gate → JIRA: nothing; Slack: nothing; the rejection is logged in the app.
+- **Config:** `REQUIRE_APPROVAL` (default `true`). Setting it to `false` sends straight away, as in the original section 4.3.
+- **Tests:** dry run stops at the gate; reject makes zero calls on the fake Slack and JIRA clients; approve sends exactly once; a paused run resumes after a simulated rerun.
+- **Time:** about 40 minutes, across H4 (graph) and H6 (panel).
+
+### 18.4 Results screen layout
+
+This builds on the results list in sections 1 and 3, step 6.
+
+| Piece | What it shows | Where the data comes from |
+|---|---|---|
+| Incident card (one per top issue) | Severity badge, title, service, run ID, root cause, recommended fix, confidence with its reasons | Classifier and Remediation output |
+| Pipeline strip | Each step with status (done, running, skipped, waiting for approval, failed) and time taken | Run record (17.4) |
+| Slack preview | The summary and thread exactly as they will be or were sent | Notification plan payload |
+| JIRA preview | Ticket title, priority, labels, status, and create / comment / regression | JIRA plan payload |
+| Approval panel | Approve and Reject buttons, plus what will be sent | Approval gate (18.3) |
+| Runbook sources | The runbooks cited, with match scores | Remediation output |
+| Run log table | Time, step, agent, action, status, evidence | Run record (17.4) |
+| Cost row | Tokens, cost and time per agent, and the trace link | Telemetry |
+| Severity legend | Low, medium, high, critical, and what each one triggers | The rules in 4.2 |
+
+- **New `root_cause` field** in the Remediation output (adds to section 3, step 3): one or two sentences, framed as a hypothesis, citing evidence line numbers.
+- **Confidence reasons come from real signals only:** how many evidence lines support the issue, the best runbook match score, and whether JIRA has seen this signature before. No made-up numbers.
+- **Render helpers** live in `incident_suite/ui/components.py` as pure functions with unit tests. `app.py` calls them. Log text is escaped before it reaches any HTML.
+- **Time:** inside H6 to H7.
+
+### 18.5 Changes to earlier sections, in one place
+
+| Section | Change |
+|---|---|
+| 3 (flow) | Redaction step, and the approval gate when `REQUIRE_APPROVAL` is true (18.2, 18.3) |
+| 3, step 3 | Remediation also returns `root_cause` (18.4) |
+| 4.2 | New row for a rejected approval (18.3) |
+| 8 | New variable `REQUIRE_APPROVAL`, default `true` |
+| 9 | New files `incident_suite/parsing/redact.py` and `incident_suite/ui/components.py`, with matching tests under `tests/unit/` |
+| 10 | H2 +30 min (redaction), H4 and H6 +40 min (approval), H6 to H7 follow the layout in 18.4 |
+| 12.1 | Security also covers redaction before the model, and a human approval before any external write |
+| 12.3 | Around 1:20, click Approve on camera before the Slack shot |
+| 14 | Two new risks, in 18.6 |
+
+### 18.6 New risks
+
+| Risk | What we'll do |
+|---|---|
+| A paused run is lost when Streamlit reruns the script | Keep the graph and checkpointer in `st.session_state`, and test resuming |
+| Redaction misses a secret format | Documented as a limitation. Live integrations stay off on the public app, and the evidence shown is redacted text |
+
+### 18.7 Decisions (adds to section 15)
+
+| Decision | Outcome |
+|---|---|
+| Teammate mockups | Used as the visual brief for the UI. Stack and agent list unchanged |
+| Redaction | Regex-based, before the Log Reader, in `parsing/redact.py` |
+| Human approval | LangGraph `interrupt()` before JIRA and Slack writes, on by default |
+| Dashboard metrics | Per-run only. No fleet KPIs or trend charts |
+
+---
+
+## 19. Stretch C: extras if we have 2 to 3 more hours
+
+Status: optional, not agreed yet. Nothing in sections 0 to 18 depends on it.
+
+These compete for the same time as Stretch B, the animated replay (section 17). Our suggestion is Stretch C first: each item ships on its own and can be cut without affecting the others, and they add product value rather than presentation.
+
+| Order | Item | Time | What it adds |
+|---|---|---|---|
+| 1 | "Seen before" fix memory | 30 to 45 min | When a closed JIRA ticket has the same `sig-<hash>` label, pull its resolution comment and show "last time this was fixed by…". Reuses the JQL search from 4.2, and gives the confidence score a real reason |
+| 2 | Incident timeline | about 45 min | Errors per minute over the log's time range, with deploy and config-change lines marked. Real data from the parsed log, and it backs up a root cause like "started after the deploy" |
+| 3 | "Ask about this incident" chat | 45 to 60 min | `st.chat_input` that answers questions using only this run's issues, evidence lines and fixes, and cites line numbers. Log text stays inside delimiters as data, as in 12.1 |
+| 4 | Postmortem draft download | about 30 min | A markdown postmortem (summary, timeline, root cause, fixes, follow-ups) built from the run, downloaded with `st.download_button` |
+| 5 | Paste logs as text | about 15 min | A text box next to the uploader, going through the same upload checks and redaction |
+
+- **Cut-off:** the same as 17.6. Nothing starts after H7, and feature freeze at H8 doesn't move.
+- **If they ship:** each gets a line in the README and a test. Items 1 and 2 are worth a few seconds in the video.
+
+---
+
+## 20. Stretch C item: Agent settings page
+
+Status: agreed as a Stretch C item (section 19), about 1 to 1.5 h. It ranks after "seen before" fix memory and the incident timeline, and ahead of the chat. The idea comes from an admin "Agents Setup" screen a team member liked: one card per agent with model, prompt and options.
+
+### 20.1 What the page shows
+
+A second Streamlit page, "Agent settings", with one card per agent and a global card.
+
+| Card | Settings |
+|---|---|
+| Every agent | Model (dropdown from an allow-list in `config.py`, with the price per million input and output tokens), system prompt (editor that starts from the file in `prompts/`, with "Reset to default") |
+| Log Reader / Classifier | Lines of context kept around each error |
+| Remediation | Runbook top-k, and the confidence threshold that triggers the retry loop |
+| JIRA Ticket | Maximum tickets per run, and which severity opens a ticket |
+| Global | Run token budget, `REQUIRE_APPROVAL` on or off, which redaction types are on (18.2), dry run or live |
+| Integrations | Slack, JIRA and LangSmith shown as connected or not connected. Read-only, never the keys |
+
+### 20.2 Where changes are kept
+
+- **Per session only**, in `st.session_state`. Each visitor's changes affect only their own runs. Nothing is written to disk: Streamlit Cloud has no database and wipes its disk on restart, and a shared save would let any visitor change the prompts for everyone.
+- **Export and import** the settings as JSON (`st.download_button` and `st.file_uploader`), validated against the settings model before use.
+- **Reset all** returns to the defaults from `config.py` and the prompt files.
+
+### 20.3 Safety
+
+- Keys stay in env or Streamlit secrets. The page never shows them, and there is no field to enter one.
+- Models come from the allow-list only. No free-text model names.
+- If any prompt differs from its default, the run is forced to dry run, unless an admin passcode from secrets (`ADMIN_PASSCODE`) is entered for the session. Edited prompts can't post to our real Slack or JIRA.
+- Numbers have bounds (for example top-k 1 to 10, at most 3 tickets, a token budget ceiling), enforced by the settings model, not just the widgets.
+- Imported JSON goes through the same validation. Edited prompts still wrap log text in delimiters as data (12.1).
+
+### 20.4 How it fits the code
+
+- **Core build, H1 (about 15 min):** a Pydantic `RunSettings` model in `state.py` (or `config.py`) holding everything in 20.1, built from the defaults in config. It travels in the graph state, and agents read it from there instead of from config directly. This is cleaner even if the page never ships, and it makes the page a UI-only job.
+- **Stretch:** `pages/agent_settings.py` for the UI. The prompt diff check and the "force dry run" rule are pure functions in `incident_suite/` with unit tests.
+- **Tests:** settings validation (bounds, allow-list, bad JSON), forced dry run when a prompt is edited, passcode unlocks live, defaults round-trip through export and import.
+
+### 20.5 Not doing
+
+- Multiple providers (OpenRouter, Gemini). OpenAI only, as in section 2. LangChain makes adding one later a small change.
+- Stream, regular and batch modes. They don't matter for one log at a time.
+- Saving settings for all users. That would need a database and logins.
+
+### 20.6 Demo moment
+
+Switch the Remediation model on this page, rerun the same sample, and show cost and output side by side. A few seconds in the video if it ships.
+
+### 20.7 Changes to earlier sections
+
+| Section | Change |
+|---|---|
+| 8 | New optional variable `ADMIN_PASSCODE` |
+| 9 | New `pages/agent_settings.py`; `RunSettings` in the package |
+| 10 | H1 +15 min for `RunSettings` in the graph state |
+| 19 | One more item in the Stretch C list, ranked third |

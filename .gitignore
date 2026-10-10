@@ -9,3 +9,24 @@ venv/
 .idea/
 .vscode/
 node_modules/
+
+# Logs in sample_logs subfolders (e.g. replays) are tracked too
+!sample_logs/**/*.log
+
+# Secrets
+.streamlit/secrets.toml
+.env.*
+!.env.example
+
+# Tool caches and reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+build/
+dist/
+Thumbs.db

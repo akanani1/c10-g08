@@ -242,6 +242,50 @@ docs/                   diagrams, screenshots, setup guides
 - Learning from closed tickets which fixes actually worked
 - Linking incidents to recent GitHub deploys, and publishing postmortems to Confluence
 
+## Additions in progress
+
+These came out of a review of the team's UI mockups. They add to the sections above without changing them, and the build plan (sections 18 and 19) has the details.
+
+**Secret and PII redaction.** Before the Log Reader sees anything, the app masks email addresses, bearer tokens and JWTs, AWS access keys, private key blocks, and the values of `password=`, `token=`, `api_key=` and similar fields. Each one becomes `[REDACTED:<type>]`, and the app shows how many of each it masked. Everything after that step works on the redacted text: the model, the evidence lines on screen, Slack and JIRA. It's pattern-based, so it can miss unusual formats.
+
+**Approval before anything is sent.** The JIRA and Slack agents first prepare their tickets and messages without sending anything. The run then pauses and shows exactly what would go out. **Approve** sends it; **Reject** sends nothing and records the rejection. This uses LangGraph's built-in pause and resume. In dry run, the run stops at this point with the previews on screen.
+
+```mermaid
+flowchart LR
+    U[Upload log] --> RD[Redact secrets]
+    RD --> LR[Log Reader / Classifier]
+    LR --> RM[Remediation]
+    RM -- "not sure, need more context" --> LR
+    RM --> CB[Cookbook Synthesizer]
+    RM --> JP["JIRA plan (critical only)"]
+    CB --> NP[Notification plan]
+    JP --> NP
+    NP --> AG{Approve?}
+    AG -- approve --> SEND[Send to JIRA, then Slack]
+    AG -- reject --> R[Results in the app]
+    SEND --> R
+```
+
+**Results screen.** For each top issue, an incident card shows the severity, service, run ID, likely root cause, recommended fix, and a confidence score with its reasons: how many log lines support it, how well a runbook matched, and whether JIRA has seen it before. Alongside it: a strip showing each step's status and time, Slack and JIRA previews, the runbooks used, a run log table, cost per agent, and a severity legend. Everything on it comes from the current run. There are no made-up dashboard numbers.
+
+**New setting**
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `REQUIRE_APPROVAL` | no | `true` | Pause for approval before sending to Slack or JIRA |
+
+**Maybe, if time allows:** reusing the fix from a closed JIRA ticket for the same issue ("last time this was fixed by…"), an error timeline with deploys marked, a chat to ask questions about the incident, a postmortem draft download, and pasting logs as text.
+
+## Agent settings page (if time allows)
+
+A second page in the app with one card per agent: pick the model (from a fixed list, with its price), edit the system prompt, and tune a few settings such as runbook matches, the retry threshold and the ticket cap. A global card covers the token budget, approval, redaction and dry run, and shows whether Slack, JIRA and LangSmith are connected (never the keys).
+
+Changes apply to your session only. You can export them as JSON and import them later, and reset to the defaults at any time. If you edit a prompt, the run switches to dry run, so edited prompts can't post to Slack or JIRA unless an admin passcode is entered.
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `ADMIN_PASSCODE` | no | | Lets a session with edited prompts send to Slack and JIRA |
+
 ## Team
 
 Team c10-g08, Outskill hackathon, October 2026.
