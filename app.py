@@ -16,7 +16,14 @@ import streamlit as st
 
 from incident_suite import __version__, ui
 from incident_suite.agents import OpenRouterLLM, make_embeddings
-from incident_suite.agents.assistant import AssistantInput, AssistantResult, latest_updates
+from incident_suite.agents.assistant import (
+    DRAFT_LABEL,
+    AssistantInput,
+    AssistantResult,
+    DraftResult,
+    draft_runbook,
+    latest_updates,
+)
 from incident_suite.config import AppConfig, admin_overrides, effective_config, load_config
 from incident_suite.graph import (
     RunContext,
@@ -28,7 +35,7 @@ from incident_suite.graph import (
 from incident_suite.parsing.readers import ReadError, parse_upload
 from incident_suite.parsing.redact import Redactor
 from incident_suite.rag.retriever import RunbookRetriever
-from incident_suite.rag.runbooks import load_runbooks
+from incident_suite.rag.runbooks import Runbook, load_runbooks
 from incident_suite.security import (
     SHARED_RUNS_PER_HOUR,
     RateLimitError,
@@ -79,6 +86,21 @@ def _retriever(embedding_model: str) -> RunbookRetriever:
     """The runbook index, built once and shared by every session."""
     config = load_config().model_copy(update={"embedding_model": embedding_model})
     return RunbookRetriever(load_runbooks(), make_embeddings(config))
+
+
+def _session_retriever(config: AppConfig) -> RunbookRetriever:
+    """The shared index, or, once runbook drafts are approved, this session's own index."""
+    approved: dict[str, tuple[Runbook, str]] = st.session_state.get("approved_runbooks", {})
+    if not approved:
+        return _retriever(config.embedding_model)
+    ids = tuple(sorted(approved))
+    cached = st.session_state.get("draft_index")
+    if cached is None or cached[0] != ids:
+        drafts = [runbook for runbook, _ in approved.values()]
+        index = RunbookRetriever([*load_runbooks(), *drafts], make_embeddings(config))
+        st.session_state.draft_index = cached = (ids, index)
+    retriever: RunbookRetriever = cached[1]
+    return retriever
 
 
 def _settings(config: AppConfig) -> RunSettings:
@@ -187,7 +209,7 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     settings = chosen.model_copy(update={"live": live})
     try:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
-        retriever = _retriever(config.embedding_model)
+        retriever = _session_retriever(config)
     except ReadError as exc:
         st.error(ui.md(str(exc)))
         return
@@ -307,6 +329,90 @@ def _card(issue: Issue, result: RunResult, evidence: dict[int, str]) -> None:
         with st.expander("Evidence"):
             lines = [f"{n:>7}  {evidence[n]}" for n in issue.evidence_lines if n in evidence]
             st.code("\n".join(lines) or "Not available", language=None, wrap_lines=True)
+        if ui.needs_runbook(fix):
+            _draft_box(f"{result.run_id}-{issue.id}", issue.id)
+
+
+# ------------------------------------------------------------------ runbook drafts
+
+
+def _make_draft(key: str, issue_id: str) -> None:
+    """Ask the assistant for a runbook, within the run's token budget, and count its cost."""
+    state = st.session_state
+    result: RunResult = state.result
+    context: RunContext = state.context
+    spent = sum(u.input_tokens + u.output_tokens for u in result.usage)
+    if spent >= context.settings.token_budget:
+        state.drafts[key] = DraftResult(error="This run has used its token budget.")
+        return
+    issue = next(i for i in result.issues if i.id == issue_id)
+    fix = next((f for f in result.remediations if f.issue_id == issue_id), None)
+    by_number = {line.line_no: line.raw for line in context.parsed.lines}
+    evidence = [by_number[n] for n in issue.evidence_lines if n in by_number]
+    draft = draft_runbook(
+        issue,
+        evidence,
+        fix,
+        OpenRouterLLM(effective_config()),
+        Redactor(context.settings.redaction),
+    )
+    state.drafts[key] = draft
+    if draft.usage is not None:
+        state.result = result.model_copy(
+            update={"usage": merge_usage([*result.usage, draft.usage])}
+        )
+
+
+def _approve_draft(key: str) -> None:
+    draft: DraftResult = st.session_state.drafts[key]
+    if draft.runbook is not None and not draft.problems:
+        st.session_state.approved_runbooks[draft.runbook.id] = (draft.runbook, draft.text)
+
+
+def _discard_draft(key: str) -> None:
+    st.session_state.drafts.pop(key, None)
+
+
+def _draft_box(key: str, issue_id: str) -> None:
+    """The offer to draft a runbook, then the draft with Approve and Discard (plan 17.3)."""
+    drafts: dict[str, DraftResult] = _session("drafts", {})
+    approved: dict[str, tuple[Runbook, str]] = _session("approved_runbooks", {})
+    draft = drafts.get(key)
+    if draft is None:
+        st.caption("No runbook matched this issue well.")
+        st.button(
+            "Draft a runbook (AI)", key=f"draft-{key}", on_click=_make_draft, args=(key, issue_id)
+        )
+        return
+    if draft.error:
+        st.warning(ui.md(draft.error))
+        st.button("Try again", key=f"retry-{key}", on_click=_discard_draft, args=(key,))
+        return
+    if draft.runbook is None:
+        return
+    st.warning(f"{DRAFT_LABEL}. Check every step before you rely on it.")
+    st.code(draft.text, language="markdown", wrap_lines=True)
+    if draft.runbook.id in approved:
+        st.success("Approved: later runs in this session can use it. It isn't saved anywhere else.")
+        st.download_button(
+            f"Download {draft.runbook.id}.md",
+            draft.text,
+            file_name=f"{draft.runbook.id}.md",
+            mime="text/markdown",
+            key=f"download-{key}",
+        )
+        return
+    for problem in draft.problems:
+        st.error(f"Can't approve: {ui.md(problem)}")
+    approve, discard, _ = st.columns([1, 1, 3])
+    approve.button(
+        "Approve",
+        key=f"approve-{key}",
+        on_click=_approve_draft,
+        args=(key,),
+        disabled=bool(draft.problems),
+    )
+    discard.button("Discard", key=f"discard-{key}", on_click=_discard_draft, args=(key,))
 
 
 def _tabs(result: RunResult, context: RunContext) -> None:

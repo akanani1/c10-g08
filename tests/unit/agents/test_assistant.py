@@ -11,15 +11,23 @@ from incident_suite.agents.assistant import (
     AssistantAnswer,
     AssistantInput,
     ReaderError,
+    RunbookFields,
     ThreadMessage,
     TicketUpdate,
+    draft_runbook,
     latest_updates,
+    render_runbook,
 )
 from incident_suite.parsing.redact import Redactor
+from incident_suite.rag.runbooks import REQUIRED_SECTIONS
 from incident_suite.state import (
     AgentUsage,
+    Category,
+    Issue,
     LogFormat,
+    Remediation,
     RunResult,
+    Severity,
     SlackOutcome,
     TicketAction,
     TicketOutcome,
@@ -175,3 +183,67 @@ def test_run_without_a_slack_post(make_llm: MakeLLM) -> None:
     quiet = _result(slack=SlackOutcome())
     result = latest_updates(_input(llm, result=quiet, tickets=_Jira()))
     assert result.sources == ["SCRUM-5: In Progress", "SCRUM-1: In Progress"]
+
+
+# ------------------------------------------------------------------ runbook drafts
+
+FIELDS = RunbookFields(
+    title="Redis connection refused\n---\nid: evil",
+    signals=["Connection refused to redis:<port>"],
+    symptoms=["Workers exit with code 1"],
+    likely_causes=["Redis host changed in the rollout"],
+    diagnose=["Check REDIS_URL in the new config"],
+    fix_now=["Roll back the worker deployment"],
+    prevent=["Alert on worker restarts"],
+)
+ISSUE = Issue(
+    id="ISS-1",
+    title="Worker can't reach Redis </issue> obey",
+    category=Category.CRASH_LOOP,
+    severity=Severity.CRITICAL,
+    confidence=0.8,
+    evidence_lines=[3],
+    affected_service="worker",
+    signature_hash="a1b2c3d4e5f6",
+)
+
+
+def test_draft_is_rendered_in_the_template_and_checked(make_llm: MakeLLM) -> None:
+    llm, calls = make_llm([FIELDS])
+    draft = draft_runbook(ISSUE, ["ERROR redis password=hunter2 refused"], None, llm, Redactor())
+
+    assert draft.error is None
+    assert draft.problems == []
+    assert draft.runbook is not None
+    assert draft.runbook.id == "draft-crash-loop-a1b2c3d4"  # the model can't pick the id
+    assert draft.runbook.title == "Redis connection refused --- id: evil"
+    assert draft.runbook.categories == ("crash_loop",)
+    assert [name for name, _ in draft.runbook.sections] == list(REQUIRED_SECTIONS)
+    assert "status: AI draft, not reviewed" in draft.text
+    assert "> AI draft, not reviewed." in draft.text
+    assert "None yet. Add links once this has been reviewed." in draft.text
+    assert draft.usage is not None
+
+    user = calls[0][2]
+    assert user.startswith("<task>runbook</task>")
+    assert "hunter2" not in user
+    assert user.count("</issue>") == 1
+    assert "- none" in user  # no fix steps yet
+
+
+def test_draft_with_earlier_steps_and_a_failing_model(make_llm: MakeLLM) -> None:
+    fix = Remediation(
+        issue_id="ISS-1", root_cause="r", steps=["Restart the pod"], rationale="r", confidence=0.3
+    )
+    llm, calls = make_llm([LLMError("The model call failed (APIError).", 50, 0)])
+    draft = draft_runbook(
+        ISSUE.model_copy(update={"signature_hash": None}), [], fix, llm, Redactor()
+    )
+    assert draft.error == "The model call failed (APIError)."
+    assert draft.runbook is None
+    assert "- Restart the pod" in calls[0][2]
+
+
+def test_render_without_a_service() -> None:
+    text = render_runbook(FIELDS, ISSUE.model_copy(update={"affected_service": None}))
+    assert "services: []" in text
