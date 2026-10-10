@@ -215,5 +215,4 @@ Complete this on submission day, after the final deploy.
 - [ ] Confirm README has live-demo, video, architecture, screenshots, setup, tests, and results links
 - [ ] Confirm video is 2:30–2:55, captions are readable, and no secrets appear
 - [ ] Confirm all blockers have an owner or an explicit fallback
-- [ ] Complete the final links, video and CI check by 7:00 PM, before the 7:30 PM submission
-      target (hard deadline 8:00 PM IST, build plan section 15)
+- [ ] Complete the 6:00 PM final links, video, and CI check before the 6:30 PM submission target
