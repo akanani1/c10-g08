@@ -456,7 +456,7 @@ watchdog==6.0.0
     # via
     #   -c requirements.txt
     #   streamlit
-websockets==16.1.1
+websockets==17.2
     # via
     #   -c requirements.txt
     #   langgraph-sdk
