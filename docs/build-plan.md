@@ -1,7 +1,7 @@
 # Build plan: Multi-Agent DevOps Incident Analysis Suite (c10-g08)
 
 Version 6, 10 Oct 2026. Status: draft, under team review. Nothing has been built yet.
-Deadline: 8 PM IST, Sunday 11 Oct 2026. We aim to submit by 7:30 PM.
+Deadline: 8 PM IST, Sunday 11 Oct 2026. Target submission: 6:30 PM IST.
 
 This replaces the Tools and Decisions tabs of the original spreadsheet wherever the two disagree.
 
@@ -412,7 +412,7 @@ Sections: title and links, the problem, screenshots, architecture (Mermaid), how
 
 | Decision | Outcome |
 |---|---|
-| Deadline | 8 PM IST, Sunday 11 Oct. Submit by 7:30 PM |
+| Deadline | 8 PM IST, Sunday 11 Oct. Target submission 6:30 PM IST (final checks by 6:00 PM) |
 | UI | Streamlit |
 | Hosting | Streamlit Community Cloud (confirmed allowed in the brief) |
 | Orchestration and model calls | LangGraph and LangChain, OpenAI models |
@@ -689,8 +689,9 @@ Status: agreed, 10 Oct 2026. This settles "Who owns what" in section 16. Only As
 |---|---|---|---|---|
 | Today, evening | Scaffold, state models, parser, OpenRouter smoke test, bare deploy | All accounts and keys | First 5 logs and 5 runbooks | Video script, test checklist |
 | Tomorrow, morning | Agents, graph, Slack and JIRA clients | Live Slack and JIRA testing from about H5 | Remaining logs, runbooks and `labels.json` | Test each deploy, file issues |
-| Tomorrow, afternoon | UI, then feature freeze around 4 PM | Screenshots, final secrets check | Eval run, README results table | README fresh-clone test, screenshots, recording at about 5 PM |
-| Tomorrow, 7:30 PM | Submit | | | |
+| Tomorrow, afternoon | UI, then feature freeze around 3 PM | Screenshots, final secrets check | Eval run, README results table | README fresh-clone test, screenshots, recording at about 4 PM |
+| Tomorrow, 6:00 PM | Final links, video and CI check | Live integrations back off | | Demo-day checklist |
+| Tomorrow, 6:30 PM | Submit | | | |
 
 ### 21.3 Ground rules
 
