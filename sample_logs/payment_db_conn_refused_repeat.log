@@ -1,0 +1,79 @@
+2026-10-10T09:00:00.247Z INFO  payment-api [trace=e12656f1] POST /v1/charges 201 41ms
+2026-10-10T09:00:01.752Z INFO  payment-api [trace=5b11bb37] GET /v1/charges/ch_7017 200 15ms
+2026-10-10T09:00:04.401Z INFO  payment-api [trace=cc308fc0] POST /v1/charges 201 90ms
+2026-10-10T09:00:06.217Z INFO  payment-api [trace=d7369de5] POST /v1/charges 201 68ms
+2026-10-10T09:00:07.647Z INFO  payment-api [trace=50ae0144] GET /v1/charges/ch_2293 200 22ms
+2026-10-10T09:00:08.395Z INFO  payment-api [trace=88b020b7] GET /health 200 4ms
+2026-10-10T09:00:09.020Z INFO  payment-api [trace=db05ece1] POST /v1/refunds 201 117ms
+2026-10-10T09:00:11.252Z INFO  payment-api [trace=ebe7b475] POST /v1/refunds 201 59ms
+2026-10-10T09:00:11.671Z INFO  payment-api [trace=4f63c0fd] GET /v1/charges/ch_9225 200 15ms
+2026-10-10T09:00:14.307Z INFO  payment-api [trace=c825f342] GET /v1/charges/ch_6214 200 20ms
+2026-10-10T09:00:16.401Z INFO  payment-api [trace=63c91503] GET /health 200 1ms
+2026-10-10T09:00:16.717Z INFO  payment-api [trace=e4d94090] GET /health 200 4ms
+2026-10-10T09:00:19.360Z INFO  payment-api [trace=7f9a0875] POST /v1/refunds 201 122ms
+2026-10-10T09:00:21.155Z INFO  payment-api [trace=76589091] GET /health 200 1ms
+2026-10-10T09:00:23.254Z INFO  payment-api [trace=9c5d9e30] GET /v1/charges/ch_8358 200 30ms
+2026-10-10T09:00:24.668Z INFO  payment-api [trace=0e53ab32] POST /v1/refunds 201 156ms
+2026-10-10T09:00:27.110Z INFO  payment-api [trace=e4bc423f] GET /health 200 3ms
+2026-10-10T09:00:27.713Z INFO  payment-api [trace=3fdad48f] GET /health 200 4ms
+2026-10-10T09:00:29.290Z INFO  payment-api [trace=00a6af42] GET /v1/charges/ch_6423 200 18ms
+2026-10-10T09:00:31.286Z INFO  payment-api [trace=816be8e9] POST /v1/charges 201 129ms
+2026-10-10T09:00:32.426Z INFO  payment-api [trace=50ada955] POST /v1/charges 201 132ms
+2026-10-10T09:00:33.729Z INFO  payment-api [trace=c9c33e0f] GET /health 200 3ms
+2026-10-10T09:00:36.277Z INFO  payment-api [trace=a7df62c1] POST /v1/refunds 201 133ms
+2026-10-10T09:00:37.510Z INFO  payment-api [trace=3bc97e8b] GET /v1/charges/ch_9918 200 25ms
+2026-10-10T09:00:38.996Z INFO  payment-api [trace=9ac06515] GET /v1/charges/ch_8649 200 26ms
+2026-10-10T09:00:41.961Z INFO  autoscaler [trace=-] Scaled up payment-api to 4 replicas
+2026-10-10T09:00:43.161Z INFO  payment-api [trace=2fccef25] GET /v1/charges/ch_5463 200 18ms
+2026-10-10T09:00:43.935Z INFO  payment-api [trace=ad4c96a0] GET /v1/charges/ch_4484 200 11ms
+2026-10-10T09:00:45.037Z INFO  payment-api [trace=9d1e8fab] POST /v1/charges 201 132ms
+2026-10-10T09:00:46.279Z INFO  payment-api [trace=91c05109] POST /v1/charges 201 87ms
+2026-10-10T09:00:47.789Z INFO  payment-api [trace=2bcbf7a3] POST /v1/refunds 201 110ms
+2026-10-10T09:00:49.851Z INFO  payment-api [trace=fa3d2c9a] POST /v1/charges 201 48ms
+2026-10-10T09:00:50.147Z INFO  payment-api [trace=958498ec] POST /v1/charges 201 97ms
+2026-10-10T09:00:51.610Z INFO  payment-api [trace=76c18e6b] GET /v1/charges/ch_8528 200 22ms
+2026-10-10T09:00:52.275Z INFO  payment-api [trace=f41921a7] GET /health 200 3ms
+2026-10-10T09:00:53.930Z INFO  payment-api [trace=36ae547f] POST /v1/refunds 201 140ms
+2026-10-10T09:00:56.504Z WARN  payment-api [trace=2b80bf81] DB pool: 5/5 connections in use, 8 waiting
+2026-10-10T09:00:56.970Z ERROR payment-api [trace=c2b30f1c] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:00:57.390Z ERROR payment-api [trace=c2b30f1c] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:00:57.722Z ERROR payment-api [trace=c2b30f1c] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:00:57.736Z ERROR payment-api [trace=c2b30f1c] POST /v1/charges 503 1569ms error_code=DB_UNAVAILABLE
+2026-10-10T09:00:58.842Z INFO  payment-api [trace=dce8ec0a] GET /health 200 2ms
+2026-10-10T09:01:01.470Z WARN  payment-api [trace=410ac48e] DB pool: 5/5 connections in use, 11 waiting
+2026-10-10T09:01:02.050Z ERROR payment-api [trace=2d0995a8] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:02.431Z ERROR payment-api [trace=2d0995a8] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:02.856Z ERROR payment-api [trace=2d0995a8] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:02.869Z ERROR payment-api [trace=2d0995a8] POST /v1/charges 503 1512ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:03.824Z WARN  payment-api [trace=933ca35c] DB pool: 5/5 connections in use, 14 waiting
+2026-10-10T09:01:04.401Z ERROR payment-api [trace=429528db] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:04.747Z ERROR payment-api [trace=429528db] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:05.245Z ERROR payment-api [trace=429528db] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:05.257Z ERROR payment-api [trace=429528db] POST /v1/charges 503 1476ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:06.805Z WARN  payment-api [trace=8494f943] DB pool: 5/5 connections in use, 17 waiting
+2026-10-10T09:01:07.141Z ERROR payment-api [trace=fec5d3bb] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:07.514Z ERROR payment-api [trace=fec5d3bb] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:07.879Z ERROR payment-api [trace=fec5d3bb] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:07.899Z ERROR payment-api [trace=fec5d3bb] POST /v1/charges 503 1513ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:09.821Z INFO  payment-api [trace=d058c158] GET /health 200 2ms
+2026-10-10T09:01:11.162Z WARN  payment-api [trace=a535d3bd] DB pool: 5/5 connections in use, 20 waiting
+2026-10-10T09:01:11.657Z ERROR payment-api [trace=78412e15] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:12.160Z ERROR payment-api [trace=78412e15] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:12.682Z ERROR payment-api [trace=78412e15] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:12.702Z ERROR payment-api [trace=78412e15] POST /v1/charges 503 1640ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:15.068Z WARN  payment-api [trace=5252d301] DB pool: 5/5 connections in use, 23 waiting
+2026-10-10T09:01:15.483Z ERROR payment-api [trace=cdb31b6a] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:16.077Z ERROR payment-api [trace=cdb31b6a] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:16.490Z ERROR payment-api [trace=cdb31b6a] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:16.507Z ERROR payment-api [trace=cdb31b6a] POST /v1/charges 503 1449ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:18.874Z WARN  payment-api [trace=7f0f7d1e] DB pool: 5/5 connections in use, 26 waiting
+2026-10-10T09:01:19.462Z ERROR payment-api [trace=39c0d2c7] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:19.983Z ERROR payment-api [trace=39c0d2c7] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:20.454Z ERROR payment-api [trace=39c0d2c7] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:20.472Z ERROR payment-api [trace=39c0d2c7] POST /v1/charges 503 1491ms error_code=DB_UNAVAILABLE
+2026-10-10T09:01:22.608Z INFO  payment-api [trace=b3bc6d95] GET /health 200 2ms
+2026-10-10T09:01:23.666Z WARN  payment-api [trace=371afd97] DB pool: 5/5 connections in use, 29 waiting
+2026-10-10T09:01:24.115Z ERROR payment-api [trace=3d230c46] Connection refused to payments-db.internal:5432 (attempt 1/3)
+2026-10-10T09:01:24.710Z ERROR payment-api [trace=3d230c46] Connection refused to payments-db.internal:5432 (attempt 2/3)
+2026-10-10T09:01:25.265Z ERROR payment-api [trace=3d230c46] Connection refused to payments-db.internal:5432 (attempt 3/3)
+2026-10-10T09:01:25.284Z ERROR payment-api [trace=3d230c46] POST /v1/charges 503 1648ms error_code=DB_UNAVAILABLE

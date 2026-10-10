@@ -44,10 +44,8 @@ def test_embedding_call(live_config: AppConfig) -> None:
 
 
 def test_classifier_on_the_example_log(live_config: AppConfig) -> None:
-    """One real classification of the payment example log: structured output end to end."""
-    example = Path(__file__).resolve().parents[2] / (
-        "docs/templates/gulam/example_logs/payment_db_conn_refused.log"
-    )
+    """One real classification of the payment sample log: structured output end to end."""
+    example = Path(__file__).resolve().parents[2] / ("sample_logs/payment_db_conn_refused.log")
     parsed = parse_upload(example.read_bytes(), example.name, year=2026)
     settings = RunSettings.from_config(live_config)
     meter = UsageMeter("log_reader", settings.log_reader.model)

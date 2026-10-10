@@ -1,0 +1,91 @@
+{"ts": "2026-10-09T23:00:29.441Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 18ms", "request_id": "r-7489"}
+{"ts": "2026-10-09T23:01:08.597Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 16ms", "request_id": "r-2089"}
+{"ts": "2026-10-09T23:01:29.389Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 75ms", "request_id": "r-5741"}
+{"ts": "2026-10-09T23:02:21.407Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 12ms", "request_id": "r-4636"}
+{"ts": "2026-10-09T23:03:02.221Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 51ms", "request_id": "r-5533"}
+{"ts": "2026-10-09T23:03:53.411Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 18ms", "request_id": "r-5288"}
+{"ts": "2026-10-09T23:04:21.987Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 8ms", "request_id": "r-5264"}
+{"ts": "2026-10-09T23:05:14.005Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 29ms", "request_id": "r-3700"}
+{"ts": "2026-10-09T23:05:46.399Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 52ms", "request_id": "r-2420"}
+{"ts": "2026-10-09T23:06:40.190Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 48ms", "request_id": "r-7355"}
+{"ts": "2026-10-09T23:07:20.428Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 27ms", "request_id": "r-5052"}
+{"ts": "2026-10-09T23:07:59.372Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 16ms", "request_id": "r-9972"}
+{"ts": "2026-10-09T23:08:52.990Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 5ms", "request_id": "r-5783"}
+{"ts": "2026-10-09T23:09:35.885Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 44ms", "request_id": "r-9329"}
+{"ts": "2026-10-09T23:10:03.690Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 59ms", "request_id": "r-5721"}
+{"ts": "2026-10-09T23:10:40.932Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 25ms", "request_id": "r-4821"}
+{"ts": "2026-10-09T23:11:13.136Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 10ms", "request_id": "r-2328"}
+{"ts": "2026-10-09T23:11:34.989Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 40ms", "request_id": "r-9501"}
+{"ts": "2026-10-09T23:12:16.374Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 65ms", "request_id": "r-6617"}
+{"ts": "2026-10-09T23:12:42.177Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 30ms", "request_id": "r-2088"}
+{"ts": "2026-10-09T23:12:43.532Z", "level": "error", "service": "cert-manager", "msg": "Renewal failed for api.shop.example certificate: ACME challenge timed out", "code": "ACME_TIMEOUT"}
+{"ts": "2026-10-09T23:13:11.639Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 61ms", "request_id": "r-5526"}
+{"ts": "2026-10-09T23:13:38.987Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 60ms", "request_id": "r-6253"}
+{"ts": "2026-10-09T23:14:24.365Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 30ms", "request_id": "r-6300"}
+{"ts": "2026-10-09T23:14:48.404Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 12ms", "request_id": "r-4749"}
+{"ts": "2026-10-09T23:15:19.503Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 79ms", "request_id": "r-4889"}
+{"ts": "2026-10-09T23:15:44.389Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 27ms", "request_id": "r-5766"}
+{"ts": "2026-10-09T23:16:22.750Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 10ms", "request_id": "r-6850"}
+{"ts": "2026-10-09T23:17:10.641Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 41ms", "request_id": "r-6359"}
+{"ts": "2026-10-09T23:17:10.892Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 30 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-09T23:17:42.452Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 24ms", "request_id": "r-7724"}
+{"ts": "2026-10-09T23:18:36.907Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 14ms", "request_id": "r-5807"}
+{"ts": "2026-10-09T23:19:21.616Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 61ms", "request_id": "r-5784"}
+{"ts": "2026-10-09T23:19:47.074Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 53ms", "request_id": "r-3603"}
+{"ts": "2026-10-09T23:19:48.201Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 25 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-09T23:20:08.577Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 10ms", "request_id": "r-8451"}
+{"ts": "2026-10-09T23:20:35.360Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 51ms", "request_id": "r-5756"}
+{"ts": "2026-10-09T23:21:18.218Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 61ms", "request_id": "r-4395"}
+{"ts": "2026-10-09T23:21:55.176Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 31ms", "request_id": "r-2861"}
+{"ts": "2026-10-09T23:21:55.542Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 20 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-09T23:21:55.897Z", "level": "error", "service": "cert-manager", "msg": "Renewal failed for api.shop.example certificate: ACME challenge timed out", "code": "ACME_TIMEOUT"}
+{"ts": "2026-10-09T23:22:22.644Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 24ms", "request_id": "r-1669"}
+{"ts": "2026-10-09T23:23:04.493Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 79ms", "request_id": "r-5080"}
+{"ts": "2026-10-09T23:23:37.350Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 9ms", "request_id": "r-3003"}
+{"ts": "2026-10-09T23:24:30.744Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 42ms", "request_id": "r-7706"}
+{"ts": "2026-10-09T23:24:32.769Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 15 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-09T23:25:00.779Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 30ms", "request_id": "r-4962"}
+{"ts": "2026-10-09T23:25:38.332Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 67ms", "request_id": "r-1604"}
+{"ts": "2026-10-09T23:26:07.094Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 61ms", "request_id": "r-5072"}
+{"ts": "2026-10-09T23:26:52.992Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 59ms", "request_id": "r-4534"}
+{"ts": "2026-10-09T23:26:54.588Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 10 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-09T23:27:15.854Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 37ms", "request_id": "r-5151"}
+{"ts": "2026-10-09T23:27:45.549Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 31ms", "request_id": "r-4792"}
+{"ts": "2026-10-09T23:28:22.235Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 38ms", "request_id": "r-3321"}
+{"ts": "2026-10-09T23:28:55.235Z", "level": "info", "service": "edge-gateway", "msg": "GET /api/products 200 45ms", "request_id": "r-2914"}
+{"ts": "2026-10-09T23:28:58.209Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 5 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-10T00:00:00.865Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.232", "request_id": "r-1663"}
+{"ts": "2026-10-10T00:00:01.142Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.55", "request_id": "r-3710"}
+{"ts": "2026-10-10T00:00:02.490Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.206", "request_id": "r-6161"}
+{"ts": "2026-10-10T00:00:03.593Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.169", "request_id": "r-5395"}
+{"ts": "2026-10-10T00:00:04.438Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.129", "request_id": "r-2218"}
+{"ts": "2026-10-10T00:00:05.070Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.162", "request_id": "r-4133"}
+{"ts": "2026-10-10T00:00:07.787Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:08.130Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.249", "request_id": "r-5414"}
+{"ts": "2026-10-10T00:00:08.345Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.44", "request_id": "r-8611"}
+{"ts": "2026-10-10T00:00:09.863Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.239", "request_id": "r-7397"}
+{"ts": "2026-10-10T00:00:09.969Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.238", "request_id": "r-3568"}
+{"ts": "2026-10-10T00:00:12.623Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:12.944Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.209", "request_id": "r-7243"}
+{"ts": "2026-10-10T00:00:14.090Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.226", "request_id": "r-4304"}
+{"ts": "2026-10-10T00:00:15.993Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:17.648Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.145", "request_id": "r-8725"}
+{"ts": "2026-10-10T00:00:18.583Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.22", "request_id": "r-1560"}
+{"ts": "2026-10-10T00:00:18.898Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.145", "request_id": "r-5209"}
+{"ts": "2026-10-10T00:00:19.261Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.94", "request_id": "r-2305"}
+{"ts": "2026-10-10T00:00:20.355Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.4", "request_id": "r-5865"}
+{"ts": "2026-10-10T00:00:22.027Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.23", "request_id": "r-9902"}
+{"ts": "2026-10-10T00:00:22.518Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.81", "request_id": "r-7367"}
+{"ts": "2026-10-10T00:00:23.542Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.249", "request_id": "r-7554"}
+{"ts": "2026-10-10T00:00:24.063Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:25.343Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.228", "request_id": "r-6994"}
+{"ts": "2026-10-10T00:00:26.267Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.221", "request_id": "r-8278"}
+{"ts": "2026-10-10T00:00:28.935Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:29.407Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.79", "request_id": "r-8842"}
+{"ts": "2026-10-10T00:00:31.024Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.44", "request_id": "r-7088"}
+{"ts": "2026-10-10T00:00:31.459Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.40", "request_id": "r-6350"}
+{"ts": "2026-10-10T00:00:32.202Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.140", "request_id": "r-1079"}
+{"ts": "2026-10-10T00:00:32.313Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.81", "request_id": "r-2981"}
+{"ts": "2026-10-10T00:00:33.337Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.185", "request_id": "r-8933"}
+{"ts": "2026-10-10T00:00:34.426Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.107", "request_id": "r-5807"}
+{"ts": "2026-10-10T00:00:35.983Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "203.0.113.223", "request_id": "r-1027"}

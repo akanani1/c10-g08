@@ -14,3 +14,5 @@
 *.pdf binary
 *.mp4 binary
 *.zip binary
+*.parquet binary
+*.gz binary

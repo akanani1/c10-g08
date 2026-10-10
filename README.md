@@ -130,8 +130,8 @@ pytest                                        # tests, no API key needed
 pytest -m live                                # real OpenRouter calls (needs the key)
 
 # What CI runs
-ruff check app.py incident_suite tests
-ruff format --check app.py incident_suite tests
+ruff check app.py incident_suite tests sample_logs
+ruff format --check app.py incident_suite tests sample_logs
 mypy
 vulture
 bandit -q -c pyproject.toml -r app.py incident_suite
@@ -185,7 +185,9 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 
 ## Sample logs and evaluation
 
-`sample_logs/` has 17 made-up but realistic logs in four formats (plain-text app, JSON lines, nginx, Kubernetes/syslog). Between them they cover database outages, out-of-memory kills, full disks, expired certificates, auth failures, 5xx spikes, timeouts, crash loops, bad config, rate limiting, DNS failures and queue backlogs. One of them is 50,000 lines long, to show how it handles size. `labels.json` holds the answers we expect for each log.
+`sample_logs/` has 17 made-up but realistic logs covering every supported format: plain-text app logs, syslog, Kubernetes, nginx access and error logs, JSON lines, JSON documents, CSV, TSV, Parquet and gzip. Between them they cover database outages, out-of-memory kills, full disks, expired certificates, brute-force logins, 5xx spikes, timeouts, crash loops, bad config, rate limiting, DNS failures and queue backlogs, plus a healthy log that should raise nothing and a repeat of the first outage to test JIRA dedupe. One is a 50,000-row Parquet file, to show how it handles size. `labels.json` holds the answers we expect for each log.
+
+All of them, and `labels.json`, are written by `sample_logs/make_samples.py`, so line numbers in the labels always match. To change a sample, edit the script and run `python sample_logs/make_samples.py`; a test fails if the committed files and the script disagree.
 
 Results (filled in after running the eval script):
 

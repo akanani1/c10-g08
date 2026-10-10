@@ -1,8 +1,0 @@
-timestamp,level,service,message,status_code,request_id
-2026-10-09T16:00:01Z,INFO,notify-svc,Sent SMS batch 1/20,200,n-001
-2026-10-09T16:00:02Z,INFO,notify-svc,Sent SMS batch 2/20,200,n-002
-2026-10-09T16:00:03Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-003
-2026-10-09T16:00:04Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-003
-2026-10-09T16:00:06Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-003
-2026-10-09T16:00:10Z,ERROR,notify-svc,Giving up on SMS batch 3/20 after 3 retries,429,n-003
-2026-10-09T16:00:11Z,INFO,notify-svc,Sent SMS batch 4/20,200,n-004

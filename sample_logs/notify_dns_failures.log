@@ -1,0 +1,66 @@
+Oct  9 12:00:38 mail-1 notify[3301]: INFO Sent email batch 1 (55 messages)
+Oct  9 12:01:32 mail-1 notify[3301]: INFO Sent email batch 2 (49 messages)
+Oct  9 12:02:10 mail-1 notify[3301]: INFO Sent email batch 3 (57 messages)
+Oct  9 12:02:38 mail-1 notify[3301]: INFO Sent email batch 4 (52 messages)
+Oct  9 12:03:17 mail-1 notify[3301]: INFO Sent email batch 5 (59 messages)
+Oct  9 12:04:08 mail-1 notify[3301]: INFO Sent email batch 6 (26 messages)
+Oct  9 12:04:46 mail-1 notify[3301]: INFO Sent email batch 7 (29 messages)
+Oct  9 12:05:10 mail-1 notify[3301]: INFO Sent email batch 8 (60 messages)
+Oct  9 12:05:31 mail-1 notify[3301]: INFO Sent email batch 9 (45 messages)
+Oct  9 12:06:30 mail-1 notify[3301]: INFO Sent email batch 10 (59 messages)
+Oct  9 12:07:16 mail-1 notify[3301]: INFO Sent email batch 11 (59 messages)
+Oct  9 12:07:37 mail-1 notify[3301]: INFO Sent email batch 12 (53 messages)
+Oct  9 12:07:59 mail-1 notify[3301]: INFO Sent email batch 13 (22 messages)
+Oct  9 12:08:27 mail-1 notify[3301]: INFO Sent email batch 14 (35 messages)
+Oct  9 12:08:29 mail-1 netplan[220]: INFO Configuration updated: nameserver 10.0.0.53 -> 10.0.9.53
+Oct  9 12:08:31 mail-1 systemd-resolved[410]: WARN Using degraded feature set UDP instead of UDP+EDNS0 for DNS server 10.0.9.53
+Oct  9 12:08:48 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:08:48 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:09:04 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:09:05 mail-1 notify[3301]: ERROR Email batch 16 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:09:23 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:09:35 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:09:37 mail-1 notify[3301]: ERROR Email batch 18 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:09:47 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:09:48 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:10:04 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:10:04 mail-1 notify[3301]: ERROR Email batch 20 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:10:18 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:10:20 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:10:44 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:10:46 mail-1 notify[3301]: ERROR Email batch 22 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:10:48 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:11:04 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:11:05 mail-1 notify[3301]: ERROR Email batch 23 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:11:33 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:11:35 mail-1 notify[3301]: ERROR Email batch 24 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:11:37 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:11:56 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:11:58 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:12:28 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:12:45 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:12:48 mail-1 notify[3301]: ERROR Email batch 27 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:12:51 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:13:21 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:13:31 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:13:34 mail-1 notify[3301]: ERROR Email batch 29 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:13:55 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:13:56 mail-1 notify[3301]: ERROR Email batch 30 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:14:06 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:14:24 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:14:25 mail-1 notify[3301]: ERROR Email batch 32 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:14:35 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:14:37 mail-1 notify[3301]: ERROR Email batch 33 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:14:39 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:15:06 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:15:07 mail-1 notify[3301]: ERROR Email batch 34 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:15:23 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:15:25 mail-1 notify[3301]: ERROR Email batch 35 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:15:38 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:16:02 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:16:03 mail-1 notify[3301]: ERROR Email batch 37 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
+Oct  9 12:16:04 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:16:16 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:16:18 mail-1 sshd[901]: INFO Accepted publickey for ops from 10.0.4.9 port 51022
+Oct  9 12:16:36 mail-1 notify[3301]: ERROR DNS lookup failed for smtp.mail-provider.example: NXDOMAIN
+Oct  9 12:16:39 mail-1 notify[3301]: ERROR Email batch 39 failed: cannot resolve smtp.mail-provider.example (NXDOMAIN)
