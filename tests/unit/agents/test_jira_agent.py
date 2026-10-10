@@ -175,3 +175,26 @@ def test_remember_thread_only_on_new_tickets(
     assert remember_thread(done, "C1", "1.2", failing) == [
         "JIRA (OPS-101): Slack thread not stored: JIRA returned 503"
     ]
+
+
+def test_a_regression_carries_the_previous_fix(
+    settings: RunSettings, make_tracker: MakeTracker
+) -> None:
+    fixed = ExistingTicket(
+        key="SCRUM-1",
+        url="https://team.atlassian.example/browse/SCRUM-1",
+        done=True,
+        last_comment="Raised the pool. token=abc123secret " + "x" * 600,
+    )
+    tracker, _ = make_tracker(existing={f"{1:012x}": fixed})
+    (item,) = plan_tickets([_issue(1)], settings, tracker)
+    assert item.action is TicketAction.REGRESSION
+    assert item.previous_fix is not None
+    assert item.previous_fix.startswith("Raised the pool. token=[REDACTED:credential_pair]")
+    assert "abc123secret" not in item.previous_fix
+    assert len(item.previous_fix) == 500
+
+    plain = ExistingTicket(key="SCRUM-2", url="https://t.example/browse/SCRUM-2", done=True)
+    tracker, _ = make_tracker(existing={f"{1:012x}": plain})
+    (item,) = plan_tickets([_issue(1)], settings, tracker)
+    assert item.previous_fix is None

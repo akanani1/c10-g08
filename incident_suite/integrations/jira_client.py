@@ -142,7 +142,7 @@ class JiraClient:
             f'project = "{self._project}" AND labels = "sig-{signature_hash}" ORDER BY created DESC'
         )
         body = self._call(
-            "GET", "search/jql", params={"jql": jql, "fields": "status", "maxResults": 1}
+            "GET", "search/jql", params={"jql": jql, "fields": "status,comment", "maxResults": 1}
         )
         issues = body.get("issues") or []
         if not issues:
@@ -153,7 +153,12 @@ class JiraClient:
         except (KeyError, TypeError) as exc:
             msg = "JIRA search answer is missing the key or status"
             raise TrackerError(msg) from exc
-        return ExistingTicket(key=key, url=self._browse_url(key), done=category == "done")
+        done = category == "done"
+        comments = ((issues[0]["fields"].get("comment") or {}).get("comments")) or []
+        last = adf_text(comments[-1].get("body")) if done and comments else ""
+        return ExistingTicket(
+            key=key, url=self._browse_url(key), done=done, last_comment=last or None
+        )
 
     def create(self, draft: TicketDraft, regression_of: str | None) -> tuple[str, str]:
         """Open a ticket and return its key and browse URL."""

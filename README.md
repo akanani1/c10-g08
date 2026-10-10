@@ -26,7 +26,7 @@ Incident Suite does that first pass. It doesn't replace the engineer. It hands t
 3. **Finds fixes.** For each issue it searches our runbooks and suggests steps, a likely root cause and the runbook it used. If it's unsure, it pulls more of the log and tries again.
 4. **Writes a checklist:** do now, this week, prevent next time.
 5. **Asks before sending.** It shows exactly what it would post to Slack and JIRA, and waits for you to approve.
-6. **Opens JIRA tickets** for critical issues only. If an issue already has an open ticket, it adds a comment instead of a duplicate. If the old ticket is closed, it opens a new one marked as a regression.
+6. **Opens JIRA tickets** for critical issues only. If an issue already has an open ticket, it adds a comment instead of a duplicate. If the old ticket is closed, it opens a new one marked as a regression, and the app shows how it was fixed last time (the closed ticket's last comment).
 7. **Posts to Slack:** a short summary in the channel, with the checklist and fixes in a thread and links to the tickets.
 
 You can follow each step in the app, along with the tokens, cost and time each agent used.
@@ -340,7 +340,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. "Last time this was fixed by…", and an error timeline.
+1. An error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

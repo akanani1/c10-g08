@@ -14,7 +14,7 @@ from streamlit.testing.v1 import AppTest
 from incident_suite.agents import LLMError, LLMReply, StructuredLLM
 from incident_suite.agents.assistant import AssistantAnswer, ChatStep, RunbookFields
 from incident_suite.agents.cookbook import CookbookAnswer, ItemDraft
-from incident_suite.agents.jira_agent import TicketTracker
+from incident_suite.agents.jira_agent import ExistingTicket, TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
@@ -487,3 +487,44 @@ def test_postmortem_download_after_a_run() -> None:
     app = _click(_app(), "Analyse")
     (button,) = [b for b in app.get("download_button") if "postmortem" in b.proto.label]
     assert button.proto.label == "Download postmortem draft (.md)"
+
+
+# ------------------------------------------------------------------ seen before
+
+
+def test_card_shows_how_it_was_fixed_last_time(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    closed = ExistingTicket(
+        key="SCRUM-1",
+        url="https://team.atlassian.example/browse/SCRUM-1",
+        done=True,
+        last_comment="Rolled back to v2.14.0 and raised the pool to 50",
+    )
+    tracker, _ = make_tracker(existing=_AnyHash(closed))
+    messenger, _ = make_messenger()
+    live = keyed.model_copy(update={"live_integrations": True})
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
+    )
+    app = _click(_app(), "Analyse")
+    assert any("Seen before in SCRUM-1" in i.value for i in app.info)
+    assert any("raised the pool to 50" in i.value for i in app.info)
+
+
+class _AnyHash(dict[str, ExistingTicket]):
+    """Every signature hash finds the same ticket."""
+
+    def __init__(self, ticket: ExistingTicket) -> None:
+        super().__init__()
+        self.ticket = ticket
+
+    def __bool__(self) -> bool:
+        return True  # the fake tracker treats an empty dict as "no tickets"
+
+    def get(self, key: str, default: object = None) -> ExistingTicket:  # noqa: ARG002
+        return self.ticket

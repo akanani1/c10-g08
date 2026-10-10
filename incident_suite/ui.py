@@ -137,6 +137,8 @@ def confidence_reasons(
         reasons.append(f"Seen before: {ticket.key} is still open")
     elif ticket is not None and ticket.action is TicketAction.REGRESSION:
         reasons.append(f"Seen before: {ticket.related_key} was closed, so this is a regression")
+        if ticket.previous_fix:
+            reasons.append(f"Last time it was fixed: {ticket.previous_fix[:120]}")
     elif ticket is not None and not dry_run:
         reasons.append("Not seen before in JIRA")
     return reasons

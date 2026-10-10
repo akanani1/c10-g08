@@ -335,6 +335,9 @@ class TicketOutcome(StrictModel):
     key: str | None = Field(default=None, pattern=r"^[A-Z][A-Z0-9]+-\d+$")
     url: str | None = None
     related_key: str | None = None
+    previous_fix: str | None = Field(
+        default=None, description="Last comment on the closed ticket: how it was fixed last time"
+    )
     sent: bool = False
     error: str | None = None
 
