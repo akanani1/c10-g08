@@ -112,6 +112,23 @@ class TicketAction(StrEnum):
     SKIPPED_OVER_CAP = "skipped_over_cap"
 
 
+class ApprovalStatus(StrEnum):
+    """Where a run stands at the human approval gate (section 18.3)."""
+
+    NOT_NEEDED = "not_needed"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class StepStatus(StrEnum):
+    """How one graph step ended, for the pipeline strip and run log (section 18.4)."""
+
+    DONE = "done"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
 # ------------------------------------------------------------------ run settings
 
 Confidence = Annotated[float, Field(ge=0.0, le=1.0)]
@@ -322,6 +339,15 @@ class TicketOutcome(StrictModel):
     error: str | None = None
 
 
+class NotificationPlan(StrictModel):
+    """What the Notification agent would post. Built before approval, sent after it."""
+
+    post: bool
+    reason: str
+    summary: str = ""
+    thread: str = ""
+
+
 class SlackOutcome(StrictModel):
     """What happened (or would happen) in Slack for this run."""
 
@@ -342,6 +368,15 @@ class AgentUsage(StrictModel):
     seconds: float = Field(default=0.0, ge=0)
 
 
+class RunStep(StrictModel):
+    """One step of a run, recorded as it happens (section 17.4)."""
+
+    node: str
+    status: StepStatus
+    seconds: float = Field(ge=0)
+    detail: str = ""
+
+
 class RunResult(StrictModel):
     """Everything a finished run produced. Shown in the app and summarised in Slack and JIRA."""
 
@@ -356,8 +391,11 @@ class RunResult(StrictModel):
     remediations: list[Remediation] = Field(default_factory=list)
     checklist: Checklist = Field(default_factory=Checklist)
     tickets: list[TicketOutcome] = Field(default_factory=list)
+    notification: NotificationPlan | None = None
+    approval: ApprovalStatus = ApprovalStatus.NOT_NEEDED
     slack: SlackOutcome = Field(default_factory=SlackOutcome)
     usage: list[AgentUsage] = Field(default_factory=list)
+    steps: list[RunStep] = Field(default_factory=list)
     trace_url: str | None = None
     dry_run: bool = True
     errors: list[str] = Field(default_factory=list)
