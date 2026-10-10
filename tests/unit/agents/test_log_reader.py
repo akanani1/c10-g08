@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -28,15 +27,90 @@ from incident_suite.state import (
 from incident_suite.telemetry import UsageMeter
 
 MakeLLM = Callable[[Sequence[Any]], tuple[StructuredLLM, list[tuple[str, str, str]]]]
-EXAMPLE = (
-    Path(__file__).resolve().parents[3]
-    / "docs/templates/gulam/example_logs/payment_db_conn_refused.log"
-)
+# A small payment-DB outage: deploy at lines 3-5, errors from line 6, FATAL at line 17.
+_LINES = [
+    ("14:00:02.114", "INFO", "payment-api", "GET /health 200 3ms"),
+    ("14:00:05.871", "INFO", "payment-api", "POST /v1/charges 201 84ms"),
+    (
+        "14:00:09.002",
+        "INFO",
+        "deployer",
+        "Deploy started: payment-api v2.14.0 -> v2.15.0 (by ci-bot)",
+    ),
+    ("14:00:41.556", "INFO", "deployer", "Deploy finished: payment-api v2.15.0, 3/3 pods ready"),
+    (
+        "14:00:42.010",
+        "INFO",
+        "payment-api",
+        "Config loaded: db.pool.max_size=5 db.host=payments-db.internal:5432",
+    ),
+    ("14:01:13.420", "WARN", "payment-api", "DB pool: 5/5 connections in use, 12 waiting"),
+    (
+        "14:01:14.003",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 1/3)",
+    ),
+    (
+        "14:01:14.508",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 2/3)",
+    ),
+    (
+        "14:01:15.012",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 3/3)",
+    ),
+    (
+        "14:01:15.013",
+        "ERROR",
+        "payment-api",
+        "POST /v1/charges 503 1602ms error_code=DB_UNAVAILABLE",
+    ),
+    ("14:01:16.220", "INFO", "payment-api", "GET /health 200 2ms"),
+    (
+        "14:01:18.774",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 1/3)",
+    ),
+    (
+        "14:01:19.280",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 2/3)",
+    ),
+    ("14:01:19.785", "WARN", "payment-api", "DB pool: 5/5 connections in use, 31 waiting"),
+    (
+        "14:01:20.291",
+        "ERROR",
+        "payment-api",
+        "Connection refused to payments-db.internal:5432 (attempt 3/3)",
+    ),
+    (
+        "14:01:20.292",
+        "ERROR",
+        "payment-api",
+        "POST /v1/charges 503 1518ms error_code=DB_UNAVAILABLE",
+    ),
+    (
+        "14:01:22.900",
+        "FATAL",
+        "payment-api",
+        "Health check failed 3 times in a row: database unreachable",
+    ),
+]
+EXAMPLE_LOG = "".join(
+    f"2026-10-09T{time}Z {level:<5} {service} [trace=-] {message}\n"
+    for time, level, service, message in _LINES
+).encode()
 
 
 @pytest.fixture
 def log() -> tuple[ParsedLog, GroupedLog]:
-    parsed = parse_upload(EXAMPLE.read_bytes(), EXAMPLE.name, year=2026)
+    parsed = parse_upload(EXAMPLE_LOG, "payment_db_conn_refused.log", year=2026)
     return parsed, group_lines(parsed.lines)
 
 

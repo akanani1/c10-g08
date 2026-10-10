@@ -1,0 +1,53 @@
+Oct  9 11:00:08 node-3 kubelet[1123]: I1009 11:00:08.400588 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:00:27 node-3 kubelet[1123]: I1009 11:00:27.835014 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:00:34 node-3 kubelet[1123]: I1009 11:00:34.729977 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:00:50 node-3 kubelet[1123]: I1009 11:00:50.302231 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:00:56 node-3 kubelet[1123]: I1009 11:00:56.580010 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:01:05 node-3 kubelet[1123]: I1009 11:01:05.291625 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:01:25 node-3 kubelet[1123]: I1009 11:01:25.278553 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:01:33 node-3 kubelet[1123]: I1009 11:01:33.419517 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:01:48 node-3 kubelet[1123]: I1009 11:01:48.047544 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:01:59 node-3 kubelet[1123]: I1009 11:01:59.934550 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:02:11 node-3 kubelet[1123]: I1009 11:02:11.731536 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:02:24 node-3 kubelet[1123]: I1009 11:02:24.156276 1123 kubelet.go:2412] pod="jobs/api-5b7f9-qq8rt" probe=readiness result=success
+Oct  9 11:02:24 node-3 argocd-server[880]: INFO Rollout finished: worker v1.9.0 (redis host moved to cache.internal)
+Oct  9 11:02:27 node-3 worker[7001]: INFO Starting worker v1.9.0
+Oct  9 11:02:27 node-3 worker[7001]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:02:32 node-3 worker[7001]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:02:32 node-3 kubelet[1123]: E1009 11:02:32.978075 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:02:33 node-3 kubelet[1123]: W1009 11:02:33.258105 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=1 Back-off 10s restarting failed container (CrashLoopBackOff)
+Oct  9 11:02:46 node-3 worker[7014]: INFO Starting worker v1.9.0
+Oct  9 11:02:46 node-3 worker[7014]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:02:51 node-3 worker[7014]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:02:51 node-3 kubelet[1123]: E1009 11:02:51.958602 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:02:52 node-3 kubelet[1123]: W1009 11:02:52.456083 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=2 Back-off 20s restarting failed container (CrashLoopBackOff)
+Oct  9 11:03:14 node-3 worker[7027]: INFO Starting worker v1.9.0
+Oct  9 11:03:14 node-3 worker[7027]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:03:20 node-3 worker[7027]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:03:20 node-3 kubelet[1123]: E1009 11:03:20.593458 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:03:21 node-3 kubelet[1123]: W1009 11:03:21.000848 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=3 Back-off 40s restarting failed container (CrashLoopBackOff)
+Oct  9 11:04:03 node-3 worker[7040]: INFO Starting worker v1.9.0
+Oct  9 11:04:03 node-3 worker[7040]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:04:09 node-3 worker[7040]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:04:09 node-3 kubelet[1123]: E1009 11:04:09.622102 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:04:09 node-3 kubelet[1123]: W1009 11:04:09.841414 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=4 Back-off 80s restarting failed container (CrashLoopBackOff)
+Oct  9 11:05:32 node-3 worker[7053]: INFO Starting worker v1.9.0
+Oct  9 11:05:32 node-3 worker[7053]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:05:38 node-3 worker[7053]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:05:38 node-3 kubelet[1123]: E1009 11:05:38.814236 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:05:39 node-3 kubelet[1123]: W1009 11:05:39.232918 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=5 Back-off 160s restarting failed container (CrashLoopBackOff)
+Oct  9 11:08:21 node-3 worker[7066]: INFO Starting worker v1.9.0
+Oct  9 11:08:21 node-3 worker[7066]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:08:27 node-3 worker[7066]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:08:27 node-3 kubelet[1123]: E1009 11:08:27.403616 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:08:27 node-3 kubelet[1123]: W1009 11:08:27.832905 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=6 Back-off 300s restarting failed container (CrashLoopBackOff)
+Oct  9 11:13:30 node-3 worker[7079]: INFO Starting worker v1.9.0
+Oct  9 11:13:30 node-3 worker[7079]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:13:36 node-3 worker[7079]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:13:36 node-3 kubelet[1123]: E1009 11:13:36.706506 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:13:37 node-3 kubelet[1123]: W1009 11:13:37.057592 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=7 Back-off 300s restarting failed container (CrashLoopBackOff)
+Oct  9 11:18:37 node-3 worker[7092]: INFO Starting worker v1.9.0
+Oct  9 11:18:38 node-3 worker[7092]: INFO Connecting to redis://cache.internal:6379
+Oct  9 11:18:43 node-3 worker[7092]: FATAL Cannot connect to redis://cache.internal:6379: connection refused
+Oct  9 11:18:43 node-3 kubelet[1123]: E1009 11:18:43.812649 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" state=Terminated reason=Error exitCode=1
+Oct  9 11:18:44 node-3 kubelet[1123]: W1009 11:18:44.283615 1123 kubelet.go:2412] pod="jobs/worker-7c9d8-p2x4k" container="worker" restartCount=8 Back-off 300s restarting failed container (CrashLoopBackOff)

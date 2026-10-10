@@ -1,0 +1,95 @@
+Oct  9 02:00:00 api-2 cron[612]: INFO Log cleanup job disabled (config changed by ops)
+Oct  9 02:00:42 api-2 api[2211]: INFO Wrote batch 7061 (718 rows)
+Oct  9 02:01:21 api-2 api[2211]: INFO Wrote batch 2073 (720 rows)
+Oct  9 02:01:42 api-2 api[2211]: INFO Wrote batch 8687 (365 rows)
+Oct  9 02:02:24 api-2 api[2211]: INFO Wrote batch 4141 (834 rows)
+Oct  9 02:03:02 api-2 api[2211]: INFO Wrote batch 8804 (506 rows)
+Oct  9 02:03:48 api-2 api[2211]: INFO Wrote batch 3467 (337 rows)
+Oct  9 02:04:33 api-2 api[2211]: INFO Wrote batch 9571 (499 rows)
+Oct  9 02:05:23 api-2 api[2211]: INFO Wrote batch 2049 (263 rows)
+Oct  9 02:06:13 api-2 api[2211]: INFO Wrote batch 1701 (408 rows)
+Oct  9 02:07:05 api-2 api[2211]: INFO Wrote batch 5414 (584 rows)
+Oct  9 02:07:48 api-2 api[2211]: INFO Wrote batch 7350 (831 rows)
+Oct  9 02:08:40 api-2 api[2211]: INFO Wrote batch 7994 (504 rows)
+Oct  9 02:09:29 api-2 api[2211]: INFO Wrote batch 8284 (237 rows)
+Oct  9 02:10:24 api-2 api[2211]: INFO Wrote batch 2596 (136 rows)
+Oct  9 02:10:50 api-2 api[2211]: INFO Wrote batch 4555 (364 rows)
+Oct  9 02:11:48 api-2 api[2211]: INFO Wrote batch 8146 (897 rows)
+Oct  9 02:12:33 api-2 api[2211]: INFO Wrote batch 5932 (531 rows)
+Oct  9 02:13:14 api-2 api[2211]: INFO Wrote batch 7322 (687 rows)
+Oct  9 02:13:48 api-2 api[2211]: INFO Wrote batch 7677 (698 rows)
+Oct  9 02:14:17 api-2 api[2211]: INFO Wrote batch 6517 (798 rows)
+Oct  9 02:15:14 api-2 api[2211]: INFO Wrote batch 1469 (386 rows)
+Oct  9 02:16:13 api-2 api[2211]: INFO Wrote batch 3672 (815 rows)
+Oct  9 02:17:08 api-2 api[2211]: INFO Wrote batch 9876 (685 rows)
+Oct  9 02:17:50 api-2 api[2211]: INFO Wrote batch 4459 (748 rows)
+Oct  9 02:17:53 api-2 api[2211]: WARN Disk usage on /var/data at 90%
+Oct  9 02:18:36 api-2 api[2211]: INFO Wrote batch 5668 (227 rows)
+Oct  9 02:18:58 api-2 api[2211]: INFO Wrote batch 8921 (190 rows)
+Oct  9 02:19:32 api-2 api[2211]: INFO Wrote batch 2091 (520 rows)
+Oct  9 02:20:28 api-2 api[2211]: INFO Wrote batch 1329 (400 rows)
+Oct  9 02:21:05 api-2 api[2211]: INFO Wrote batch 7802 (221 rows)
+Oct  9 02:21:27 api-2 api[2211]: INFO Wrote batch 1736 (486 rows)
+Oct  9 02:21:29 api-2 api[2211]: WARN Disk usage on /var/data at 92%
+Oct  9 02:22:02 api-2 api[2211]: INFO Wrote batch 5572 (617 rows)
+Oct  9 02:22:32 api-2 api[2211]: INFO Wrote batch 1590 (417 rows)
+Oct  9 02:22:52 api-2 api[2211]: INFO Wrote batch 2771 (714 rows)
+Oct  9 02:23:34 api-2 api[2211]: INFO Wrote batch 4233 (517 rows)
+Oct  9 02:24:05 api-2 api[2211]: INFO Wrote batch 5315 (259 rows)
+Oct  9 02:24:53 api-2 api[2211]: INFO Wrote batch 6567 (421 rows)
+Oct  9 02:24:54 api-2 api[2211]: WARN Disk usage on /var/data at 94%
+Oct  9 02:25:20 api-2 api[2211]: INFO Wrote batch 7189 (485 rows)
+Oct  9 02:25:58 api-2 api[2211]: INFO Wrote batch 9520 (495 rows)
+Oct  9 02:26:44 api-2 api[2211]: INFO Wrote batch 2680 (735 rows)
+Oct  9 02:27:43 api-2 api[2211]: INFO Wrote batch 9307 (377 rows)
+Oct  9 02:28:20 api-2 api[2211]: INFO Wrote batch 4893 (408 rows)
+Oct  9 02:28:57 api-2 api[2211]: INFO Wrote batch 5230 (633 rows)
+Oct  9 02:28:58 api-2 api[2211]: WARN Disk usage on /var/data at 96%
+Oct  9 02:29:32 api-2 api[2211]: INFO Wrote batch 7802 (693 rows)
+Oct  9 02:30:05 api-2 api[2211]: INFO Wrote batch 7168 (730 rows)
+Oct  9 02:30:48 api-2 api[2211]: INFO Wrote batch 3183 (161 rows)
+Oct  9 02:31:33 api-2 api[2211]: INFO Wrote batch 6446 (577 rows)
+Oct  9 02:32:08 api-2 api[2211]: INFO Wrote batch 6776 (723 rows)
+Oct  9 02:32:56 api-2 api[2211]: INFO Wrote batch 9020 (122 rows)
+Oct  9 02:32:58 api-2 api[2211]: WARN Disk usage on /var/data at 98%
+Oct  9 02:33:56 api-2 api[2211]: INFO Wrote batch 1348 (478 rows)
+Oct  9 02:34:26 api-2 api[2211]: INFO Wrote batch 8476 (405 rows)
+Oct  9 02:35:10 api-2 api[2211]: INFO Wrote batch 6243 (281 rows)
+Oct  9 02:35:44 api-2 api[2211]: INFO Wrote batch 6122 (876 rows)
+Oct  9 02:36:19 api-2 api[2211]: INFO Wrote batch 5327 (407 rows)
+Oct  9 02:37:10 api-2 api[2211]: INFO Wrote batch 2718 (890 rows)
+Oct  9 02:37:13 api-2 api[2211]: WARN Disk usage on /var/data at 100%
+Oct  9 02:37:15 api-2 logrotate[3300]: ERROR error writing /var/log/api/app.log.1: No space left on device
+Oct  9 02:37:17 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:18 api-2 postgres[1201]: ERROR could not extend file "base/16384/2335": No space left on device
+Oct  9 02:37:19 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:20 api-2 postgres[1201]: ERROR could not extend file "base/16384/2329": No space left on device
+Oct  9 02:37:20 api-2 postgres[1201]: ERROR could not extend file "base/16384/2829": No space left on device
+Oct  9 02:37:21 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-4572.part: No space left on device
+Oct  9 02:37:22 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-2981.part: No space left on device
+Oct  9 02:37:25 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:28 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-4007.part: No space left on device
+Oct  9 02:37:30 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-2401.part: No space left on device
+Oct  9 02:37:31 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-5783.part: No space left on device
+Oct  9 02:37:32 api-2 postgres[1201]: ERROR could not extend file "base/16384/2649": No space left on device
+Oct  9 02:37:34 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-7770.part: No space left on device
+Oct  9 02:37:34 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:37 api-2 logrotate[3300]: ERROR error writing /var/log/api/app.log.1: No space left on device
+Oct  9 02:37:39 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-4638.part: No space left on device
+Oct  9 02:37:41 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:43 api-2 postgres[1201]: ERROR could not extend file "base/16384/2986": No space left on device
+Oct  9 02:37:44 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:45 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-5702.part: No space left on device
+Oct  9 02:37:46 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:37:48 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-9393.part: No space left on device
+Oct  9 02:37:51 api-2 logrotate[3300]: ERROR error writing /var/log/api/app.log.1: No space left on device
+Oct  9 02:37:53 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-3815.part: No space left on device
+Oct  9 02:37:53 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-9798.part: No space left on device
+Oct  9 02:37:55 api-2 logrotate[3300]: ERROR error writing /var/log/api/app.log.1: No space left on device
+Oct  9 02:37:58 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-8818.part: No space left on device
+Oct  9 02:37:59 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-3002.part: No space left on device
+Oct  9 02:37:59 api-2 postgres[1201]: ERROR could not extend file "base/16384/2810": No space left on device
+Oct  9 02:38:02 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122
+Oct  9 02:38:05 api-2 api[2211]: ERROR Failed to write /var/data/uploads/tmp-8987.part: No space left on device
+Oct  9 02:38:05 api-2 logrotate[3300]: ERROR error writing /var/log/api/app.log.1: No space left on device
+Oct  9 02:38:06 api-2 sshd[901]: INFO Accepted publickey for deploy from 10.0.4.12 port 50122

@@ -1,0 +1,66 @@
+2026-10-09T08:30:01.496Z INFO  config-sync [trace=-] Config reloaded from git commit 9f3c2a1 (inventory)
+2026-10-09T08:30:02.741Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:02.855Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:02.900Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:02.910Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:02.940Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:02.986Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:03.412Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 1)
+2026-10-09T08:30:05.869Z INFO  gateway [trace=f3868254] GET /api/products/87 200 33ms
+2026-10-09T08:30:08.319Z INFO  gateway [trace=3cee5e2c] GET /api/products/81 200 15ms
+2026-10-09T08:30:09.421Z INFO  gateway [trace=df2965b3] GET /api/products/68 200 37ms
+2026-10-09T08:30:12.208Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:12.367Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:12.408Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:12.434Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:12.473Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:12.487Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:13.503Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 2)
+2026-10-09T08:30:15.954Z INFO  gateway [trace=c5c7d186] GET /api/products/216 200 10ms
+2026-10-09T08:30:17.488Z INFO  gateway [trace=47fbb3b4] GET /api/products/108 200 30ms
+2026-10-09T08:30:19.171Z INFO  gateway [trace=b573f6c5] GET /api/products/23 200 17ms
+2026-10-09T08:30:21.944Z INFO  gateway [trace=0e06acd4] GET /api/products/451 200 31ms
+2026-10-09T08:30:24.652Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:24.837Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:24.852Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:24.872Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:24.911Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:24.955Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:27.854Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 3)
+2026-10-09T08:30:29.097Z INFO  gateway [trace=e5329b4e] GET /api/products/297 200 17ms
+2026-10-09T08:30:31.801Z INFO  gateway [trace=e4794195] GET /api/products/170 200 5ms
+2026-10-09T08:30:32.968Z INFO  gateway [trace=8034a6a7] GET /api/products/277 200 6ms
+2026-10-09T08:30:33.406Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:33.555Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:33.602Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:33.629Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:33.655Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:33.691Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:34.152Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 4)
+2026-10-09T08:30:35.497Z INFO  gateway [trace=0dde4b94] GET /api/products/312 200 7ms
+2026-10-09T08:30:37.037Z INFO  gateway [trace=bec2223b] GET /api/products/350 200 14ms
+2026-10-09T08:30:38.574Z INFO  gateway [trace=1f0fd9e9] GET /api/products/295 200 7ms
+2026-10-09T08:30:41.311Z INFO  gateway [trace=2967c63d] GET /api/products/207 200 20ms
+2026-10-09T08:30:43.222Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:43.327Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:43.351Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:43.388Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:43.422Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:43.463Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:43.906Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 5)
+2026-10-09T08:30:45.126Z INFO  gateway [trace=738865ad] GET /api/products/452 200 28ms
+2026-10-09T08:30:46.546Z INFO  gateway [trace=61027d4d] GET /api/products/102 200 6ms
+2026-10-09T08:30:49.144Z INFO  gateway [trace=6efe9b64] GET /api/products/169 200 5ms
+2026-10-09T08:30:50.368Z INFO  gateway [trace=4506f38b] GET /api/products/114 200 33ms
+2026-10-09T08:30:52.017Z INFO  gateway [trace=a127941d] GET /api/products/46 200 24ms
+2026-10-09T08:30:53.015Z INFO  inventory [trace=-] Starting inventory v4.2.0
+2026-10-09T08:30:53.167Z INFO  inventory [trace=-] Config loaded from /etc/inventory/config.yaml
+2026-10-09T08:30:53.179Z INFO  inventory [trace=-] Effective env: DB_USER=inventory DB_PASSWORD=changeme LOG_LEVEL=info
+2026-10-09T08:30:53.204Z ERROR inventory [trace=-] Invalid YAML in /etc/inventory/config.yaml line 14: mapping values are not allowed here
+2026-10-09T08:30:53.237Z ERROR inventory [trace=-] Missing required env var INVENTORY_DB_URL referenced in config.yaml
+2026-10-09T08:30:53.264Z FATAL inventory [trace=-] Startup aborted: config.yaml is invalid
+2026-10-09T08:30:54.433Z INFO  supervisor [trace=-] Restarting inventory in 10s (attempt 6)
+2026-10-09T08:30:56.565Z INFO  gateway [trace=a5d9b12a] GET /api/products/34 200 32ms
+2026-10-09T08:30:58.027Z INFO  gateway [trace=8287503e] GET /api/products/494 200 30ms
+2026-10-09T08:30:59.773Z INFO  gateway [trace=5e8e6030] GET /api/products/441 200 40ms
+2026-10-09T08:31:01.051Z INFO  gateway [trace=b1513819] GET /api/products/149 200 15ms

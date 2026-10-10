@@ -1,0 +1,97 @@
+timestamp,level,service,message,status_code,request_id
+2026-10-09T16:00:01.400Z,INFO,notify-svc,Sent SMS batch 1/60,200,n-001
+2026-10-09T16:00:02.177Z,INFO,notify-svc,Sent SMS batch 2/60,200,n-002
+2026-10-09T16:00:04.684Z,INFO,notify-svc,Sent SMS batch 3/60,200,n-003
+2026-10-09T16:00:05.332Z,INFO,notify-svc,Sent SMS batch 4/60,200,n-004
+2026-10-09T16:00:06.450Z,INFO,notify-svc,Sent SMS batch 5/60,200,n-005
+2026-10-09T16:00:07.640Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-006
+2026-10-09T16:00:09.840Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-006
+2026-10-09T16:00:13.849Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-006
+2026-10-09T16:00:15.738Z,INFO,notify-svc,Sent SMS batch 6/60,200,n-006
+2026-10-09T16:00:16.732Z,INFO,notify-svc,Sent SMS batch 7/60,200,n-007
+2026-10-09T16:00:18.211Z,INFO,notify-svc,Sent SMS batch 8/60,200,n-008
+2026-10-09T16:00:20.264Z,INFO,notify-svc,Sent SMS batch 9/60,200,n-009
+2026-10-09T16:00:21.418Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-010
+2026-10-09T16:00:23.614Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-010
+2026-10-09T16:00:27.808Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-010
+2026-10-09T16:00:28.132Z,INFO,notify-svc,Sent SMS batch 10/60,200,n-010
+2026-10-09T16:00:29.159Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-011
+2026-10-09T16:00:31.347Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-011
+2026-10-09T16:00:35.407Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-011
+2026-10-09T16:00:38.122Z,ERROR,notify-svc,Giving up on SMS batch 11/60 after 3 retries,429,n-011
+2026-10-09T16:00:39.860Z,INFO,notify-svc,Sent SMS batch 12/60,200,n-012
+2026-10-09T16:00:40.242Z,INFO,notify-svc,Sent SMS batch 13/60,200,n-013
+2026-10-09T16:00:42.805Z,INFO,notify-svc,Sent SMS batch 14/60,200,n-014
+2026-10-09T16:00:43.850Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-015
+2026-10-09T16:00:45.932Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-015
+2026-10-09T16:00:49.940Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-015
+2026-10-09T16:00:52.430Z,ERROR,notify-svc,Giving up on SMS batch 15/60 after 3 retries,429,n-015
+2026-10-09T16:00:54.124Z,INFO,notify-svc,Sent SMS batch 16/60,200,n-016
+2026-10-09T16:00:54.743Z,INFO,notify-svc,Sent SMS batch 17/60,200,n-017
+2026-10-09T16:00:55.991Z,INFO,notify-svc,Sent SMS batch 18/60,200,n-018
+2026-10-09T16:00:56.507Z,INFO,notify-svc,Sent SMS batch 19/60,200,n-019
+2026-10-09T16:00:56.977Z,INFO,notify-svc,Sent SMS batch 20/60,200,n-020
+2026-10-09T16:00:58.139Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-021
+2026-10-09T16:01:00.328Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-021
+2026-10-09T16:01:04.415Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-021
+2026-10-09T16:01:05.302Z,ERROR,notify-svc,Giving up on SMS batch 21/60 after 3 retries,429,n-021
+2026-10-09T16:01:06.426Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-022
+2026-10-09T16:01:08.462Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-022
+2026-10-09T16:01:12.485Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-022
+2026-10-09T16:01:13.147Z,ERROR,notify-svc,Giving up on SMS batch 22/60 after 3 retries,429,n-022
+2026-10-09T16:01:15.646Z,INFO,notify-svc,Sent SMS batch 23/60,200,n-023
+2026-10-09T16:01:17.191Z,INFO,notify-svc,Sent SMS batch 24/60,200,n-024
+2026-10-09T16:01:18.608Z,INFO,notify-svc,Sent SMS batch 25/60,200,n-025
+2026-10-09T16:01:19.750Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-026
+2026-10-09T16:01:21.817Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-026
+2026-10-09T16:01:25.881Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-026
+2026-10-09T16:01:27.335Z,ERROR,notify-svc,Giving up on SMS batch 26/60 after 3 retries,429,n-026
+2026-10-09T16:01:28.629Z,INFO,notify-svc,Sent SMS batch 27/60,200,n-027
+2026-10-09T16:01:30.714Z,INFO,notify-svc,Sent SMS batch 28/60,200,n-028
+2026-10-09T16:01:31.819Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-029
+2026-10-09T16:01:34.001Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-029
+2026-10-09T16:01:38.105Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-029
+2026-10-09T16:01:38.481Z,INFO,notify-svc,Sent SMS batch 29/60,200,n-029
+2026-10-09T16:01:39.973Z,INFO,notify-svc,Sent SMS batch 30/60,200,n-030
+2026-10-09T16:01:41.350Z,INFO,notify-svc,Sent SMS batch 31/60,200,n-031
+2026-10-09T16:01:43.059Z,INFO,notify-svc,Sent SMS batch 32/60,200,n-032
+2026-10-09T16:01:43.723Z,INFO,notify-svc,Sent SMS batch 33/60,200,n-033
+2026-10-09T16:01:46.635Z,INFO,notify-svc,Sent SMS batch 34/60,200,n-034
+2026-10-09T16:01:46.934Z,INFO,notify-svc,Sent SMS batch 35/60,200,n-035
+2026-10-09T16:01:48.041Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-036
+2026-10-09T16:01:50.051Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-036
+2026-10-09T16:01:54.070Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-036
+2026-10-09T16:01:55.541Z,ERROR,notify-svc,Giving up on SMS batch 36/60 after 3 retries,429,n-036
+2026-10-09T16:01:57.099Z,INFO,notify-svc,Sent SMS batch 37/60,200,n-037
+2026-10-09T16:01:58.522Z,INFO,notify-svc,Sent SMS batch 38/60,200,n-038
+2026-10-09T16:01:59.973Z,INFO,notify-svc,Sent SMS batch 39/60,200,n-039
+2026-10-09T16:02:02.688Z,INFO,notify-svc,Sent SMS batch 40/60,200,n-040
+2026-10-09T16:02:04.073Z,INFO,notify-svc,Sent SMS batch 41/60,200,n-041
+2026-10-09T16:02:06.820Z,INFO,notify-svc,Sent SMS batch 42/60,200,n-042
+2026-10-09T16:02:07.867Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-043
+2026-10-09T16:02:09.991Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-043
+2026-10-09T16:02:14.128Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-043
+2026-10-09T16:02:15.976Z,INFO,notify-svc,Sent SMS batch 43/60,200,n-043
+2026-10-09T16:02:17.517Z,INFO,notify-svc,Sent SMS batch 44/60,200,n-044
+2026-10-09T16:02:20.412Z,INFO,notify-svc,Sent SMS batch 45/60,200,n-045
+2026-10-09T16:02:23.017Z,INFO,notify-svc,Sent SMS batch 46/60,200,n-046
+2026-10-09T16:02:25.705Z,INFO,notify-svc,Sent SMS batch 47/60,200,n-047
+2026-10-09T16:02:26.888Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-048
+2026-10-09T16:02:29.041Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-048
+2026-10-09T16:02:33.233Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-048
+2026-10-09T16:02:34.233Z,INFO,notify-svc,Sent SMS batch 48/60,200,n-048
+2026-10-09T16:02:34.828Z,INFO,notify-svc,Sent SMS batch 49/60,200,n-049
+2026-10-09T16:02:37.603Z,INFO,notify-svc,Sent SMS batch 50/60,200,n-050
+2026-10-09T16:02:38.673Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 1s",429,n-051
+2026-10-09T16:02:40.689Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 2s",429,n-051
+2026-10-09T16:02:44.728Z,WARN,notify-svc,"SMS provider returned 429 Too Many Requests, retrying in 4s",429,n-051
+2026-10-09T16:02:45.197Z,ERROR,notify-svc,Giving up on SMS batch 51/60 after 3 retries,429,n-051
+2026-10-09T16:02:47.882Z,INFO,notify-svc,Sent SMS batch 52/60,200,n-052
+2026-10-09T16:02:50.164Z,INFO,notify-svc,Sent SMS batch 53/60,200,n-053
+2026-10-09T16:02:51.827Z,INFO,notify-svc,Sent SMS batch 54/60,200,n-054
+2026-10-09T16:02:53.887Z,INFO,notify-svc,Sent SMS batch 55/60,200,n-055
+2026-10-09T16:02:54.831Z,INFO,notify-svc,Sent SMS batch 56/60,200,n-056
+2026-10-09T16:02:56.787Z,INFO,notify-svc,Sent SMS batch 57/60,200,n-057
+2026-10-09T16:02:57.574Z,INFO,notify-svc,Sent SMS batch 58/60,200,n-058
+2026-10-09T16:03:00.224Z,INFO,notify-svc,Sent SMS batch 59/60,200,n-059
+2026-10-09T16:03:02.250Z,INFO,notify-svc,Sent SMS batch 60/60,200,n-060

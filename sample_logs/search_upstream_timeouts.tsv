@@ -1,0 +1,151 @@
+time	lvl	host	msg	upstream_ms
+2026-10-09T17:00:01.305Z	INFO	web-2	GET /search?q=shoes 200	97
+2026-10-09T17:00:03.137Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:03.577Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:04.031Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:05.815Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:07.647Z	INFO	web-1	GET /search?q=shoes 200	355
+2026-10-09T17:00:10.581Z	INFO	web-3	GET /search?q=shoes 200	345
+2026-10-09T17:00:11.185Z	INFO	web-1	GET /search?q=shoes 200	352
+2026-10-09T17:00:13.294Z	INFO	web-2	GET /search?q=shoes 200	357
+2026-10-09T17:00:14.537Z	INFO	web-3	GET /search?q=socks 200	92
+2026-10-09T17:00:15.314Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:17.690Z	INFO	web-3	GET /search?q=hats 200	359
+2026-10-09T17:00:18.585Z	INFO	web-2	GET /search?q=bags 200	184
+2026-10-09T17:00:20.256Z	INFO	web-1	GET /search?q=jackets 200	289
+2026-10-09T17:00:20.661Z	INFO	web-2	GET /search?q=socks 200	274
+2026-10-09T17:00:21.286Z	INFO	web-1	GET /search?q=hats 200	275
+2026-10-09T17:00:21.704Z	INFO	web-1	GET /search?q=socks 200	353
+2026-10-09T17:00:22.884Z	INFO	web-2	GET /search?q=hats 200	356
+2026-10-09T17:00:23.346Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:25.406Z	INFO	web-2	GET /search?q=shoes 200	218
+2026-10-09T17:00:27.513Z	INFO	web-3	GET /search?q=hats 200	205
+2026-10-09T17:00:29.586Z	INFO	web-3	GET /search?q=shoes 200	296
+2026-10-09T17:00:30.114Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:31.118Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:32.413Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:33.871Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:34.454Z	INFO	web-3	GET /search?q=hats 200	341
+2026-10-09T17:00:37.416Z	INFO	web-2	GET /search?q=belts 200	254
+2026-10-09T17:00:38.110Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:38.343Z	INFO	web-1	GET /search?q=socks 200	153
+2026-10-09T17:00:38.951Z	INFO	web-2	GET /search?q=socks 200	249
+2026-10-09T17:00:41.820Z	INFO	web-3	GET /search?q=belts 200	323
+2026-10-09T17:00:44.091Z	INFO	web-3	GET /search?q=hats 200	346
+2026-10-09T17:00:45.395Z	INFO	web-2	GET /search?q=hats 200	384
+2026-10-09T17:00:45.784Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:46.291Z	INFO	web-1	GET /search?q=socks 200	86
+2026-10-09T17:00:46.915Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:48.833Z	INFO	web-1	GET /search?q=shoes 200	166
+2026-10-09T17:00:50.810Z	INFO	web-3	GET /search?q=jackets 200	368
+2026-10-09T17:00:51.333Z	INFO	web-2	GET /search?q=hats 200	298
+2026-10-09T17:00:51.773Z	INFO	web-2	GET /search?q=shoes 200	235
+2026-10-09T17:00:54.294Z	INFO	web-3	GET /search?q=bags 200	324
+2026-10-09T17:00:57.160Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:58.880Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:59.915Z	INFO	web-1	GET /search?q=belts 200	106
+2026-10-09T17:01:01.567Z	INFO	web-3	GET /search?q=bags 200	242
+2026-10-09T17:01:03.948Z	INFO	web-1	GET /search?q=jackets 200	385
+2026-10-09T17:01:06.355Z	INFO	web-1	GET /search?q=bags 200	182
+2026-10-09T17:01:07.190Z	INFO	web-2	GET /search?q=socks 200	312
+2026-10-09T17:01:10.161Z	INFO	web-2	GET /search?q=jackets 200	301
+2026-10-09T17:01:12.056Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:14.879Z	INFO	web-2	GET /search?q=jackets 200	246
+2026-10-09T17:01:15.714Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:17.266Z	INFO	web-1	GET /search?q=socks 200	60
+2026-10-09T17:01:18.429Z	INFO	web-2	GET /search?q=belts 200	103
+2026-10-09T17:01:19.717Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:21.256Z	INFO	web-3	GET /search?q=bags 200	282
+2026-10-09T17:01:23.698Z	INFO	web-3	GET /search?q=belts 200	262
+2026-10-09T17:01:26.549Z	INFO	web-2	GET /search?q=belts 200	141
+2026-10-09T17:01:26.826Z	INFO	web-1	GET /search?q=socks 200	298
+2026-10-09T17:01:29.340Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:30.521Z	INFO	web-2	GET /search?q=socks 200	340
+2026-10-09T17:01:32.960Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:34.634Z	INFO	web-3	GET /search?q=bags 200	282
+2026-10-09T17:01:35.425Z	INFO	web-1	GET /search?q=jackets 200	168
+2026-10-09T17:01:37.763Z	INFO	web-2	GET /search?q=jackets 200	192
+2026-10-09T17:01:38.330Z	INFO	web-3	GET /search?q=belts 200	241
+2026-10-09T17:01:40.812Z	INFO	web-2	GET /search?q=socks 200	275
+2026-10-09T17:01:41.437Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:42.870Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:45.243Z	INFO	web-1	GET /search?q=bags 200	148
+2026-10-09T17:01:47.473Z	INFO	web-1	GET /search?q=socks 200	91
+2026-10-09T17:01:49.159Z	INFO	web-2	GET /search?q=hats 200	114
+2026-10-09T17:01:49.895Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:51.517Z	INFO	web-1	GET /search?q=socks 200	74
+2026-10-09T17:01:53.432Z	INFO	web-1	GET /search?q=socks 200	370
+2026-10-09T17:01:54.408Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:01:55.946Z	INFO	web-3	GET /search?q=bags 200	327
+2026-10-09T17:01:58.646Z	INFO	web-2	GET /search?q=bags 200	289
+2026-10-09T17:01:59.945Z	INFO	web-1	GET /search?q=jackets 200	97
+2026-10-09T17:02:00.349Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:00.892Z	INFO	web-3	GET /search?q=bags 200	389
+2026-10-09T17:02:01.801Z	INFO	web-3	GET /search?q=bags 200	299
+2026-10-09T17:02:02.264Z	INFO	web-1	GET /search?q=hats 200	143
+2026-10-09T17:02:02.916Z	INFO	web-3	GET /search?q=hats 200	323
+2026-10-09T17:02:03.664Z	INFO	web-2	GET /search?q=jackets 200	107
+2026-10-09T17:02:04.811Z	INFO	web-3	GET /search?q=hats 200	285
+2026-10-09T17:02:05.939Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:08.829Z	INFO	web-3	GET /search?q=shoes 200	177
+2026-10-09T17:02:09.790Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:10.353Z	INFO	web-1	GET /search?q=hats 200	192
+2026-10-09T17:02:13.127Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:14.243Z	INFO	web-3	GET /search?q=jackets 200	89
+2026-10-09T17:02:16.949Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:18.926Z	INFO	web-2	GET /search?q=jackets 200	102
+2026-10-09T17:02:19.312Z	INFO	web-3	GET /search?q=shoes 200	292
+2026-10-09T17:02:21.061Z	INFO	web-1	GET /search?q=jackets 200	378
+2026-10-09T17:02:23.248Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:24.181Z	INFO	web-1	GET /search?q=bags 200	163
+2026-10-09T17:02:25.868Z	INFO	web-2	GET /search?q=bags 200	208
+2026-10-09T17:02:26.566Z	INFO	web-2	GET /search?q=jackets 200	69
+2026-10-09T17:02:26.818Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:27.548Z	INFO	web-3	GET /search?q=hats 200	185
+2026-10-09T17:02:30.041Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:31.770Z	INFO	web-2	GET /search?q=hats 200	319
+2026-10-09T17:02:34.721Z	INFO	web-2	GET /search?q=jackets 200	161
+2026-10-09T17:02:35.312Z	INFO	web-3	GET /search?q=jackets 200	87
+2026-10-09T17:02:37.263Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:37.618Z	INFO	web-2	GET /search?q=belts 200	255
+2026-10-09T17:02:38.608Z	INFO	web-3	GET /search?q=bags 200	210
+2026-10-09T17:02:39.249Z	INFO	web-1	GET /search?q=hats 200	61
+2026-10-09T17:02:40.370Z	INFO	web-2	GET /search?q=socks 200	225
+2026-10-09T17:02:43.040Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:43.243Z	INFO	web-1	GET /search?q=hats 200	102
+2026-10-09T17:02:45.280Z	INFO	web-2	GET /search?q=bags 200	318
+2026-10-09T17:02:47.768Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:48.085Z	INFO	web-1	GET /search?q=shoes 200	213
+2026-10-09T17:02:48.521Z	INFO	web-2	GET /search?q=socks 200	139
+2026-10-09T17:02:50.916Z	INFO	web-3	GET /search?q=socks 200	259
+2026-10-09T17:02:52.500Z	INFO	web-2	GET /search?q=jackets 200	376
+2026-10-09T17:02:55.010Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:02:56.966Z	INFO	web-3	GET /search?q=belts 200	318
+2026-10-09T17:02:59.274Z	INFO	web-1	GET /search?q=socks 200	68
+2026-10-09T17:03:01.974Z	INFO	web-3	GET /search?q=belts 200	389
+2026-10-09T17:03:02.291Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:02.785Z	INFO	web-3	GET /search?q=hats 200	345
+2026-10-09T17:03:04.739Z	INFO	web-1	GET /search?q=belts 200	185
+2026-10-09T17:03:06.218Z	INFO	web-2	GET /search?q=shoes 200	317
+2026-10-09T17:03:07.891Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:08.797Z	INFO	web-3	GET /search?q=shoes 200	195
+2026-10-09T17:03:09.572Z	INFO	web-1	GET /search?q=belts 200	392
+2026-10-09T17:03:10.843Z	INFO	web-2	GET /search?q=hats 200	207
+2026-10-09T17:03:12.843Z	INFO	web-1	GET /search?q=shoes 200	367
+2026-10-09T17:03:14.867Z	INFO	web-1	GET /search?q=belts 200	215
+2026-10-09T17:03:15.102Z	INFO	web-3	GET /search?q=shoes 200	308
+2026-10-09T17:03:15.580Z	INFO	web-2	GET /search?q=bags 200	310
+2026-10-09T17:03:16.580Z	INFO	web-2	GET /search?q=hats 200	298
+2026-10-09T17:03:18.317Z	INFO	web-1	GET /search?q=jackets 200	103
+2026-10-09T17:03:19.802Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:21.261Z	INFO	web-3	GET /search?q=jackets 200	258
+2026-10-09T17:03:24.066Z	INFO	web-1	GET /search?q=shoes 200	357
+2026-10-09T17:03:25.734Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:28.230Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:28.746Z	INFO	web-3	GET /search?q=jackets 200	178
+2026-10-09T17:03:30.307Z	INFO	web-2	GET /search?q=shoes 200	141
+2026-10-09T17:03:32.416Z	INFO	web-1	GET /search?q=hats 200	214
+2026-10-09T17:03:33.579Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:34.706Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:03:37.256Z	INFO	web-2	GET /search?q=shoes 200	160
+2026-10-09T17:03:39.528Z	WARN	web-3	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000

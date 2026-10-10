@@ -1,0 +1,184 @@
+Oct  9 14:05:02 node-7 argocd-server[880]: INFO Rollout finished: orders v3.8.0 (cache.eviction=false)
+Oct  9 14:05:05 node-7 orders[4410]: INFO Started OrdersApplication in 19.8 seconds
+Oct  9 14:05:07 node-7 orders[4410]: INFO Processed order 21124 in 35ms
+Oct  9 14:05:13 node-7 orders[4410]: INFO Processed order 97782 in 31ms
+Oct  9 14:05:16 node-7 orders[4410]: INFO Processed order 37815 in 50ms
+Oct  9 14:05:21 node-7 kubelet[1123]: I1009 14:05:21.484019 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=420Mi limit=768Mi
+Oct  9 14:05:26 node-7 orders[4410]: INFO Processed order 66448 in 52ms
+Oct  9 14:05:29 node-7 orders[4410]: INFO Processed order 76724 in 35ms
+Oct  9 14:05:33 node-7 orders[4410]: INFO Processed order 68307 in 44ms
+Oct  9 14:05:40 node-7 kubelet[1123]: I1009 14:05:40.301043 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=445Mi limit=768Mi
+Oct  9 14:05:42 node-7 orders[4410]: INFO Processed order 13597 in 35ms
+Oct  9 14:05:46 node-7 orders[4410]: INFO Processed order 51741 in 36ms
+Oct  9 14:05:49 node-7 orders[4410]: INFO Processed order 78911 in 22ms
+Oct  9 14:05:57 node-7 kubelet[1123]: I1009 14:05:57.801311 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=470Mi limit=768Mi
+Oct  9 14:06:00 node-7 orders[4410]: INFO Processed order 13127 in 23ms
+Oct  9 14:06:04 node-7 orders[4410]: INFO Processed order 27917 in 44ms
+Oct  9 14:06:08 node-7 orders[4410]: INFO Processed order 77336 in 55ms
+Oct  9 14:06:15 node-7 kubelet[1123]: I1009 14:06:15.886724 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=495Mi limit=768Mi
+Oct  9 14:06:21 node-7 orders[4410]: INFO Processed order 68410 in 38ms
+Oct  9 14:06:26 node-7 orders[4410]: INFO Processed order 57743 in 49ms
+Oct  9 14:06:30 node-7 orders[4410]: INFO Processed order 68427 in 22ms
+Oct  9 14:06:39 node-7 kubelet[1123]: I1009 14:06:39.994856 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=520Mi limit=768Mi
+Oct  9 14:06:43 node-7 orders[4410]: INFO Processed order 70477 in 53ms
+Oct  9 14:06:47 node-7 orders[4410]: INFO Processed order 74227 in 29ms
+Oct  9 14:06:53 node-7 orders[4410]: INFO Processed order 75646 in 44ms
+Oct  9 14:07:02 node-7 kubelet[1123]: I1009 14:07:02.572683 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=545Mi limit=768Mi
+Oct  9 14:07:05 node-7 orders[4410]: INFO Processed order 69596 in 41ms
+Oct  9 14:07:09 node-7 orders[4410]: INFO Processed order 83083 in 58ms
+Oct  9 14:07:13 node-7 orders[4410]: INFO Processed order 96361 in 26ms
+Oct  9 14:07:22 node-7 kubelet[1123]: I1009 14:07:22.920666 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=570Mi limit=768Mi
+Oct  9 14:07:25 node-7 orders[4410]: WARN cache: product cache size 1.2M entries, eviction disabled
+Oct  9 14:07:30 node-7 orders[4410]: INFO Processed order 90785 in 29ms
+Oct  9 14:07:35 node-7 orders[4410]: INFO Processed order 72883 in 31ms
+Oct  9 14:07:39 node-7 orders[4410]: INFO Processed order 76092 in 47ms
+Oct  9 14:07:46 node-7 kubelet[1123]: I1009 14:07:46.635748 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=595Mi limit=768Mi
+Oct  9 14:07:51 node-7 orders[4410]: INFO Processed order 87063 in 38ms
+Oct  9 14:07:54 node-7 orders[4410]: INFO Processed order 37239 in 43ms
+Oct  9 14:07:58 node-7 orders[4410]: INFO Processed order 99683 in 51ms
+Oct  9 14:08:07 node-7 kubelet[1123]: I1009 14:08:07.946698 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=620Mi limit=768Mi
+Oct  9 14:08:13 node-7 orders[4410]: INFO Processed order 54755 in 58ms
+Oct  9 14:08:15 node-7 orders[4410]: INFO Processed order 35087 in 59ms
+Oct  9 14:08:17 node-7 orders[4410]: INFO Processed order 85289 in 53ms
+Oct  9 14:08:22 node-7 kubelet[1123]: I1009 14:08:22.786683 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=645Mi limit=768Mi
+Oct  9 14:08:27 node-7 orders[4410]: INFO Processed order 99453 in 18ms
+Oct  9 14:08:32 node-7 orders[4410]: INFO Processed order 27891 in 29ms
+Oct  9 14:08:35 node-7 orders[4410]: INFO Processed order 37587 in 15ms
+Oct  9 14:08:42 node-7 kubelet[1123]: I1009 14:08:42.264879 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=670Mi limit=768Mi
+Oct  9 14:08:47 node-7 orders[4410]: INFO Processed order 14177 in 15ms
+Oct  9 14:08:50 node-7 orders[4410]: INFO Processed order 32528 in 27ms
+Oct  9 14:08:55 node-7 orders[4410]: INFO Processed order 20866 in 19ms
+Oct  9 14:09:05 node-7 kubelet[1123]: I1009 14:09:05.046024 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=695Mi limit=768Mi
+Oct  9 14:09:07 node-7 orders[4410]: INFO Processed order 12771 in 35ms
+Oct  9 14:09:10 node-7 orders[4410]: INFO Processed order 30593 in 59ms
+Oct  9 14:09:12 node-7 orders[4410]: INFO Processed order 10253 in 36ms
+Oct  9 14:09:20 node-7 kubelet[1123]: W1009 14:09:20.852409 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=720Mi limit=768Mi
+Oct  9 14:09:26 node-7 orders[4410]: INFO Processed order 42483 in 21ms
+Oct  9 14:09:31 node-7 orders[4410]: INFO Processed order 10549 in 34ms
+Oct  9 14:09:37 node-7 orders[4410]: INFO Processed order 92281 in 59ms
+Oct  9 14:09:46 node-7 kubelet[1123]: W1009 14:09:46.404558 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=745Mi limit=768Mi
+Oct  9 14:09:47 node-7 kernel[0]: Memory cgroup out of memory: Killed process 4410 (java) total-vm:2457600kB, anon-rss:786000kB
+Oct  9 14:09:47 node-7 kubelet[1123]: E1009 14:09:47.986089 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" state=Terminated reason=OOMKilled exitCode=137
+Oct  9 14:09:48 node-7 kubelet[1123]: I1009 14:09:48.640282 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" restartCount=1 Back-off restarting
+Oct  9 14:09:50 node-7 orders[5110]: INFO Started OrdersApplication in 19.8 seconds
+Oct  9 14:09:54 node-7 orders[5110]: INFO Processed order 15999 in 28ms
+Oct  9 14:09:59 node-7 orders[5110]: INFO Processed order 91473 in 57ms
+Oct  9 14:10:02 node-7 orders[5110]: INFO Processed order 39560 in 17ms
+Oct  9 14:10:10 node-7 kubelet[1123]: I1009 14:10:10.745728 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=420Mi limit=768Mi
+Oct  9 14:10:14 node-7 orders[5110]: INFO Processed order 23375 in 13ms
+Oct  9 14:10:17 node-7 orders[5110]: INFO Processed order 26716 in 45ms
+Oct  9 14:10:22 node-7 orders[5110]: INFO Processed order 61505 in 43ms
+Oct  9 14:10:29 node-7 kubelet[1123]: I1009 14:10:29.716075 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=445Mi limit=768Mi
+Oct  9 14:10:32 node-7 orders[5110]: INFO Processed order 54702 in 28ms
+Oct  9 14:10:35 node-7 orders[5110]: INFO Processed order 65018 in 53ms
+Oct  9 14:10:37 node-7 orders[5110]: INFO Processed order 83131 in 20ms
+Oct  9 14:10:45 node-7 kubelet[1123]: I1009 14:10:45.763682 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=470Mi limit=768Mi
+Oct  9 14:10:48 node-7 orders[5110]: INFO Processed order 27262 in 22ms
+Oct  9 14:10:51 node-7 orders[5110]: INFO Processed order 69426 in 52ms
+Oct  9 14:10:54 node-7 orders[5110]: INFO Processed order 14115 in 27ms
+Oct  9 14:11:00 node-7 kubelet[1123]: I1009 14:11:00.547382 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=495Mi limit=768Mi
+Oct  9 14:11:04 node-7 orders[5110]: INFO Processed order 42870 in 17ms
+Oct  9 14:11:08 node-7 orders[5110]: INFO Processed order 91810 in 51ms
+Oct  9 14:11:13 node-7 orders[5110]: INFO Processed order 43634 in 55ms
+Oct  9 14:11:20 node-7 kubelet[1123]: I1009 14:11:20.644199 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=520Mi limit=768Mi
+Oct  9 14:11:24 node-7 orders[5110]: INFO Processed order 10632 in 21ms
+Oct  9 14:11:26 node-7 orders[5110]: INFO Processed order 63572 in 22ms
+Oct  9 14:11:29 node-7 orders[5110]: INFO Processed order 21510 in 27ms
+Oct  9 14:11:34 node-7 kubelet[1123]: I1009 14:11:34.845213 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=545Mi limit=768Mi
+Oct  9 14:11:36 node-7 orders[5110]: INFO Processed order 40346 in 18ms
+Oct  9 14:11:39 node-7 orders[5110]: INFO Processed order 78253 in 54ms
+Oct  9 14:11:43 node-7 orders[5110]: INFO Processed order 50596 in 46ms
+Oct  9 14:11:51 node-7 kubelet[1123]: I1009 14:11:51.860241 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=570Mi limit=768Mi
+Oct  9 14:11:52 node-7 orders[5110]: WARN cache: product cache size 1.6M entries, eviction disabled
+Oct  9 14:11:58 node-7 orders[5110]: INFO Processed order 37543 in 58ms
+Oct  9 14:12:03 node-7 orders[5110]: INFO Processed order 65784 in 44ms
+Oct  9 14:12:05 node-7 orders[5110]: INFO Processed order 87508 in 15ms
+Oct  9 14:12:14 node-7 kubelet[1123]: I1009 14:12:14.998146 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=595Mi limit=768Mi
+Oct  9 14:12:20 node-7 orders[5110]: INFO Processed order 86197 in 23ms
+Oct  9 14:12:26 node-7 orders[5110]: INFO Processed order 96939 in 42ms
+Oct  9 14:12:29 node-7 orders[5110]: INFO Processed order 78053 in 19ms
+Oct  9 14:12:37 node-7 kubelet[1123]: I1009 14:12:37.913422 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=620Mi limit=768Mi
+Oct  9 14:12:41 node-7 orders[5110]: INFO Processed order 58788 in 31ms
+Oct  9 14:12:43 node-7 orders[5110]: INFO Processed order 99825 in 38ms
+Oct  9 14:12:45 node-7 orders[5110]: INFO Processed order 50097 in 24ms
+Oct  9 14:12:54 node-7 kubelet[1123]: I1009 14:12:54.755671 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=645Mi limit=768Mi
+Oct  9 14:12:59 node-7 orders[5110]: INFO Processed order 12060 in 40ms
+Oct  9 14:13:01 node-7 orders[5110]: INFO Processed order 93531 in 43ms
+Oct  9 14:13:05 node-7 orders[5110]: INFO Processed order 87167 in 51ms
+Oct  9 14:13:10 node-7 kubelet[1123]: I1009 14:13:10.908227 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=670Mi limit=768Mi
+Oct  9 14:13:14 node-7 orders[5110]: INFO Processed order 58877 in 31ms
+Oct  9 14:13:19 node-7 orders[5110]: INFO Processed order 20033 in 26ms
+Oct  9 14:13:24 node-7 orders[5110]: INFO Processed order 35212 in 19ms
+Oct  9 14:13:32 node-7 kubelet[1123]: I1009 14:13:32.664446 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=695Mi limit=768Mi
+Oct  9 14:13:36 node-7 orders[5110]: INFO Processed order 70715 in 20ms
+Oct  9 14:13:41 node-7 orders[5110]: INFO Processed order 61779 in 19ms
+Oct  9 14:13:44 node-7 orders[5110]: INFO Processed order 26116 in 17ms
+Oct  9 14:13:52 node-7 kubelet[1123]: W1009 14:13:52.345248 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=720Mi limit=768Mi
+Oct  9 14:13:55 node-7 orders[5110]: INFO Processed order 61262 in 25ms
+Oct  9 14:14:00 node-7 orders[5110]: INFO Processed order 13233 in 51ms
+Oct  9 14:14:05 node-7 orders[5110]: INFO Processed order 15659 in 58ms
+Oct  9 14:14:13 node-7 kubelet[1123]: W1009 14:14:13.619448 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=745Mi limit=768Mi
+Oct  9 14:14:14 node-7 kernel[0]: Memory cgroup out of memory: Killed process 5110 (java) total-vm:2457600kB, anon-rss:786211kB
+Oct  9 14:14:15 node-7 kubelet[1123]: E1009 14:14:15.394041 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" state=Terminated reason=OOMKilled exitCode=137
+Oct  9 14:14:15 node-7 kubelet[1123]: I1009 14:14:15.964774 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" restartCount=2 Back-off restarting
+Oct  9 14:14:17 node-7 orders[5811]: INFO Started OrdersApplication in 19.8 seconds
+Oct  9 14:14:21 node-7 orders[5811]: INFO Processed order 72594 in 58ms
+Oct  9 14:14:26 node-7 orders[5811]: INFO Processed order 64914 in 43ms
+Oct  9 14:14:32 node-7 orders[5811]: INFO Processed order 48897 in 37ms
+Oct  9 14:14:38 node-7 kubelet[1123]: I1009 14:14:38.472281 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=420Mi limit=768Mi
+Oct  9 14:14:42 node-7 orders[5811]: INFO Processed order 44000 in 47ms
+Oct  9 14:14:46 node-7 orders[5811]: INFO Processed order 99016 in 56ms
+Oct  9 14:14:51 node-7 orders[5811]: INFO Processed order 86795 in 58ms
+Oct  9 14:15:00 node-7 kubelet[1123]: I1009 14:15:00.901641 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=445Mi limit=768Mi
+Oct  9 14:15:03 node-7 orders[5811]: INFO Processed order 56669 in 23ms
+Oct  9 14:15:09 node-7 orders[5811]: INFO Processed order 29202 in 38ms
+Oct  9 14:15:14 node-7 orders[5811]: INFO Processed order 21291 in 55ms
+Oct  9 14:15:24 node-7 kubelet[1123]: I1009 14:15:24.812426 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=470Mi limit=768Mi
+Oct  9 14:15:29 node-7 orders[5811]: INFO Processed order 26844 in 30ms
+Oct  9 14:15:32 node-7 orders[5811]: INFO Processed order 97914 in 55ms
+Oct  9 14:15:36 node-7 orders[5811]: INFO Processed order 32613 in 45ms
+Oct  9 14:15:42 node-7 kubelet[1123]: I1009 14:15:42.719731 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=495Mi limit=768Mi
+Oct  9 14:15:45 node-7 orders[5811]: INFO Processed order 65536 in 18ms
+Oct  9 14:15:48 node-7 orders[5811]: INFO Processed order 42584 in 57ms
+Oct  9 14:15:52 node-7 orders[5811]: INFO Processed order 32225 in 22ms
+Oct  9 14:16:00 node-7 kubelet[1123]: I1009 14:16:00.020548 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=520Mi limit=768Mi
+Oct  9 14:16:04 node-7 orders[5811]: INFO Processed order 62974 in 34ms
+Oct  9 14:16:09 node-7 orders[5811]: INFO Processed order 85161 in 58ms
+Oct  9 14:16:12 node-7 orders[5811]: INFO Processed order 67826 in 58ms
+Oct  9 14:16:17 node-7 kubelet[1123]: I1009 14:16:17.690721 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=545Mi limit=768Mi
+Oct  9 14:16:22 node-7 orders[5811]: INFO Processed order 33648 in 37ms
+Oct  9 14:16:26 node-7 orders[5811]: INFO Processed order 73236 in 29ms
+Oct  9 14:16:29 node-7 orders[5811]: INFO Processed order 64020 in 57ms
+Oct  9 14:16:37 node-7 kubelet[1123]: I1009 14:16:37.971365 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=570Mi limit=768Mi
+Oct  9 14:16:39 node-7 orders[5811]: WARN cache: product cache size 2.0M entries, eviction disabled
+Oct  9 14:16:43 node-7 orders[5811]: INFO Processed order 96308 in 17ms
+Oct  9 14:16:48 node-7 orders[5811]: INFO Processed order 39491 in 46ms
+Oct  9 14:16:52 node-7 orders[5811]: INFO Processed order 62785 in 54ms
+Oct  9 14:16:59 node-7 kubelet[1123]: I1009 14:16:59.814185 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=595Mi limit=768Mi
+Oct  9 14:17:05 node-7 orders[5811]: INFO Processed order 11521 in 32ms
+Oct  9 14:17:09 node-7 orders[5811]: INFO Processed order 71119 in 53ms
+Oct  9 14:17:11 node-7 orders[5811]: INFO Processed order 22377 in 13ms
+Oct  9 14:17:18 node-7 kubelet[1123]: I1009 14:17:18.920210 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=620Mi limit=768Mi
+Oct  9 14:17:21 node-7 orders[5811]: INFO Processed order 84615 in 50ms
+Oct  9 14:17:25 node-7 orders[5811]: INFO Processed order 38245 in 18ms
+Oct  9 14:17:28 node-7 orders[5811]: INFO Processed order 83101 in 24ms
+Oct  9 14:17:35 node-7 kubelet[1123]: I1009 14:17:35.261448 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=645Mi limit=768Mi
+Oct  9 14:17:40 node-7 orders[5811]: INFO Processed order 86050 in 24ms
+Oct  9 14:17:44 node-7 orders[5811]: INFO Processed order 90206 in 20ms
+Oct  9 14:17:46 node-7 orders[5811]: INFO Processed order 98958 in 39ms
+Oct  9 14:17:54 node-7 kubelet[1123]: I1009 14:17:54.350430 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=670Mi limit=768Mi
+Oct  9 14:17:58 node-7 orders[5811]: INFO Processed order 32749 in 41ms
+Oct  9 14:18:03 node-7 orders[5811]: INFO Processed order 19545 in 34ms
+Oct  9 14:18:05 node-7 orders[5811]: INFO Processed order 73625 in 46ms
+Oct  9 14:18:14 node-7 kubelet[1123]: I1009 14:18:14.453156 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=695Mi limit=768Mi
+Oct  9 14:18:19 node-7 orders[5811]: INFO Processed order 87537 in 43ms
+Oct  9 14:18:24 node-7 orders[5811]: INFO Processed order 53894 in 41ms
+Oct  9 14:18:27 node-7 orders[5811]: INFO Processed order 75916 in 41ms
+Oct  9 14:18:32 node-7 kubelet[1123]: W1009 14:18:32.991923 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=720Mi limit=768Mi
+Oct  9 14:18:35 node-7 orders[5811]: INFO Processed order 55565 in 23ms
+Oct  9 14:18:40 node-7 orders[5811]: INFO Processed order 63017 in 28ms
+Oct  9 14:18:45 node-7 orders[5811]: INFO Processed order 27677 in 15ms
+Oct  9 14:18:50 node-7 kubelet[1123]: W1009 14:18:50.862478 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=745Mi limit=768Mi
+Oct  9 14:18:52 node-7 kernel[0]: Memory cgroup out of memory: Killed process 5811 (java) total-vm:2457600kB, anon-rss:786422kB
+Oct  9 14:18:52 node-7 kubelet[1123]: E1009 14:18:52.530004 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" state=Terminated reason=OOMKilled exitCode=137
+Oct  9 14:18:53 node-7 kubelet[1123]: I1009 14:18:53.177413 1123 kubelet.go:2412] pod="shop/orders-6d9f7c-xk2lp" container="orders" restartCount=3 Back-off restarting
