@@ -123,6 +123,8 @@ The app opens at http://localhost:8501. Pick a sample log (or upload your own) a
 
 After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
+After any run, the sidebar's **Ask about this run** box answers questions such as "why is ISS-1 critical?". It looks things up with read-only tools over this run's issues, evidence, fixes, checklist, tickets and costs, cites log line numbers, and stops after 4 lookups.
+
 When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The draft follows our runbook template, is labelled "AI draft, not reviewed", and must pass the same checks as our own runbooks. If you approve it, later runs in your session can use it, and you can download it as a `.md` file. It isn't saved anywhere else.
 
 The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
@@ -336,8 +338,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. A chat about the current run.
-2. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+1. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

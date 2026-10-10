@@ -12,7 +12,7 @@ from pydantic import SecretStr
 from streamlit.testing.v1 import AppTest
 
 from incident_suite.agents import LLMError, LLMReply, StructuredLLM
-from incident_suite.agents.assistant import AssistantAnswer, RunbookFields
+from incident_suite.agents.assistant import AssistantAnswer, ChatStep, RunbookFields
 from incident_suite.agents.cookbook import CookbookAnswer, ItemDraft
 from incident_suite.agents.jira_agent import TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
@@ -435,3 +435,27 @@ def test_a_failed_draft_can_be_tried_again(monkeypatch: pytest.MonkeyPatch) -> N
     assert any("APITimeoutError" in w.value for w in app.warning)
     app = _click(app, "Try again")
     assert [b for b in app.button if b.label == "Draft a runbook (AI)"]
+
+
+# ------------------------------------------------------------------ chat about the run
+
+
+@pytest.mark.usefixtures("keyed")
+def test_chat_about_a_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    answer = ChatStep(answer="The DB refused connections after the deploy (L68).")
+    llm = _ByType([*ANSWERS, answer])
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+
+    app = _click(_app(), "Analyse")
+    (box,) = [t for t in app.sidebar.text_input if t.label == "Ask about this run"]
+    box.input("Why did payments fail?")
+    app = _click(app, "Ask")
+
+    assert not app.exception
+    sidebar = " ".join(m.value for m in app.sidebar.markdown)
+    assert "**You:** Why did payments fail?" in sidebar
+    assert "L68" in sidebar
+    assert app.session_state["chat"] == [
+        ("Why did payments fail?", "The DB refused connections after the deploy (L68).")
+    ]
+    assert "ChatStep" in llm.asked

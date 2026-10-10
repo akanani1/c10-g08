@@ -525,7 +525,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2 and 3 in review |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3 and 4 in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -618,6 +618,10 @@ This first assistant feature answers "what's happened since?" for this run's inc
 ### 17.4 Assistant: chat about the current run
 
 A chat box in the sidebar that answers questions about this run only. It uses tools that read the run's issues, evidence lines, fixes, checklist, tickets and costs, and it cites line numbers in its answers. There's a cap on tool calls per question, and log text stays inside tags as data.
+
+- **How it's built:** `ask_about_run` in `agents/assistant.py` is a one-node LangGraph loop on the cheap model. Each turn, the model returns either one tool call (`issues`, `evidence`, `fix`, `checklist`, `tickets` or `costs`, with an issue ID where needed) or its answer. Tool results go back inside `<tool_result>` tags.
+- **Limits:** at most 4 tool calls, then it must answer, with a plain fallback if it still doesn't. Questions are cut at 500 characters. The last 3 questions and answers go along for follow-ups. It uses the run's token budget, and its cost shows in the Cost tab as "Assistant".
+- **Access:** it works after any run, dry runs included, because it reads only the run's own results. It never touches Slack or JIRA.
 
 ### 17.5 Small extras
 
@@ -725,6 +729,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 1 gets an Admin card. With the passcode, an admin changes live mode, approval, the upload limit, tickets per run, the token budget and the JIRA project and issue type for everyone, until the app sleeps or restarts. Defaults come from env. Where secrets are sent (JIRA URL and email, Slack channel) stays env-only. `MAX_UPLOAD_MB` is now 1 to 5, Streamlit's own cap |
 | 11 Oct | Extra 2, the assistant, ships read-only. It's a three-step LangGraph on the cheap model; it reads only this run's threads and tickets, redacted and inside tags. New tickets store their Slack thread as a JIRA issue property. Replying in the original Slack thread is left out for time. Extras go up as stacked PRs overnight, to merge in order |
 | 11 Oct | Extra 3: the model fills the runbook template's fields and our code writes the markdown, so drafts always have the template's shape. `check_runbook()` is shared with our own runbooks. The drafting instructions live in `assistant.md` as a second task, rather than a new prompt file |
+| 11 Oct | Extra 4: the chat is a small tool loop that works through our structured-output client (the model picks one tool or answers), so the same fakes test it. It's open after any run, because it reads only that run |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

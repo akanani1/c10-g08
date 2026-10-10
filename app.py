@@ -18,9 +18,11 @@ from incident_suite import __version__, ui
 from incident_suite.agents import OpenRouterLLM, make_embeddings
 from incident_suite.agents.assistant import (
     DRAFT_LABEL,
+    MAX_QUESTION_CHARS,
     AssistantInput,
     AssistantResult,
     DraftResult,
+    ask_about_run,
     draft_runbook,
     latest_updates,
 )
@@ -237,7 +239,7 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     st.session_state.update(
-        context=context, run_id=run_id, result=result, run_note=note, assistant=None
+        context=context, run_id=run_id, result=result, run_note=note, assistant=None, chat=[]
     )
     st.rerun()
 
@@ -510,11 +512,52 @@ def _ask_assistant(config: AppConfig) -> None:
         )
 
 
+def _ask_about_run(question: str) -> None:
+    """Answer a question about the current run and keep it in the chat history."""
+    state = st.session_state
+    result: RunResult = state.result
+    context: RunContext = state.context
+    reply = ask_about_run(
+        question,
+        [(q, a) for q, a in state.chat if a],
+        result,
+        {line.line_no: line.raw for line in context.parsed.lines},
+        OpenRouterLLM(effective_config()),
+        context.settings.token_budget,
+    )
+    state.chat.append((question, reply.answer or ""))
+    if reply.error:
+        state.chat_error = reply.error
+    if reply.usage is not None:
+        state.result = result.model_copy(
+            update={"usage": merge_usage([*result.usage, reply.usage])}
+        )
+
+
+def _chat() -> None:
+    """Sidebar chat about this run only (plan 17.4)."""
+    chat: list[tuple[str, str]] = _session("chat", [])
+    for question, answer in chat:
+        st.markdown(f"**You:** {ui.md(question)}")
+        st.markdown(ui.md(answer) if answer else "_No answer._")
+    if error := st.session_state.pop("chat_error", None):
+        st.warning(ui.md(error))
+    with st.form("chat_form", clear_on_submit=True, border=False):
+        question = st.text_input(
+            "Ask about this run", max_chars=MAX_QUESTION_CHARS, placeholder="Why is ISS-1 critical?"
+        )
+        if st.form_submit_button("Ask") and question.strip():
+            _ask_about_run(question.strip())
+            st.rerun()
+
+
 def _assistant(config: AppConfig) -> None:
-    """Sidebar: what has happened in Slack and JIRA since this run posted (plan 17.2)."""
+    """Sidebar: a chat about this run (17.4), and Slack and JIRA updates since it (17.2)."""
     result: RunResult = st.session_state.result
     with st.sidebar:
         st.subheader("Assistant")
+        _chat()
+        st.markdown("**Since the run**")
         if not (result.slack.sent or any(t.sent for t in result.tickets)):
             st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
             return
