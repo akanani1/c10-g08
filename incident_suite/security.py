@@ -1,19 +1,23 @@
-"""Upload checks before anything is read, and a per-session limit on runs.
+"""Upload checks before anything is read, limits on runs, and the admin passcode check.
 
 Escaping for the screen lives in ``ui.py`` and for Slack and JIRA in ``integrations/payloads.py``.
 """
 
 from __future__ import annotations
 
+import hmac
 import re
 import time
 import unicodedata
 from collections import deque
 
+from pydantic import SecretStr
+
 ALLOWED_EXTENSIONS = frozenset({"log", "txt", "jsonl", "ndjson", "json", "csv", "tsv", "parquet"})
 MAX_DISPLAY_NAME = 120
 RUNS_PER_WINDOW = 5
 WINDOW_SECONDS = 600
+SHARED_RUNS_PER_HOUR = 60  # across every visitor, to protect the model credit
 _UNSAFE_NAME_CHARS = re.compile(r"[^\w.\- ()\[\]]")
 
 
@@ -75,3 +79,10 @@ class RunLimiter:
             msg = f"That's {self._max_runs} runs in a few minutes. Try again in {wait} s."
             raise RateLimitError(msg)
         self._started.append(now)
+
+
+def passcode_ok(entered: str, expected: SecretStr | None) -> bool:
+    """True when ``entered`` matches the admin passcode. Compared in constant time."""
+    if expected is None or not entered:
+        return False
+    return hmac.compare_digest(entered.encode(), expected.get_secret_value().encode())

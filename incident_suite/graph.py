@@ -26,6 +26,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any, TypedDict
+from uuid import UUID, uuid4
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
@@ -93,6 +94,8 @@ class RunContext:
     retriever: RunbookRetriever
     tracker: TicketTracker | None = None
     messenger: Messenger | None = None
+    trace_id: UUID | None = None
+    trace_url: str | None = None
 
 
 class RunState(TypedDict, total=False):
@@ -264,6 +267,8 @@ def notify_plan(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]
         ctx.parsed.name,
         state["run_id"],
     )
+    if plan.post and ctx.trace_url is not None:
+        plan = plan.model_copy(update={"trace_url": ctx.trace_url})
     steps.append(_step("notification", started, plan.reason))
     return {"notification": plan, "steps": steps}
 
@@ -325,8 +330,15 @@ def send(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
     ]
     if slack.error:
         errors.append(f"Slack: {slack.error}")
-    if ctx.tracker is not None and slack.permalink is not None:
-        links = [(slack.permalink, f"Slack: incident summary ({state['run_id']})")]
+    links = [
+        (url, f"{title} ({state['run_id']})")
+        for url, title in (
+            (slack.permalink, "Slack: incident summary"),
+            (ctx.trace_url, "LangSmith trace"),
+        )
+        if url is not None
+    ]
+    if ctx.tracker is not None and links:
         errors += link_back(tickets, links, ctx.tracker)
     sent = sum(1 for t in tickets if t.sent)
     detail = f"{sent} ticket action(s); Slack {'posted' if slack.sent else 'not posted'}"
@@ -399,8 +411,17 @@ def connect_services(
 OnStep = Callable[[RunStep], None]
 
 
-def _config(run_id: str) -> RunnableConfig:
-    return RunnableConfig(configurable={"thread_id": run_id})
+def _config(run_id: str, trace_id: UUID | None = None) -> RunnableConfig:
+    """Checkpoint thread, plus a name and tags so the run is easy to find in LangSmith."""
+    config = RunnableConfig(
+        configurable={"thread_id": run_id},
+        run_name=f"incident-suite {run_id}",
+        tags=["incident-suite"],
+        metadata={"run_id": run_id},
+    )
+    if trace_id is not None:
+        config["run_id"] = trace_id
+    return config
 
 
 def _drive(
@@ -409,10 +430,11 @@ def _drive(
     context: RunContext,
     run_id: str,
     on_step: OnStep | None,
+    trace_id: UUID | None = None,
 ) -> None:
     """Run the graph, telling ``on_step`` about each step as soon as its node finishes."""
     for update in graph.stream(
-        graph_input, _config(run_id), context=context, stream_mode="updates"
+        graph_input, _config(run_id, trace_id), context=context, stream_mode="updates"
     ):
         for node_update in update.values():
             if on_step is not None and isinstance(node_update, dict):
@@ -427,7 +449,7 @@ def start_run(
     on_step: OnStep | None = None,
 ) -> RunResult:
     """Run until the end, or until the approval gate pauses."""
-    _drive(graph, RunState(run_id=run_id), context, run_id, on_step)
+    _drive(graph, RunState(run_id=run_id), context, run_id, on_step, context.trace_id)
     return result_of(graph, context, run_id)
 
 
@@ -475,6 +497,7 @@ def result_of(
         slack=state.get("slack", SlackOutcome()),
         usage=merge_usage(state.get("usage", [])),
         steps=state.get("steps", []),
+        trace_url=context.trace_url,
         dry_run=not context.settings.live,
         errors=[*parsed.warnings, *state.get("errors", [])],
     )
@@ -510,6 +533,8 @@ def _print(result: RunResult) -> None:
     tokens = sum(u.input_tokens + u.output_tokens for u in result.usage)
     ending = "Dry run: nothing was sent." if result.dry_run else f"Approval: {result.approval}."
     print(f"\n{tokens} tokens, ${cost:.4f}. {ending}")
+    if result.trace_url:
+        print(f"Trace: {result.trace_url}")
 
 
 def _ask(result: RunResult) -> bool:
@@ -531,7 +556,7 @@ def main(argv: list[str] | None = None) -> int:
     from incident_suite.config import load_config  # noqa: PLC0415
     from incident_suite.parsing.readers import ReadError, parse_upload  # noqa: PLC0415
     from incident_suite.rag.runbooks import load_runbooks  # noqa: PLC0415
-    from incident_suite.telemetry import new_run_id  # noqa: PLC0415
+    from incident_suite.telemetry import enable_tracing, new_run_id, trace_link  # noqa: PLC0415
 
     parser = argparse.ArgumentParser(prog="python -m incident_suite.graph")
     parser.add_argument("path", type=Path, help="log file to analyse")
@@ -551,6 +576,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     settings = RunSettings.from_config(config).model_copy(update={"live": args.live})
     tracker, messenger = connect_services(config, settings)
+    trace_id = uuid4() if enable_tracing(config) else None
     context = RunContext(
         parsed=parsed,
         settings=settings,
@@ -558,6 +584,8 @@ def main(argv: list[str] | None = None) -> int:
         retriever=RunbookRetriever(load_runbooks(), make_embeddings(config)),
         tracker=tracker,
         messenger=messenger,
+        trace_id=trace_id,
+        trace_url=trace_link(config, trace_id) if trace_id else None,
     )
     graph, run_id = build_graph(), new_run_id()
     try:

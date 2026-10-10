@@ -4,7 +4,7 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator, the Slack and JIRA clients and the app screens are done. Tracing and the evaluation come next. Links, screenshots and results get filled in as each part lands.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator, the Slack and JIRA clients, the app screens, tracing and the evaluation script are done. The evaluation results come next. Links, screenshots and results get filled in as each part lands.
 
 | | |
 |---|---|
@@ -151,6 +151,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 50) |
 | `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (0 to 3) |
 | `RUN_TOKEN_BUDGET` | no | `200000` | Token cap per run |
+| `ADMIN_PASSCODE` | no | | When set, live sending in the app needs this passcode. Everyone else gets a dry run |
 
 Models must be on the allow-list in `incident_suite/config.py`, which also holds their prices for the cost panel. Set a credit limit on your OpenRouter key. Free (`:free`) models work for trying things out, but they're rate-limited.
 
@@ -177,7 +178,7 @@ Both clients wait and retry when Slack or JIRA is busy (429 or 5xx), up to three
 - Install the Jira Cloud app in Slack, so ticket links show previews and can be updated from Slack.
 - Add two Jira Automation rules to the project: when an issue labelled `incident-suite` moves to Done, or gets assigned, send a message to the channel through a Slack incoming webhook.
 
-**LangSmith:** set `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT`.
+**LangSmith:** set `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT`. Each run then gets a trace, and its link shows in the app's Cost tab, at the bottom of the Slack summary and as a link on each JIRA ticket. The trace holds the redacted log text the agents saw.
 
 ## Supported log formats
 
@@ -214,15 +215,28 @@ All of them are written by `sample_logs/make_samples.py`, so the line numbers in
 
 `data/runbooks/` holds the 15 runbooks the Remediation agent searches.
 
+To score the agents against `labels.json`, run all 17 samples through the real models (dry runs, so nothing is sent; about $0.10 to $0.30):
+
+```bash
+python eval/run_eval.py
+python eval/run_eval.py --only payment_db_conn_refused.log    # just one
+```
+
+It prints this table and one row per log, ready to paste here. An expected issue counts as found when a found issue shares an evidence line, or else has the same service, or else has the label's signature hint in its title.
+
 Results (filled in after the eval run):
 
 | Metric | Result |
 |---|---|
+| Issues found | _tbd_ |
 | Category accuracy | _tbd_ |
 | Severity accuracy | _tbd_ |
+| Fix mentions the key idea | _tbd_ |
 | Critical issues correctly ticketed | _tbd_ |
-| Average cost per run | _tbd_ |
-| 50k-row log: patterns / tokens / cost | _tbd_ |
+| Tickets that shouldn't have been opened | _tbd_ |
+| Slack decision right | _tbd_ |
+| Average per run: tokens / cost / time | _tbd_ |
+| 50k-row log: patterns / tokens / cost / time | _tbd_ |
 
 ## Security
 
@@ -230,9 +244,9 @@ Results (filled in after the eval run):
 - **Redaction:** emails, tokens, JWTs, AWS keys, private keys and `password=`-style values are masked before the model sees the log, and only the masked text is shown or sent. This is pattern-based, so unusual formats can slip through.
 - **Log content is data,** never instructions to the model. The agents have no tools that run commands or open URLs.
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
-- **Limits:** 5 runs per 10 minutes per visitor, a token budget per run, at most 3 tickets, and one retry per issue.
+- **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets, and one retry per issue.
 - **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
-- **The public deployment** keeps Slack and JIRA switched off.
+- **The public deployment** keeps Slack and JIRA switched off. When we switch them on for the demo, `ADMIN_PASSCODE` keeps visitors on a dry run.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.
 
 To report a problem, see [SECURITY.md](.github/SECURITY.md).
@@ -265,6 +279,7 @@ incident_suite/
   integrations/         Slack and JIRA clients
 data/runbooks/          runbooks the Remediation agent searches
 sample_logs/            17 sample logs, labels.json and the script that makes them
+eval/run_eval.py        scores the agents on the sample logs
 tests/                  unit tests that mirror the package, and integration tests
 docs/                   build plan, QA checklist, demo video script
 
@@ -288,8 +303,8 @@ pytest -m live                                # real OpenRouter calls (needs the
 CI runs these on every push and pull request:
 
 ```bash
-ruff check app.py incident_suite tests sample_logs
-ruff format --check app.py incident_suite tests sample_logs
+ruff check app.py incident_suite eval tests sample_logs
+ruff format --check app.py incident_suite eval tests sample_logs
 mypy
 vulture
 bandit -q -c pyproject.toml -r app.py incident_suite

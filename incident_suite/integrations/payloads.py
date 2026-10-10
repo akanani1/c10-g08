@@ -124,12 +124,10 @@ def slack_summary(plan: NotificationPlan, tickets: Sequence[TicketOutcome]) -> J
     if lines:
         text = _cut("*JIRA*\n" + "\n".join(lines), SLACK_SECTION_CHARS)
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
-    blocks.append(
-        {
-            "type": "context",
-            "elements": [{"type": "mrkdwn", "text": "Checklist and fixes in the thread."}],
-        }
-    )
+    context = "Checklist and fixes in the thread."
+    if plan.trace_url is not None:
+        context += f" <{plan.trace_url}|Trace in LangSmith>"
+    blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": context}]})
     return {
         "text": slack_escape(first),
         "blocks": blocks,

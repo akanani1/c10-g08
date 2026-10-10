@@ -346,6 +346,7 @@ class NotificationPlan(StrictModel):
     reason: str
     summary: str = ""
     thread: str = ""
+    trace_url: str | None = Field(default=None, pattern=r"^https://")
 
 
 class SlackOutcome(StrictModel):

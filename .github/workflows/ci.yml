@@ -36,8 +36,8 @@ jobs:
           git diff --exit-code -- requirements.txt
       - name: Lint (Ruff)
         run: |
-          ruff check app.py incident_suite tests sample_logs
-          ruff format --check app.py incident_suite tests sample_logs
+          ruff check app.py incident_suite eval tests sample_logs
+          ruff format --check app.py incident_suite eval tests sample_logs
       - name: Types (mypy)
         run: mypy
       - name: Dead code (Vulture)

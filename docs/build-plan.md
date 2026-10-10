@@ -4,7 +4,7 @@ Version 10, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H5 are merged, and the Slack and JIRA clients passed a live test on 10 Oct. H6 to H7, the Streamlit UI, is in review. Next up is H8: LangSmith, the eval and the security pass. Section 16 has the full timeline.
+**Status:** H1 to H7 are merged, and the Slack and JIRA clients passed a live test on 10 Oct. H8 (tracing, the eval script and the security pass) is in review. Next: Gulam runs the eval, Raphael redeploys, then the extras in section 17. Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -315,7 +315,8 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - **No made-up numbers.** Everything on the page comes from the current run. There are no fleet KPIs or trend charts, because we store no history of runs.
 - `app.py` builds the page. Small functions that prepare things for display (escaping, badges, confidence reasons, the graph picture, the tables) live in `incident_suite/ui.py`, so they can be unit-tested. Log text goes through `ui.md()` before it reaches `st.markdown`: markdown, HTML and links are escaped, and URLs are defanged. Tables and code blocks show text as it is.
 - **A paused run survives reruns.** The compiled graph and the run's context are kept in `st.session_state`, so Approve resumes the same run. The checkpointer only turns our own state models back into objects (an allow-list in `graph.py`).
-- **Abuse limit:** each visitor can start 5 runs per 10 minutes (`RunLimiter` in `security.py`).
+- **Abuse limits:** each visitor can start 5 runs per 10 minutes, and all visitors together 60 an hour, so opening new sessions doesn't get around it (`RunLimiter` in `security.py`).
+- **Live sending needs the passcode.** When `LIVE_INTEGRATIONS=true` and `ADMIN_PASSCODE` is set, the sidebar asks for the passcode. Without it the visitor gets a dry run, and their run never contacts Slack or JIRA.
 - **Without a key** the page still loads, and Analyse explains that `OPENROUTER_API_KEY` is needed.
 - The sidebar shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
 
@@ -328,8 +329,8 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - **Redaction:** secrets and personal data are masked before the model sees anything (section 7.5).
 - **Approval:** a person approves before anything is written to Slack or JIRA (section 4).
 - **Uploads:** allowed types, size and row caps, a safe display name, and nothing is saved under the user's file name (section 7.4).
-- **Abuse limits:** 5 runs per 10 minutes per visitor, a token budget per run (200,000 by default), at most 3 tickets per run, and one retry per issue.
-- **Live integrations** are off on the public app. We only switch them on for the recorded demo.
+- **Abuse limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run (200,000 by default), at most 3 tickets per run, and one retry per issue.
+- **Live integrations** are off on the public app. We only switch them on for the recorded demo, and then `ADMIN_PASSCODE` keeps every other visitor on a dry run.
 - **Escaping:** everything sent to Slack or JIRA is escaped, and links are never built from log content.
 - **Least privilege:** the Slack bot only has `chat:write`. The JIRA account only needs the SCRUM project. The OpenRouter key has a credit limit and is revoked after the hackathon.
 - **Dependencies** are pinned. pip-audit and Bandit run in CI, and Dependabot opens update PRs every week.
@@ -342,6 +343,7 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - Each issue keeps its evidence lines, both the numbers and the text.
 - Each fix names the issue ID it belongs to and the runbooks it used.
 - Each run has a run ID (`run-20261010-141502-a1b2c3`) and a fingerprint of the log. Both appear in the app, in Slack and in JIRA, next to the trace link.
+- **The trace link.** We choose each run's trace ID ourselves, before the run starts, so the link is known even when a run sends straight away. `trace_link()` in `telemetry.py` makes sure the LangSmith project exists and builds the URL from the project's address and that ID. The link goes into the app's Cost tab, the Slack summary and a remote link on each JIRA ticket. If LangSmith can't be reached, the run carries on without a link. The trace holds the redacted log text the agents saw, nothing more.
 - Slack links to JIRA and JIRA links back to Slack, so you can start from either one.
 
 **Cost:** tokens, cost and time are recorded per agent, including failed calls, using the prices in section 3.
@@ -376,7 +378,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 50) |
 | `MAX_TICKETS_PER_RUN` | No | `3` | Ticket cap (0 to 3) |
 | `RUN_TOKEN_BUDGET` | No | `200000` | Tokens per run (up to 500,000) |
-| `ADMIN_PASSCODE` | No | | Unlocks live sending after prompts are edited, and the assistant's Slack and JIRA tools (section 17) |
+| `ADMIN_PASSCODE` | No | | When set, live sending in the app needs it. It also unlocks live sending after prompts are edited, and the assistant's Slack and JIRA tools (section 17) |
 
 **Run settings.** `RunSettings` in `state.py` holds every per-run option: the model and prompt for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the config for each new session and travels with the run, and the agents read from it, never from the config directly. The settings page (section 17.1) only has to produce a valid `RunSettings`.
 
@@ -420,7 +422,7 @@ c10-g08/
 │       └── payloads.py           Slack blocks and JIRA documents, pure functions
 ├── data/runbooks/                15 markdown runbooks
 ├── sample_logs/                  17 sample logs, labels.json and make_samples.py, which generates them all
-├── eval/run_eval.py              accuracy report for the README (planned)
+├── eval/run_eval.py              accuracy report for the README
 ├── tests/
 │   ├── conftest.py               shared fakes: model, embeddings, JIRA tracker, Slack messenger
 │   ├── unit/                     mirrors the package
@@ -467,7 +469,7 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 - No commented-out code, notebooks or scratch files.
 - Agents return Pydantic models. If an agent fails, the user sees a clear message and the run carries on where it can. No stack traces on screen.
 
-**Eval** (`eval/run_eval.py`, Gulam runs it): category accuracy, severity accuracy, critical recall (was a ticket opened when it should have been), and average tokens, cost and time per run. The results table goes into the README.
+**Eval** (`eval/run_eval.py`, Gulam runs it with `python eval/run_eval.py`): it runs every sample as a dry run with the real models and compares the result with `labels.json`. It reports issues found, category accuracy, severity accuracy, whether the fix mentions the label's key idea, critical recall (was a ticket planned when it should have been), tickets that shouldn't have been opened, the Slack decision, and average tokens, cost and time per run, plus the 50k-row log on its own. An expected issue counts as found when a found issue shares an evidence line, or else has the same service, or else has the signature hint in its title. The scoring is unit-tested without a key. The results table goes into the README.
 
 **Sample logs.** There are 17 of them, all generated by `sample_logs/make_samples.py` so the line numbers in `labels.json` always match. A test fails if the files and the script ever disagree.
 
@@ -520,8 +522,8 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H3 | Log Reader, runbook search, Remediation, Cookbook, JIRA and Notification plans; sample logs and runbooks | Done |
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
-| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | In review. Deploy after merge |
-| H8 | LangSmith, eval run, clean-code and security pass | Next |
+| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
+| H8 | LangSmith, eval run, clean-code and security pass | In review. Gulam runs the eval after merge |
 | Extras | Section 17, in order, until the freeze | |
 
 **Sunday 11 Oct (IST)**
@@ -692,8 +694,9 @@ We record at 1080p and upload it unlisted.
 | 10 Oct | H5: the JIRA agent now gets a `TicketDraft` (issue, fix, pattern, run ID), so comments can give the count and time window. Regression links and the link back to Slack are separate steps that can fail without losing the ticket. The shared retry helper lives in `integrations/__init__.py`. Log text goes to Slack as plain text with URLs defanged. The command line gets `--live`, which asks before sending |
 | 10 Oct | All four keys checked with a read-only script, then a live run on the payment sample. Our JIRA project key is `SCRUM`, not `OPS`. The sync instruction in section 15 changes, because `git reset origin/main` leaves old files on disk |
 | 11 Oct | H6 to H7: the graph streams each step to the page, so the picture lights up live. 5 runs per 10 minutes per visitor. The checkpointer only restores our own state models |
+| 11 Oct | H8: we choose the trace ID before each run, so the LangSmith link goes into the app, Slack and JIRA. The eval script scores against `labels.json` and prints the README table. Security pass: when `ADMIN_PASSCODE` is set, live sending needs it; a shared cap of 60 runs an hour; file names, errors and the service name in the Remediation prompt are now escaped. `langsmith` is declared as a direct dependency |
 
-**Still open:** the Streamlit Cloud deploy with this UI (Raphael), and the eval run (Gulam).
+**Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
 ---
 
