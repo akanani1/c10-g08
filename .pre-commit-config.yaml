@@ -1,0 +1,46 @@
+# Install once with `make setup` (or `pre-commit install`). Runs on every commit.
+default_language_version:
+  python: python3
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: detect-private-key
+        # The redaction tests plant fake keys on purpose
+        exclude: ^tests/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.0
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # mypy needs the project's dependencies, so it runs from the project venv:
+  # activate .venv before committing code. Only runs when app or package code changes.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: python -m mypy
+        language: system
+        files: ^(app\.py|incident_suite/|tests/)
+        pass_filenames: false

@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # pyproject.toml is the source; after merging, run `make lock` so requirements*.txt follow.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      langchain:
+        patterns: ["langchain*", "langgraph*", "langsmith"]
+      dev-tools:
+        patterns: ["ruff", "mypy", "pytest*", "bandit", "vulture", "pip-audit", "pip-tools", "pre-commit"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

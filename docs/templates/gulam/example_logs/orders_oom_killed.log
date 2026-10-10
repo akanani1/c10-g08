@@ -1,0 +1,11 @@
+Oct  9 14:10:01 node-7 kubelet[1123]: I1009 14:10:01.204551 pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=612Mi limit=768Mi
+Oct  9 14:11:01 node-7 kubelet[1123]: I1009 14:11:01.198230 pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=701Mi limit=768Mi
+Oct  9 14:11:30 node-7 orders[4410]: WARN cache: product cache size 1.9M entries, eviction disabled
+Oct  9 14:12:01 node-7 kubelet[1123]: W1009 14:12:01.201877 pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=761Mi limit=768Mi
+Oct  9 14:12:09 node-7 kernel: [812345.112233] Memory cgroup out of memory: Killed process 4410 (java) total-vm:2457600kB, anon-rss:786432kB
+Oct  9 14:12:09 node-7 kubelet[1123]: E1009 14:12:09.551002 pod="shop/orders-6d9f7c-xk2lp" container="orders" state=Terminated reason=OOMKilled exitCode=137
+Oct  9 14:12:10 node-7 kubelet[1123]: I1009 14:12:10.004118 pod="shop/orders-6d9f7c-xk2lp" container="orders" restartCount=1 Back-off restarting
+Oct  9 14:12:31 node-7 orders[5122]: INFO Started OrdersApplication in 19.8 seconds
+Oct  9 14:14:02 node-7 kubelet[1123]: W1009 14:14:02.300114 pod="shop/orders-6d9f7c-xk2lp" container="orders" memory_working_set=755Mi limit=768Mi
+Oct  9 14:14:20 node-7 kernel: [812476.004411] Memory cgroup out of memory: Killed process 5122 (java) total-vm:2457600kB, anon-rss:786120kB
+Oct  9 14:14:20 node-7 kubelet[1123]: E1009 14:14:20.410009 pod="shop/orders-6d9f7c-xk2lp" container="orders" state=Terminated reason=OOMKilled exitCode=137

@@ -30,3 +30,6 @@ coverage.xml
 build/
 dist/
 Thumbs.db
+
+# Example logs in the team templates are tracked too
+!docs/templates/**/*.log

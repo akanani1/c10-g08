@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/akanani1/c10-g08/sample_logs/labels.schema.json",
+  "title": "Incident Suite sample log labels",
+  "description": "Ground truth for eval/run_eval.py: what the agents should find in each sample log. Line numbers are 1-based. For text and JSON-lines files they are file line numbers; for CSV, TSV, Parquet and JSON documents they are data row numbers (the CSV/TSV header row is not counted, the first record is row 1).",
+  "type": "object",
+  "required": ["version", "logs"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "logs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/log" }
+    }
+  },
+  "$defs": {
+    "severity": { "enum": ["low", "medium", "high", "critical"] },
+    "category": {
+      "enum": [
+        "database", "memory", "disk", "tls", "auth", "http_5xx", "timeout",
+        "crash_loop", "config", "rate_limit", "dns", "queue", "other"
+      ]
+    },
+    "lines": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 },
+      "uniqueItems": true
+    },
+    "log": {
+      "type": "object",
+      "required": ["file", "format", "scenario", "expected_top_severity", "expect_ticket", "expect_slack", "expected_issues"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.(log|txt|jsonl|ndjson|json|csv|tsv|parquet)(\\.gz)?$",
+          "description": "File name inside sample_logs/"
+        },
+        "format": {
+          "enum": [
+            "plain", "nginx_access", "nginx_error", "syslog", "kubernetes",
+            "json_lines", "json_document", "csv", "tsv", "parquet"
+          ],
+          "description": "The inner format. For .gz files, the format after decompressing"
+        },
+        "compressed": { "type": "boolean", "default": false },
+        "generated": {
+          "type": "boolean",
+          "default": false,
+          "description": "True for files made by sample_logs/make_samples.py (Parquet, gzip, the 50k log)"
+        },
+        "scenario": { "type": "string", "minLength": 10, "description": "One sentence: what happened" },
+        "expected_top_severity": {
+          "anyOf": [{ "$ref": "#/$defs/severity" }, { "const": "none" }],
+          "description": "The worst severity across expected_issues, or none for a healthy log"
+        },
+        "expect_ticket": { "type": "boolean", "description": "True if and only if at least one issue is critical" },
+        "expect_slack": { "type": "boolean", "description": "True if and only if at least one issue is medium or worse" },
+        "expected_issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issue" }
+        },
+        "context_lines": {
+          "$ref": "#/$defs/lines",
+          "description": "Non-error lines that explain the cause, e.g. a deploy or config change just before the errors"
+        },
+        "noise_lines": {
+          "$ref": "#/$defs/lines",
+          "description": "Harmless WARN/ERROR lines the agents should NOT report as issues (tests false positives)"
+        },
+        "same_signature_as": {
+          "type": "string",
+          "description": "For repeat logs: the file whose critical issue has the same signature (tests JIRA dedupe)"
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "required": ["category", "severity", "evidence_lines", "signature_hint"],
+      "additionalProperties": false,
+      "properties": {
+        "category": { "$ref": "#/$defs/category" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "evidence_lines": {
+          "allOf": [{ "$ref": "#/$defs/lines" }, { "minItems": 1 }],
+          "description": "Every line or row that shows this issue. For big generated logs, a representative sample of up to 10"
+        },
+        "service": { "type": "string" },
+        "signature_hint": {
+          "type": "string",
+          "minLength": 3,
+          "description": "A short phrase from the main error lines, e.g. 'Connection refused'. Helps the eval match a found issue to this one"
+        },
+        "expected_fix_keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Words a good fix should mention, e.g. ['pool', 'max_size']. Used for a rough fix-quality score"
+        }
+      }
+    }
+  }
+}

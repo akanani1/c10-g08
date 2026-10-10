@@ -1,0 +1,16 @@
+[server]
+# Upload cap in MB. incident_suite also enforces MAX_UPLOAD_MB and post-read caps.
+maxUploadSize = 5
+runOnSave = false
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "type"
+toolbarMode = "viewer"
+
+[theme]
+base = "dark"
+primaryColor = "#F97316"
+font = "sans serif"
