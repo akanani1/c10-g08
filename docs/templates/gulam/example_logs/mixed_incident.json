@@ -1,0 +1,12 @@
+{
+  "source": "export from log aggregator",
+  "logs": [
+    {"@timestamp": "2026-10-09T15:00:00Z", "severity": "INFO", "app": "checkout", "message": "Deploy started: checkout v5.2.0", "trace_id": null},
+    {"@timestamp": "2026-10-09T15:00:40Z", "severity": "INFO", "app": "checkout", "message": "Deploy finished: checkout v5.2.0", "trace_id": null},
+    {"@timestamp": "2026-10-09T15:01:02Z", "severity": "ERROR", "app": "checkout", "message": "Connection refused to orders-db.internal:5432", "trace_id": "c-1001"},
+    {"@timestamp": "2026-10-09T15:01:03Z", "severity": "ERROR", "app": "checkout", "message": "Connection refused to orders-db.internal:5432", "trace_id": "c-1002"},
+    {"@timestamp": "2026-10-09T15:01:09Z", "severity": "WARN", "app": "checkout", "message": "Call to inventory-svc timed out after 5000ms", "trace_id": "c-1003", "http": {"status": 504}},
+    {"@timestamp": "2026-10-09T15:01:15Z", "severity": "ERROR", "app": "api-gateway", "message": "Upstream checkout returned 503", "trace_id": "c-1004", "http": {"status": 503}},
+    {"@timestamp": "2026-10-09T15:01:16Z", "severity": "ERROR", "app": "api-gateway", "message": "Upstream checkout returned 503", "trace_id": "c-1005", "http": {"status": 503}}
+  ]
+}

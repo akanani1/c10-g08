@@ -1,0 +1,6 @@
+time	lvl	host	msg	upstream_ms
+2026-10-09T17:00:01Z	INFO	web-1	GET /search?q=shoes 200	120
+2026-10-09T17:00:02Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:03Z	INFO	web-2	GET /search?q=bags 200	140
+2026-10-09T17:00:05Z	WARN	web-2	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000
+2026-10-09T17:00:06Z	WARN	web-1	upstream timed out (110: Connection timed out) while reading response header from upstream search-svc:9200	5000

@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "logs": [
+    {
+      "file": "payment_db_conn_refused.log",
+      "format": "plain",
+      "scenario": "DB pool shrunk to 5 by a deploy; payment-api can't reach Postgres and returns 503s.",
+      "expected_top_severity": "critical",
+      "expect_ticket": true,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "database",
+          "severity": "critical",
+          "evidence_lines": [7, 8, 9, 10, 12, 13, 15, 16, 17],
+          "service": "payment-api",
+          "signature_hint": "Connection refused to payments-db",
+          "expected_fix_keywords": ["pool", "max_size", "rollback"]
+        }
+      ],
+      "context_lines": [3, 4, 5, 6, 14]
+    },
+    {
+      "file": "orders_oom_killed.log",
+      "format": "kubernetes",
+      "scenario": "orders container grows past its 768Mi limit and is OOMKilled twice.",
+      "expected_top_severity": "critical",
+      "expect_ticket": true,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "memory",
+          "severity": "critical",
+          "evidence_lines": [5, 6, 10, 11],
+          "service": "orders",
+          "signature_hint": "OOMKilled",
+          "expected_fix_keywords": ["memory limit", "heap", "cache"]
+        }
+      ],
+      "context_lines": [1, 2, 3, 4, 9]
+    },
+    {
+      "file": "nginx_5xx_spike.log",
+      "format": "nginx_access",
+      "scenario": "502/503/504 spike on POST /api/checkout; other endpoints are fine.",
+      "expected_top_severity": "high",
+      "expect_ticket": false,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "http_5xx",
+          "severity": "high",
+          "evidence_lines": [3, 4, 6, 7, 8, 10],
+          "service": "checkout",
+          "signature_hint": "POST /api/checkout",
+          "expected_fix_keywords": ["upstream", "health"]
+        }
+      ],
+      "noise_lines": [9]
+    },
+    {
+      "file": "gateway_tls_expired.jsonl",
+      "format": "json_lines",
+      "scenario": "Gateway certificate expires at midnight because ACME renewal failed; handshakes fail.",
+      "expected_top_severity": "high",
+      "expect_ticket": false,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "tls",
+          "severity": "high",
+          "evidence_lines": [2, 3, 4, 6, 7],
+          "service": "edge-gateway",
+          "signature_hint": "certificate",
+          "expected_fix_keywords": ["renew", "certificate", "ACME"]
+        }
+      ]
+    },
+    {
+      "file": "mixed_incident.json",
+      "format": "json_document",
+      "scenario": "After a checkout deploy: DB connections refused, inventory timeouts, and 503s at the gateway.",
+      "expected_top_severity": "critical",
+      "expect_ticket": true,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "database",
+          "severity": "critical",
+          "evidence_lines": [3, 4],
+          "service": "checkout",
+          "signature_hint": "Connection refused to orders-db"
+        },
+        {
+          "category": "timeout",
+          "severity": "medium",
+          "evidence_lines": [5],
+          "service": "checkout",
+          "signature_hint": "timed out"
+        },
+        {
+          "category": "http_5xx",
+          "severity": "high",
+          "evidence_lines": [6, 7],
+          "service": "api-gateway",
+          "signature_hint": "returned 503"
+        }
+      ],
+      "context_lines": [1, 2]
+    },
+    {
+      "file": "api_rate_limited.csv",
+      "format": "csv",
+      "scenario": "SMS provider rate-limits notify-svc; one batch is dropped after retries.",
+      "expected_top_severity": "medium",
+      "expect_ticket": false,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "rate_limit",
+          "severity": "medium",
+          "evidence_lines": [3, 4, 5, 6],
+          "service": "notify-svc",
+          "signature_hint": "429",
+          "expected_fix_keywords": ["backoff", "quota", "batch"]
+        }
+      ]
+    },
+    {
+      "file": "search_upstream_timeouts.tsv",
+      "format": "tsv",
+      "scenario": "Web tier times out reading from search-svc on port 9200.",
+      "expected_top_severity": "medium",
+      "expect_ticket": false,
+      "expect_slack": true,
+      "expected_issues": [
+        {
+          "category": "timeout",
+          "severity": "medium",
+          "evidence_lines": [2, 4, 5],
+          "service": "search-svc",
+          "signature_hint": "upstream timed out"
+        }
+      ]
+    }
+  ]
+}

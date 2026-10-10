@@ -1,0 +1,7 @@
+{"ts": "2026-10-09T23:40:00Z", "level": "info", "service": "edge-gateway", "msg": "TLS certificate check", "cert_cn": "api.shop.example", "days_left": 0}
+{"ts": "2026-10-09T23:45:00Z", "level": "warning", "service": "edge-gateway", "msg": "Certificate for api.shop.example expires in 15 minutes", "cert_cn": "api.shop.example"}
+{"ts": "2026-10-10T00:00:03Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "10.30.4.11", "request_id": "r-91a2"}
+{"ts": "2026-10-10T00:00:04Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "10.30.4.12", "request_id": "r-91a3"}
+{"ts": "2026-10-10T00:00:04Z", "level": "info", "service": "edge-gateway", "msg": "upstream pool healthy", "upstreams": 6}
+{"ts": "2026-10-10T00:00:06Z", "level": "error", "service": "edge-gateway", "msg": "TLS handshake failed: certificate has expired", "client": "10.30.4.19", "request_id": "r-91a7"}
+{"ts": "2026-10-10T00:01:00Z", "level": "error", "service": "cert-manager", "msg": "Renewal failed for api.shop.example: ACME challenge timed out", "code": "ACME_TIMEOUT"}
