@@ -335,6 +335,8 @@ class AgentUsage(StrictModel):
     """Tokens, cost and time spent by one agent in one run."""
 
     agent: str
+    model: str | None = None
+    calls: int = Field(default=0, ge=0)
     input_tokens: int = Field(default=0, ge=0)
     output_tokens: int = Field(default=0, ge=0)
     cost_usd: float = Field(default=0.0, ge=0)

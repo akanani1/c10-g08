@@ -221,6 +221,7 @@ numpy==2.5.3
 openai==3.28.0
     # via
     #   -c requirements.txt
+    #   incident-suite (pyproject.toml)
     #   langchain-openai
 orjson==3.13.0
     # via
@@ -336,6 +337,7 @@ pyyaml==6.0.3
     # via
     #   -c requirements.txt
     #   bandit
+    #   incident-suite (pyproject.toml)
     #   langchain-core
     #   pre-commit
 referencing==0.37.0
@@ -413,6 +415,8 @@ truststore==0.10.4
     #   -c requirements.txt
     #   httpcore2
     #   httpx2
+types-pyyaml==6.0.12.20260906
+    # via incident-suite (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   -c requirements.txt
