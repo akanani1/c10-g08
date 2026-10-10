@@ -12,11 +12,21 @@ from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, SecretStr
 
 from incident_suite.agents import LLMError, LLMReply, SchemaT, StructuredLLM
+from incident_suite.agents.jira_agent import ExistingTicket, TicketTracker, TrackerError
+from incident_suite.agents.notification import Messenger
 from incident_suite.config import AppConfig
-from incident_suite.state import RunSettings
+from incident_suite.state import (
+    Issue,
+    NotificationPlan,
+    Remediation,
+    RunSettings,
+    SlackOutcome,
+    TicketOutcome,
+)
 
 LLMCall = tuple[str, str, str]  # (model, system prompt, user message)
 MakeLLM = Callable[[Sequence[BaseModel | LLMError]], tuple[StructuredLLM, list[LLMCall]]]
+TrackerCall = tuple[str, str]  # (method, what it was called with)
 
 
 class _FakeLLM:
@@ -37,6 +47,60 @@ class _FakeLLM:
             msg = f"queued {type(answer).__name__}, agent asked for {schema.__name__}"
             raise TypeError(msg)
         return LLMReply(answer, model, input_tokens=1000, output_tokens=200, seconds=0.5)
+
+
+class _FakeTracker:
+    """In-memory JIRA. ``existing`` maps signature hashes to tickets; ``fail`` breaks a method."""
+
+    def __init__(self, existing: dict[str, ExistingTicket], fail: str | None) -> None:
+        self.existing = existing
+        self.fail = fail
+        self.calls: list[TrackerCall] = []
+        self._next = 100
+
+    def _maybe_fail(self, method: str) -> None:
+        if self.fail == method:
+            msg = "JIRA returned 503"
+            raise TrackerError(msg)
+
+    def find_latest(self, signature_hash: str) -> ExistingTicket | None:
+        self.calls.append(("find", signature_hash))
+        self._maybe_fail("find")
+        return self.existing.get(signature_hash)
+
+    def create(
+        self,
+        issue: Issue,
+        remediation: Remediation | None,  # noqa: ARG002 - part of the interface
+        run_id: str,  # noqa: ARG002 - part of the interface
+        regression_of: str | None,
+    ) -> tuple[str, str]:
+        self.calls.append(("create", f"{issue.id}<-{regression_of or '-'}"))
+        self._maybe_fail("create")
+        self._next += 1
+        return f"OPS-{self._next}", f"https://team.atlassian.example/browse/OPS-{self._next}"
+
+    def comment(self, key: str, issue: Issue, run_id: str) -> None:  # noqa: ARG002
+        self.calls.append(("comment", key))
+        self._maybe_fail("comment")
+
+
+class _FakeMessenger:
+    """In-memory Slack: records every post."""
+
+    def __init__(self, error: str | None) -> None:
+        self.error = error
+        self.posts: list[NotificationPlan] = []
+
+    def post(self, plan: NotificationPlan, tickets: Sequence[TicketOutcome]) -> SlackOutcome:  # noqa: ARG002
+        self.posts.append(plan)
+        if self.error:
+            return SlackOutcome(error=self.error)
+        return SlackOutcome(sent=True, permalink="https://slack.example/archives/C1/p1")
+
+
+MakeTracker = Callable[..., tuple[TicketTracker, list[TrackerCall]]]
+MakeMessenger = Callable[..., tuple[Messenger, list[NotificationPlan]]]
 
 
 class WordEmbeddings(Embeddings):
@@ -85,3 +149,27 @@ def make_llm() -> MakeLLM:
 def embeddings() -> Embeddings:
     """Offline embeddings where shared words mean similarity."""
     return WordEmbeddings()
+
+
+@pytest.fixture
+def make_tracker() -> MakeTracker:
+    """``tracker, calls = make_tracker(existing={...}, fail="create")``."""
+
+    def make(
+        existing: dict[str, ExistingTicket] | None = None, fail: str | None = None
+    ) -> tuple[TicketTracker, list[TrackerCall]]:
+        fake = _FakeTracker(existing or {}, fail)
+        return fake, fake.calls
+
+    return make
+
+
+@pytest.fixture
+def make_messenger() -> MakeMessenger:
+    """``messenger, posts = make_messenger(error=None)``."""
+
+    def make(error: str | None = None) -> tuple[Messenger, list[NotificationPlan]]:
+        fake = _FakeMessenger(error)
+        return fake, fake.posts
+
+    return make

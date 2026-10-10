@@ -6,6 +6,7 @@ The LangSmith trace link joins this module when tracing is wired up (H8).
 from __future__ import annotations
 
 import secrets
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -66,3 +67,23 @@ class UsageMeter:
     def usage(self) -> AgentUsage:
         """The totals so far."""
         return self._usage
+
+
+def merge_usage(entries: Sequence[AgentUsage]) -> list[AgentUsage]:
+    """One row per agent, adding up repeated calls (Remediation runs again on a retry)."""
+    merged: dict[str, AgentUsage] = {}
+    for entry in entries:
+        current = merged.get(entry.agent)
+        if current is None:
+            merged[entry.agent] = entry
+            continue
+        merged[entry.agent] = current.model_copy(
+            update={
+                "calls": current.calls + entry.calls,
+                "input_tokens": current.input_tokens + entry.input_tokens,
+                "output_tokens": current.output_tokens + entry.output_tokens,
+                "cost_usd": current.cost_usd + entry.cost_usd,
+                "seconds": current.seconds + entry.seconds,
+            }
+        )
+    return list(merged.values())

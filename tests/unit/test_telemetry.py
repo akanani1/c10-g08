@@ -9,7 +9,8 @@ import pytest
 
 from incident_suite.agents import LLMError, LLMReply
 from incident_suite.agents.log_reader import ClassifierAnswer
-from incident_suite.telemetry import UsageMeter, cost_usd, new_run_id
+from incident_suite.state import AgentUsage
+from incident_suite.telemetry import UsageMeter, cost_usd, merge_usage, new_run_id
 
 
 def test_run_id_format_and_uniqueness() -> None:
@@ -36,3 +37,16 @@ def test_meter_adds_successes_and_failures() -> None:
     assert usage.seconds == pytest.approx(2.0)
     assert usage.cost_usd == pytest.approx((1_200 * 0.40 + 500 * 1.60) / 1_000_000)
     assert meter.tokens == 1_700
+
+
+def test_merge_usage_adds_up_per_agent() -> None:
+    entries = [
+        AgentUsage(agent="remediation", calls=2, input_tokens=100, output_tokens=10, cost_usd=0.1),
+        AgentUsage(agent="log_reader", calls=1, input_tokens=50, seconds=1.0),
+        AgentUsage(agent="remediation", calls=1, input_tokens=40, output_tokens=5, cost_usd=0.05),
+    ]
+    merged = {u.agent: u for u in merge_usage(entries)}
+    assert list(merged) == ["remediation", "log_reader"]
+    assert merged["remediation"].calls == 3
+    assert merged["remediation"].input_tokens == 140
+    assert merged["remediation"].cost_usd == pytest.approx(0.15)

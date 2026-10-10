@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib.resources import files
 
-PROMPT_NAMES = frozenset({"log_reader", "remediation"})
+PROMPT_NAMES = frozenset({"log_reader", "remediation", "cookbook"})
 
 
 def load_prompt(name: str) -> str:

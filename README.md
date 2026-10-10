@@ -128,6 +128,7 @@ pre-commit install                            # checks on every commit
 
 pytest                                        # tests, no API key needed
 pytest -m live                                # real OpenRouter calls (needs the key)
+python -m incident_suite.graph sample_logs/payment_db_conn_refused.log   # one full dry run with real models
 
 # What CI runs
 ruff check app.py incident_suite tests sample_logs
