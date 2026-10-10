@@ -17,7 +17,7 @@ from incident_suite.agents.jira_agent import TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
-from incident_suite.config import AppConfig
+from incident_suite.config import AdminOverrides, AppConfig, admin_overrides
 from incident_suite.prompts import load_prompt
 from incident_suite.state import Category, NotificationPlan, RunSettings, Severity
 
@@ -243,3 +243,55 @@ def test_edited_prompts_make_a_live_run_dry(
     assert any(i.value.startswith("Prompts were edited") for i in app.info)
     assert jira_calls == []
     assert "custom agent settings" in " ".join(c.value for c in app.sidebar.caption)
+
+
+# ------------------------------------------------------------------ admin card
+
+
+def test_admin_card_needs_a_passcode_on_the_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
+    page = _settings_page()
+    assert any("Set ADMIN_PASSCODE" in i.value for i in page.info)
+    assert not [b for b in page.button if b.label == "Save for everyone"]
+
+
+def test_admin_changes_apply_to_everyone_until_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(admin_passcode=SecretStr("open-sesame"), jira_project_key="SCRUM")
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+
+    page = _settings_page()
+    (entry,) = [t for t in page.text_input if t.key == "admin_entry"]
+    entry.input("wrong").run()
+    assert not [b for b in page.button if b.label == "Save for everyone"]
+
+    page = _settings_page()
+    (entry,) = [t for t in page.text_input if t.key == "admin_entry"]
+    page = entry.input("open-sesame").run()
+    (upload,) = [s for s in page.slider if s.key == "admin_max_upload_mb"]
+    upload.set_value(2)
+    (project,) = [t for t in page.text_input if t.key == "admin_jira_project_key"]
+    project.input("ops2")
+    page = _click(page.run(), "Save for everyone")
+
+    assert admin_overrides() == AdminOverrides(max_upload_mb=2, jira_project_key="OPS2")
+    assert "Saved for everyone" in page.info[-1].value
+    assert "max_upload_mb" in " ".join(c.value for c in page.caption)
+
+    visitor = _app()  # another session sees the change
+    assert "An admin changed some settings" in " ".join(c.value for c in visitor.sidebar.caption)
+
+    page = _click(page, "Back to defaults")
+    assert admin_overrides() == AdminOverrides()
+
+
+def test_admin_card_rejects_a_bad_project_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(admin_passcode=SecretStr("open-sesame"))
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    page = AppTest.from_file(str(SETTINGS_PAGE), default_timeout=30)
+    page.session_state["admin_ok"] = True
+    page = page.run()
+    (project,) = [t for t in page.text_input if t.key == "admin_jira_project_key"]
+    project.input("not a key!")
+    page = _click(page.run(), "Save for everyone")
+    assert "Not saved: jira_project_key" in page.info[-1].value
+    assert admin_overrides() == AdminOverrides()

@@ -123,6 +123,8 @@ The app opens at http://localhost:8501. Pick a sample log (or upload your own) a
 
 The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
 
+At the bottom of that page, the **Admin** card (needs `ADMIN_PASSCODE`) changes a few settings for every visitor: live mode, approval, the upload limit (up to 5 MB), tickets per run, the token budget, and the JIRA project and issue type. The values start from your `.env` or Streamlit secrets. A change lasts until the app sleeps, restarts or is redeployed. Keys, the JIRA site and account, and the Slack channel can only be set in the deployment's settings.
+
 To run one full analysis from the command line, as a dry run with real models:
 
 ```bash
@@ -150,7 +152,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `LANGSMITH_TRACING` | no | `false` | Turn tracing on |
 | `LANGSMITH_API_KEY` | no | | LangSmith key |
 | `LANGSMITH_PROJECT` | no | `c10-g08` | LangSmith project |
-| `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 50) |
+| `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 5, Streamlit's own cap) |
 | `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (0 to 3) |
 | `RUN_TOKEN_BUDGET` | no | `200000` | Token cap per run |
 | `ADMIN_PASSCODE` | no | | When set, live sending in the app needs this passcode. Everyone else gets a dry run |

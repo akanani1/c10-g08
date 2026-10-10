@@ -16,7 +16,7 @@ import streamlit as st
 
 from incident_suite import __version__, ui
 from incident_suite.agents import OpenRouterLLM, make_embeddings
-from incident_suite.config import AppConfig, load_config
+from incident_suite.config import AppConfig, admin_overrides, effective_config, load_config
 from incident_suite.graph import (
     RunContext,
     build_graph,
@@ -133,6 +133,8 @@ def _sidebar(config: AppConfig) -> bool:
             st.info("Dry run: nothing is sent. You see exactly what would go out.")
         with st.expander("Severity legend"):
             st.dataframe(ui.SEVERITY_LEGEND, hide_index=True)
+        if admin_overrides().differences(load_config()):
+            st.caption("An admin changed some settings until the app restarts.")
         if _settings(config) != RunSettings.from_config(config):
             st.caption("Using custom agent settings for this session.")
         st.caption(f"Version {__version__}. Up to 5 runs per 10 minutes per visitor.")
@@ -373,7 +375,7 @@ def _results(result: RunResult, context: RunContext) -> None:
 def main() -> None:
     """Render the page."""
     st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
-    config = load_config()
+    config = effective_config()
     live = _sidebar(config)
     st.title("Incident Suite")
     st.caption(

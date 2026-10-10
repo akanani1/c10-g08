@@ -269,7 +269,7 @@ Structured records have named fields rather than one line of text. We match them
 
 | Limit | Value |
 |---|---|
-| Upload size | `MAX_UPLOAD_MB`, default 5 |
+| Upload size | `MAX_UPLOAD_MB`, default 5 and at most 5. Streamlit refuses bigger files itself (`server.maxUploadSize` in `.streamlit/config.toml`), so a higher value would never take effect |
 | Decompressed size (gzip) | 50 MB, checked as we decompress, which protects against zip bombs |
 | Rows or lines | 200,000 |
 | Columns | 200 |
@@ -375,7 +375,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `JIRA_PROJECT_KEY` | For live JIRA | | The key in the ticket numbers. Ours is `SCRUM` |
 | `JIRA_ISSUE_TYPE` | No | `Task` | Issue type to create |
 | `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT` | No | off, none, `c10-g08` | Tracing |
-| `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 50) |
+| `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 5, Streamlit's own limit) |
 | `MAX_TICKETS_PER_RUN` | No | `3` | Ticket cap (0 to 3) |
 | `RUN_TOKEN_BUDGET` | No | `200000` | Tokens per run (up to 500,000) |
 | `ADMIN_PASSCODE` | No | | When set, live sending in the app needs it. It also unlocks live sending after prompts are edited, and the assistant's Slack and JIRA tools (section 17) |
@@ -524,7 +524,7 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 (settings page) in review |
+| Extras | Section 17, in order, until the freeze | 1 (settings page with the Admin card) in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -571,6 +571,23 @@ A second page, `pages/agent_settings.py`, with one card per agent and a global c
 - **Safety:** models only come from the allow-list, and the limits are enforced by `RunSettings`, not just by the widgets. If any prompt differs from the default, the run switches to dry run unless the admin passcode is entered (`ui.decide_live`), and the results say so.
 - **How it's built:** `pages/agent_settings.py` stores a `RunSettings` in `st.session_state.run_settings`, and `app.py` uses it for every run. The admin passcode, once entered in the main page's sidebar, stays unlocked for the session (`admin_ok`) until you press Lock. The live toggle is greyed out unless the deployment has `LIVE_INTEGRATIONS=true`.
 - **Slim version,** if time is short: models and prompts only, without export and import.
+
+**Admin card** (on the same page, part of extra 1)
+
+An admin can change some deployment settings from the app, for every visitor, without a redeploy.
+
+| Can change | Can't change, on purpose |
+|---|---|
+| Live integrations on or off, approval on or off | Any key or token |
+| Upload limit (1 to 5 MB), tickets per run (0 to 3), token budget per run | `JIRA_BASE_URL` and `JIRA_EMAIL`: the JIRA token is sent there, so someone with the passcode could redirect it to their own server |
+| JIRA project key and issue type | `SLACK_CHANNEL_ID`, models and the embedding model |
+
+**The rule:**
+- **Defaults** always come from `.env`, the environment or Streamlit secrets, and the card starts from them.
+- **Saving** needs `ADMIN_PASSCODE`. Without one in the deployment's settings, the card is switched off.
+- **A saved change** applies to every visitor of the running app until it sleeps, restarts or is redeployed. Then the defaults come back. It lives in the server's memory (`AdminOverrides` in `config.py`). Nothing is written to disk, because Streamlit Community Cloud has no lasting storage and we have no database.
+- **Limits:** the changes are checked with the same bounds as the env values. The upload limit can never go above 5 MB.
+- **Visibility:** the main page's sidebar says when an admin change is in effect. **Back to defaults** drops all changes at once.
 - **Demo moment:** switch the Remediation model, run the same sample again, and compare the cost and the output.
 
 ### 17.2 Assistant: latest Slack and JIRA updates
@@ -697,6 +714,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | H6 to H7: the graph streams each step to the page, so the picture lights up live. 5 runs per 10 minutes per visitor. The checkpointer only restores our own state models |
 | 11 Oct | H8: we choose the trace ID before each run, so the LangSmith link goes into the app, Slack and JIRA. The eval script scores against `labels.json` and prints the README table. Security pass: when `ADMIN_PASSCODE` is set, live sending needs it; a shared cap of 60 runs an hour; file names, errors and the service name in the Remediation prompt are now escaped. `langsmith` is declared as a direct dependency |
 | 11 Oct | Extra 1, the agent settings page, ships in full (export and import included). The admin passcode stays unlocked for the session once entered. `pages/` joins the CI tools |
+| 11 Oct | Extra 1 gets an Admin card. With the passcode, an admin changes live mode, approval, the upload limit, tickets per run, the token budget and the JIRA project and issue type for everyone, until the app sleeps or restarts. Defaults come from env. Where secrets are sent (JIRA URL and email, Slack channel) stays env-only. `MAX_UPLOAD_MB` is now 1 to 5, Streamlit's own cap |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
