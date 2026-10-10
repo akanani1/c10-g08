@@ -7,7 +7,9 @@ from typing import Any
 
 from incident_suite.agents.jira_agent import (
     ExistingTicket,
+    TicketDraft,
     TicketTracker,
+    link_back,
     plan_tickets,
     send_tickets,
 )
@@ -27,6 +29,12 @@ def _issue(number: int, severity: Severity = Severity.CRITICAL, **extra: Any) ->
         "signature_hash": f"{number:012x}",
     }
     return Issue.model_validate(fields | extra)
+
+
+def _drafts(issues: list[Issue]) -> dict[str, TicketDraft]:
+    return {
+        i.id: TicketDraft(issue=i, remediation=None, pattern=None, run_id="run-1") for i in issues
+    }
 
 
 OPEN = ExistingTicket(key="OPS-12", url="https://team.atlassian.example/browse/OPS-12", done=False)
@@ -86,9 +94,14 @@ def test_send_carries_out_the_plan(settings: RunSettings, make_tracker: MakeTrac
     plan = plan_tickets(issues, settings, tracker)
     calls.clear()
 
-    done = send_tickets(plan, issues, [], "run-1", tracker)
+    done = send_tickets(plan, _drafts(issues), tracker)
 
-    assert calls == [("create", "ISS-1<--"), ("comment", "OPS-12"), ("create", "ISS-3<-OPS-7")]
+    assert calls == [
+        ("create", "ISS-1<--"),
+        ("comment", "OPS-12"),
+        ("create", "ISS-3<-OPS-7"),
+        ("link", "OPS-102->OPS-7"),
+    ]
     assert [d.sent for d in done] == [True, True, True, False, False]
     assert done[0].key == "OPS-101"
     assert done[0].url == "https://team.atlassian.example/browse/OPS-101"
@@ -98,7 +111,7 @@ def test_failed_items_are_not_retried(settings: RunSettings, make_tracker: MakeT
     searching, _ = make_tracker(fail="find")
     plan = plan_tickets([_issue(1)], settings, searching)
     writer, calls = make_tracker()
-    (item,) = send_tickets(plan, [_issue(1)], [], "run-1", writer)
+    (item,) = send_tickets(plan, _drafts([_issue(1)]), writer)
     assert calls == []
     assert not item.sent
 
@@ -106,6 +119,42 @@ def test_failed_items_are_not_retried(settings: RunSettings, make_tracker: MakeT
 def test_write_failure_is_recorded(settings: RunSettings, make_tracker: MakeTracker) -> None:
     tracker, _ = make_tracker(fail="create")
     plan = plan_tickets([_issue(1)], settings, tracker)
-    (item,) = send_tickets(plan, [_issue(1)], [], "run-1", tracker)
+    (item,) = send_tickets(plan, _drafts([_issue(1)]), tracker)
     assert item.error == "JIRA returned 503"
     assert not item.sent
+
+
+def test_regression_link_failure_keeps_the_ticket(
+    settings: RunSettings, make_tracker: MakeTracker
+) -> None:
+    tracker, _ = make_tracker(existing={f"{1:012x}": CLOSED}, fail="link")
+    plan = plan_tickets([_issue(1)], settings, tracker)
+    (item,) = send_tickets(plan, _drafts([_issue(1)]), tracker)
+    assert item.sent
+    assert item.key == "OPS-101"
+    assert item.error == "OPS-101 created, but not linked to OPS-7: JIRA returned 503"
+
+
+def test_link_back_only_touches_sent_tickets(
+    settings: RunSettings, make_tracker: MakeTracker
+) -> None:
+    issues = [_issue(n) for n in range(1, 5)]
+    tracker, calls = make_tracker(existing={f"{2:012x}": OPEN})
+    done = send_tickets(plan_tickets(issues, settings, tracker), _drafts(issues), tracker)
+    calls.clear()
+
+    errors = link_back(done, [("https://slack.example/p1", "Slack")], tracker)
+
+    assert errors == []
+    assert calls == [
+        ("remote_link", "OPS-101->https://slack.example/p1"),
+        ("remote_link", "OPS-12->https://slack.example/p1"),
+        ("remote_link", "OPS-102->https://slack.example/p1"),
+    ]
+
+
+def test_link_back_failure_is_reported(settings: RunSettings, make_tracker: MakeTracker) -> None:
+    tracker, _ = make_tracker(fail="remote_link")
+    done = send_tickets(plan_tickets([_issue(1)], settings, tracker), _drafts([_issue(1)]), tracker)
+    errors = link_back(done, [("https://slack.example/p1", "Slack")], tracker)
+    assert errors == ["JIRA (OPS-101): link to Slack not added: JIRA returned 503"]

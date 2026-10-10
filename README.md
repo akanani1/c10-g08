@@ -4,7 +4,7 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents and the orchestrator are done. The Slack and JIRA clients and the app screens are being built now. Links, screenshots and results get filled in as each part lands.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator and the Slack and JIRA clients are done. The app screens are being built now. Links, screenshots and results get filled in as each part lands.
 
 | | |
 |---|---|
@@ -165,7 +165,13 @@ Models must be on the allow-list in `incident_suite/config.py`, which also holds
 1. Create an API token at https://id.atlassian.com/manage-profile/security/api-tokens.
 2. Fill in `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` and `JIRA_PROJECT_KEY`.
 
-**Turn it on:** set `LIVE_INTEGRATIONS=true`.
+**Turn it on:** set `LIVE_INTEGRATIONS=true`. To try it from the command line, add `--live`. The run shows what it would send and asks before sending anything:
+
+```bash
+python -m incident_suite.graph sample_logs/payment_db_conn_refused.log --live
+```
+
+Both clients wait and retry when Slack or JIRA is busy (429 or 5xx), up to three tries, and every call has a timeout. If one service fails, the run says so and carries on with the other.
 
 **Optional, no code needed**
 - Install the Jira Cloud app in Slack, so ticket links show previews and can be updated from Slack.
@@ -225,7 +231,7 @@ Results (filled in after the eval run):
 - **Log content is data,** never instructions to the model. The agents have no tools that run commands or open URLs.
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
 - **Limits per run:** a token budget, at most 3 tickets, and one retry per issue.
-- **Nothing reaches Slack or JIRA** without approval, and anything sent is escaped first.
+- **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
 - **The public deployment** keeps Slack and JIRA switched off.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.
 
