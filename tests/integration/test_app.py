@@ -101,8 +101,8 @@ def test_dry_run_shows_the_results() -> None:
     assert "Roll back payment\\-api to v2\\.14\\.0" in markdown
     assert any("Dry run: nothing was sent" in info.value for info in app.info)
     assert [c.label for c in app.checkbox] == [
-        "Roll back payment\\-api (ISS-1)",
-        "Alert on pool use above 80% (ISS-1)",
+        "Roll back payment\\-api \\(ISS\\-1\\)",
+        "Alert on pool use above 80% \\(ISS\\-1\\)",
     ]
     assert len(app.tabs) == 7
 
@@ -141,3 +141,35 @@ def test_bad_upload_is_refused(monkeypatch: pytest.MonkeyPatch, keyed: AppConfig
     app.selectbox[0].set_value("large_50k_mixed.parquet")
     app = _click(app.run(), "Analyse")
     assert "over the 1 MB upload limit" in app.error[0].value
+
+
+def test_live_sending_needs_the_passcode(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_llm: MakeLLM,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    two_runs, _ = make_llm(ANSWERS * 2)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: two_runs)
+    guarded = keyed.model_copy(
+        update={"live_integrations": True, "admin_passcode": SecretStr("open-sesame")}
+    )
+    tracker, jira_calls = make_tracker()
+    messenger, _ = make_messenger()
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: guarded)
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services",
+        lambda _config, settings: (tracker, messenger) if settings.live else (None, None),
+    )
+
+    visitor = _click(_app(), "Analyse")
+    assert "Dry run" in visitor.sidebar.info[0].value
+    assert jira_calls == []  # a visitor's run never touched JIRA
+    assert not [h for h in visitor.subheader if h.value == "Approval needed"]
+
+    admin = _app()
+    admin.sidebar.text_input[0].input("open-sesame").run()
+    assert "Live mode" in admin.sidebar.warning[0].value
+    paused = _click(admin, "Analyse")
+    assert [h for h in paused.subheader if h.value == "Approval needed"]

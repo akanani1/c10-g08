@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import httpx
 import pytest
@@ -454,3 +455,51 @@ def test_checkpoints_only_restore_our_state_models() -> None:
     assert Issue in graph_module.CHECKPOINT_TYPES
     assert SlackOutcome in graph_module.CHECKPOINT_TYPES
     assert RunContext not in graph_module.CHECKPOINT_TYPES
+
+
+def test_trace_link_reaches_slack_jira_and_the_result(
+    parsed: ParsedLog,
+    settings: RunSettings,
+    retriever: RunbookRetriever,
+    make_llm: MakeLLM,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    trace = "https://smith.langchain.com/o/t/projects/p/p1/r/abc?poll=true"
+    llm, _ = make_llm([_classified(), _fix(), CHECKLIST])
+    tracker, jira_calls = make_tracker()
+    messenger, posts = make_messenger()
+    context = RunContext(
+        parsed=parsed,
+        settings=_live(settings, require_approval=False),
+        llm=llm,
+        retriever=retriever,
+        tracker=tracker,
+        messenger=messenger,
+        trace_id=UUID("12345678-1234-5678-1234-567812345678"),
+        trace_url=trace,
+    )
+    result = start_run(build_graph(), context, "r11")
+
+    assert result.trace_url == trace
+    assert posts[0].trace_url == trace
+    assert ("remote_link", f"OPS-101->{trace}") in jira_calls
+
+
+def test_command_line_prints_the_trace(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    config: AppConfig,
+    embeddings: Embeddings,
+    make_llm: MakeLLM,
+) -> None:
+    llm, _ = make_llm([_classified(), _fix(), CHECKLIST])
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: config)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+    monkeypatch.setattr("incident_suite.agents.make_embeddings", lambda _config: embeddings)
+    monkeypatch.setattr("incident_suite.telemetry.enable_tracing", lambda _config: True)
+    monkeypatch.setattr(
+        "incident_suite.telemetry.trace_link", lambda _config, _id: "https://smith.example/r/1"
+    )
+    assert graph_module.main([str(SAMPLE)]) == 0
+    assert "Trace: https://smith.example/r/1" in capsys.readouterr().out

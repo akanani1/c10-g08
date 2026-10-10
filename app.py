@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import openai
 import streamlit as st
@@ -27,11 +28,13 @@ from incident_suite.parsing.readers import ReadError, parse_upload
 from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.rag.runbooks import load_runbooks
 from incident_suite.security import (
+    SHARED_RUNS_PER_HOUR,
     RateLimitError,
     RunLimiter,
     UploadError,
     check_upload,
     display_name,
+    passcode_ok,
 )
 from incident_suite.state import (
     ApprovalStatus,
@@ -41,7 +44,7 @@ from incident_suite.state import (
     RunSettings,
     RunStep,
 )
-from incident_suite.telemetry import new_run_id
+from incident_suite.telemetry import enable_tracing, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
 TEXT_FORMATS = {
@@ -63,6 +66,12 @@ def _samples() -> dict[str, str]:
     return {log["file"]: log["scenario"] for log in labels["logs"]}
 
 
+@st.cache_resource
+def _shared_limiter() -> RunLimiter:
+    """One limit shared by every visitor, so new browser sessions can't get around it."""
+    return RunLimiter(max_runs=SHARED_RUNS_PER_HOUR, window=3600)
+
+
 @st.cache_resource(show_spinner="Indexing the runbooks (once per app start)...")
 def _retriever(embedding_model: str) -> RunbookRetriever:
     """The runbook index, built once and shared by every session."""
@@ -79,7 +88,18 @@ def _session(key: str, default: Any) -> Any:
 # ------------------------------------------------------------------ sidebar and input
 
 
-def _sidebar(config: AppConfig) -> None:
+def _live_allowed(config: AppConfig) -> bool:
+    """Live sending, if it's on, needs the admin passcode when one is set."""
+    if not config.live_integrations:
+        return False
+    if config.admin_passcode is None:
+        return True
+    entered = st.text_input("Admin passcode for live sending", type="password")
+    return passcode_ok(entered, config.admin_passcode)
+
+
+def _sidebar(config: AppConfig) -> bool:
+    """Show what's connected. Returns whether this session may send for real."""
     with st.sidebar:
         st.subheader("Integrations")
         for label, ready in (
@@ -89,13 +109,15 @@ def _sidebar(config: AppConfig) -> None:
             ("LangSmith", config.langsmith_tracing and config.langsmith_api_key is not None),
         ):
             st.write(f"{':green-badge[connected]' if ready else ':gray-badge[off]'} {label}")
-        if config.live_integrations:
+        live = _live_allowed(config)
+        if live:
             st.warning("Live mode: approved runs post to Slack and JIRA.")
         else:
             st.info("Dry run: nothing is sent. You see exactly what would go out.")
         with st.expander("Severity legend"):
             st.dataframe(ui.SEVERITY_LEGEND, hide_index=True)
         st.caption(f"Version {__version__}. Up to 5 runs per 10 minutes per visitor.")
+    return live
 
 
 def _pick_log() -> tuple[bytes, str] | None:
@@ -125,28 +147,30 @@ def _progress(steps: list[RunStep], chart: Any, log: Any) -> Any:
     return on_step
 
 
-def _start(config: AppConfig, data: bytes, filename: str) -> None:
+def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     """Check, parse and run a log, then keep everything the results screen needs."""
     try:
-        _session("limiter", RunLimiter()).check()
         check_upload(filename, len(data), config.max_upload_mb)
+        _session("limiter", RunLimiter()).check()
+        _shared_limiter().check()
     except (RateLimitError, UploadError) as exc:
-        st.error(str(exc))
+        st.error(ui.md(str(exc)))
         return
     if not config.llm_configured:
         st.error("This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
-    settings = RunSettings.from_config(config)
+    settings = RunSettings.from_config(config).model_copy(update={"live": live})
     try:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
         retriever = _retriever(config.embedding_model)
     except ReadError as exc:
-        st.error(str(exc))
+        st.error(ui.md(str(exc)))
         return
     except openai.OpenAIError as exc:
         st.error(f"Couldn't index the runbooks ({type(exc).__name__}). Try again in a minute.")
         return
     tracker, messenger = connect_services(config, settings)
+    trace_id = uuid4() if enable_tracing(config) else None
     context = RunContext(
         parsed=parsed,
         settings=settings,
@@ -154,15 +178,17 @@ def _start(config: AppConfig, data: bytes, filename: str) -> None:
         retriever=retriever,
         tracker=tracker,
         messenger=messenger,
+        trace_id=trace_id,
+        trace_url=trace_link(config, trace_id) if trace_id else None,
     )
     graph = _session("graph", build_graph())
     run_id = new_run_id()
     steps: list[RunStep] = []
-    with st.status(f"Analysing {parsed.name}...", expanded=True) as status:
+    with st.status(f"Analysing {ui.md(parsed.name)}...", expanded=True) as status:
         chart = st.empty()
         chart.graphviz_chart(ui.pipeline_dot(steps, running=True))
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
-        status.update(label=f"Finished {parsed.name}", state="complete", expanded=False)
+        status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     st.session_state.update(context=context, run_id=run_id, result=result)
     st.rerun()
 
@@ -269,7 +295,7 @@ def _tabs(result: RunResult, context: RunContext) -> None:
         ):
             st.markdown(f"**{heading}**")
             for n, item in enumerate(items):
-                label = f"{ui.md(item.text)} ({', '.join(item.issue_ids)})"
+                label = ui.md(f"{item.text} ({', '.join(item.issue_ids)})")
                 st.checkbox(label, key=f"{result.run_id}-{heading}-{n}")
             if not items:
                 st.caption("Nothing here.")
@@ -325,7 +351,7 @@ def main() -> None:
     """Render the page."""
     st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
     config = load_config()
-    _sidebar(config)
+    live = _sidebar(config)
     st.title("Incident Suite")
     st.caption(
         "Upload an ops log. Agents find the problems, suggest fixes with sources, write a "
@@ -333,7 +359,7 @@ def main() -> None:
     )
     picked = _pick_log()
     if st.button("Analyse", type="primary", disabled=picked is None) and picked is not None:
-        _start(config, *picked)
+        _start(config, live, *picked)
     if "result" in st.session_state:
         _results(st.session_state.result, st.session_state.context)
 

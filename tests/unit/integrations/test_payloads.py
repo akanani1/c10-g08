@@ -237,3 +237,9 @@ def test_jira_comment() -> None:
     no_times = PATTERN.model_copy(update={"first_seen": None, "last_seen": None})
     draft = TicketDraft(issue=ISSUE, remediation=None, pattern=no_times, run_id="run-2")
     assert "Seen 412 times." in _texts(jira_comment(draft))
+
+
+def test_slack_summary_links_the_trace() -> None:
+    traced = PLAN.model_copy(update={"trace_url": "https://smith.langchain.com/o/t/r/1"})
+    context = slack_summary(traced, [])["blocks"][-1]["elements"][0]["text"]
+    assert context.endswith("<https://smith.langchain.com/o/t/r/1|Trace in LangSmith>")

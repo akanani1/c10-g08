@@ -75,7 +75,7 @@ def _user_message(issue: Issue, evidence: Sequence[LogLine], hits: Sequence[Runb
     )
     return (
         f"<issue>\n{issue.id}: {_escape(issue.title)}\ncategory={issue.category} "
-        f"severity={issue.severity} service={issue.affected_service or '-'}\n</issue>\n"
+        f"severity={issue.severity} service={_escape(issue.affected_service or '-')}\n</issue>\n"
         f"<evidence>\n{lines}\n</evidence>\n"
         f"<runbooks>\n{runbooks or 'No runbook matched.'}\n</runbooks>"
     )

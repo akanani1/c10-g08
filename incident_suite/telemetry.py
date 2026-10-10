@@ -1,17 +1,26 @@
-"""Run IDs, and tokens, cost and time per agent.
+"""Run IDs, tokens, cost and time per agent, and the LangSmith trace link.
 
-The LangSmith trace link joins this module when tracing is wired up (H8).
+Tracing is optional. When ``LANGSMITH_TRACING`` is on and a key is set, :func:`enable_tracing`
+switches LangChain's tracer on for this process, and :func:`trace_link` gives the URL of a
+run's trace before the run starts, because we choose the trace's ID ourselves. That link goes
+into the app, the Slack summary and the JIRA tickets. If LangSmith can't be reached, the run
+carries on without a link.
 """
 
 from __future__ import annotations
 
+import os
 import secrets
-from collections.abc import Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
+
+from langsmith import Client
+from langsmith.utils import LangSmithError
 
 from incident_suite.agents import LLMError, LLMReply
-from incident_suite.config import CHAT_MODELS
+from incident_suite.config import CHAT_MODELS, AppConfig
 from incident_suite.state import AgentUsage
 
 _PER_MILLION = 1_000_000
@@ -87,3 +96,33 @@ def merge_usage(entries: Sequence[AgentUsage]) -> list[AgentUsage]:
             }
         )
     return list(merged.values())
+
+
+def enable_tracing(config: AppConfig, environ: MutableMapping[str, str] = os.environ) -> bool:
+    """Turn on LangChain's LangSmith tracer for this process when the config asks for it.
+
+    LangChain reads these from the environment; ``environ`` lets tests pass their own.
+    """
+    if not config.langsmith_tracing or config.langsmith_api_key is None:
+        return False
+    environ["LANGSMITH_TRACING"] = "true"
+    environ["LANGSMITH_API_KEY"] = config.langsmith_api_key.get_secret_value()
+    environ["LANGSMITH_PROJECT"] = config.langsmith_project
+    return True
+
+
+def trace_link(
+    config: AppConfig, trace_id: UUID, client_factory: Callable[..., Any] = Client
+) -> str | None:
+    """The LangSmith URL the run with ``trace_id`` will have, or ``None`` if there's none.
+
+    The project is created if it doesn't exist yet, so the link works for the very first run.
+    """
+    if config.langsmith_api_key is None:
+        return None
+    try:
+        client = client_factory(api_key=config.langsmith_api_key.get_secret_value())
+        project = client.create_project(config.langsmith_project, upsert=True)
+    except LangSmithError:
+        return None
+    return f"{project.url}/r/{trace_id}?poll=true" if project.url else None

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 
 from incident_suite.security import (
     RateLimitError,
@@ -11,6 +12,7 @@ from incident_suite.security import (
     check_upload,
     display_name,
     extension_of,
+    passcode_ok,
 )
 
 
@@ -77,3 +79,11 @@ def test_run_limiter() -> None:
     with pytest.raises(RateLimitError):
         limiter.check(now=62)
     RunLimiter().check()
+
+
+def test_passcode_ok() -> None:
+    secret = SecretStr("open-sesame")
+    assert passcode_ok("open-sesame", secret)
+    assert not passcode_ok("open-sesam", secret)
+    assert not passcode_ok("", secret)
+    assert not passcode_ok("anything", None)

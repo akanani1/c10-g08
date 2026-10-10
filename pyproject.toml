@@ -26,6 +26,7 @@ dependencies = [
     "langchain-core>=1.6",
     "langchain-openai>=1.7",
     "langgraph>=1.2",
+    "langsmith>=0.14",
     "openai>=3.0",
     "pyarrow>=25",
     "pydantic>=2.14",
@@ -95,6 +96,7 @@ max-args = 6
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S311", "PLR2004", "PLR0913"]
 "sample_logs/make_samples.py" = ["S311", "T201", "PLR0913"]
+"eval/run_eval.py" = ["T201"]
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -104,7 +106,7 @@ line-ending = "lf"
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["app.py", "incident_suite", "tests", "sample_logs/make_samples.py"]
+files = ["app.py", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
@@ -139,7 +141,7 @@ fail_under = 85
 # ---------------------------------------------------------------- vulture
 [tool.vulture]
 # 80: unused imports, arguments and unreachable code. Pydantic fields would be false alarms at 60.
-paths = ["app.py", "incident_suite", "tests", "sample_logs/make_samples.py"]
+paths = ["app.py", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
 min_confidence = 80
 # pytest markers and LangChain interface methods are called by the frameworks
 ignore_names = ["pytestmark", "embed_documents", "embed_query"]
