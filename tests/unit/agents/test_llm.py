@@ -1,4 +1,4 @@
-"""Tests for incident_suite/llm.py. Builds clients only; nothing is sent."""
+"""Tests for incident_suite/agents/__init__.py (model access). Nothing is sent."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
-from incident_suite.config import OPENROUTER_BASE_URL, AppConfig
-from incident_suite.llm import (
+from incident_suite.agents import (
     LLMError,
     MissingAPIKeyError,
     OpenRouterLLM,
     make_chat_model,
     make_embeddings,
 )
+from incident_suite.config import OPENROUTER_BASE_URL, AppConfig
 
 
 def test_chat_model_points_at_openrouter(config: AppConfig) -> None:

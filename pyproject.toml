@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: System :: Monitoring",
 ]
 # Runtime dependencies. This is the only place they are declared;
-# `make lock` turns them into the pinned requirements.txt.
+# pip-compile turns them into the pinned requirements.txt (see README).
 dependencies = [
     "httpx>=0.28",
     "langchain>=1.4",
@@ -35,7 +35,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Developer tooling, locked separately into requirements-dev.txt.
+# Developer tooling: pip install -c requirements.txt -e ".[dev]"
 dev = [
     "bandit[toml]>=1.9",
     "mypy>=2.4",
@@ -64,7 +64,7 @@ include = ["incident_suite*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = [".venv", "vulture_whitelist.py"]
+extend-exclude = [".venv"]
 
 [tool.ruff.lint]
 select = [
@@ -121,7 +121,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --import-mode=importlib -m 'not live'"
 markers = [
-    "live: calls real external services; opt-in with `make smoke` (needs keys)",
+    "live: calls real external services; opt-in with `pytest -m live` (needs keys)",
 ]
 filterwarnings = ["error"]
 
@@ -137,8 +137,9 @@ fail_under = 85
 
 # ---------------------------------------------------------------- vulture
 [tool.vulture]
-paths = ["app.py", "incident_suite", "tests", "vulture_whitelist.py"]
-min_confidence = 60
+# 80: unused imports, arguments and unreachable code. Pydantic fields would be false alarms at 60.
+paths = ["app.py", "incident_suite", "tests"]
+min_confidence = 80
 # pytest markers and LangChain interface methods are called by the frameworks
 ignore_names = ["pytestmark", "embed_documents", "embed_query"]
 ignore_decorators = ["@field_validator", "@model_validator", "@pytest.fixture"]

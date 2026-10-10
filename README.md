@@ -112,7 +112,7 @@ pip install -r requirements.txt
 cp .env.example .env        # on Windows: copy .env.example .env
 ```
 
-Open `.env` and set `OPENAI_API_KEY`. Then:
+Open `.env` and set `OPENROUTER_API_KEY`. Then:
 
 ```bash
 streamlit run app.py
@@ -120,14 +120,26 @@ streamlit run app.py
 
 The app opens at http://localhost:8501. Pick a sample log from the sidebar, or upload your own.
 
-If you have `make`, these work too:
+### For developers
 
 ```bash
-make setup   # venv + dependencies + pre-commit hooks
-make run     # start the app
-make test    # unit tests (no API key needed)
-make check   # lint, types, tests, security scans
-make eval    # accuracy run over the 17 labelled sample logs (needs an OpenAI key)
+pip install -c requirements.txt -e ".[dev]"   # test and lint tools
+pre-commit install                            # checks on every commit
+
+pytest                                        # tests, no API key needed
+pytest -m live                                # real OpenRouter calls (needs the key)
+
+# What CI runs
+ruff check app.py incident_suite tests
+ruff format --check app.py incident_suite tests
+mypy
+vulture
+bandit -q -c pyproject.toml -r app.py incident_suite
+pytest --cov
+pip-audit -r requirements.txt
+
+# After changing dependencies in pyproject.toml (on Python 3.12)
+pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ```
 
 ## Connect Slack, JIRA and LangSmith (optional)
@@ -175,7 +187,7 @@ make eval    # accuracy run over the 17 labelled sample logs (needs an OpenAI ke
 
 `sample_logs/` has 17 made-up but realistic logs in four formats (plain-text app, JSON lines, nginx, Kubernetes/syslog). Between them they cover database outages, out-of-memory kills, full disks, expired certificates, auth failures, 5xx spikes, timeouts, crash loops, bad config, rate limiting, DNS failures and queue backlogs. One of them is 50,000 lines long, to show how it handles size. `labels.json` holds the answers we expect for each log.
 
-Results (filled in after `make eval`):
+Results (filled in after running the eval script):
 
 | Metric | Result |
 |---|---|
@@ -201,7 +213,7 @@ The app runs on Streamlit Community Cloud.
 
 1. Sign in at https://share.streamlit.io with GitHub.
 2. Create an app from this repo, branch `main`, main file `app.py`.
-3. Paste the variables above into the app's Secrets settings, in TOML format (`OPENAI_API_KEY = "..."`).
+3. Under Advanced settings pick Python 3.12, then paste the variables above into the app's Secrets settings, in TOML format (`OPENROUTER_API_KEY = "..."`).
 4. Deploy. Every push to `main` redeploys automatically.
 
 Free apps go to sleep when nobody uses them for a while. The first visit after that takes a minute to wake up.
@@ -214,7 +226,7 @@ incident_suite/
   graph.py              LangGraph orchestrator
   state.py              data models shared between agents
   parsing/              log format detection, parsing, pattern grouping
-  agents/               one file per agent
+  agents/               one file per agent; __init__.py holds the shared model access
   prompts/              one prompt file per agent
   rag/                  runbook index and search
   integrations/         Slack and JIRA clients, message builders
@@ -226,6 +238,12 @@ sample_logs/            17 sample logs and their labels
 eval/                   evaluation script
 tests/                  unit and end-to-end tests
 docs/                   diagrams, screenshots, setup guides
+
+pyproject.toml          dependencies and tool settings
+requirements.txt        pinned versions, generated from pyproject.toml
+.github/                CI, Dependabot, security policy
+.streamlit/             Streamlit settings
+.env.example            every setting, with placeholder values
 ```
 
 ## Limitations

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from incident_suite.llm import LLMError, StructuredLLM
+from incident_suite.agents import LLMError, StructuredLLM
 from incident_suite.prompts import load_prompt
 from incident_suite.rag.retriever import RunbookHit, RunbookRetriever
 from incident_suite.state import Issue, LogLine, Remediation, RunbookSource, RunSettings

@@ -11,8 +11,8 @@ import pytest
 from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, SecretStr
 
+from incident_suite.agents import LLMError, LLMReply, SchemaT, StructuredLLM
 from incident_suite.config import AppConfig
-from incident_suite.llm import LLMError, LLMReply, SchemaT, StructuredLLM
 from incident_suite.state import RunSettings
 
 LLMCall = tuple[str, str, str]  # (model, system prompt, user message)
