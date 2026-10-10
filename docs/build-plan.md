@@ -667,3 +667,202 @@ Switch the Remediation model on this page, rerun the same sample, and show cost 
 | 9 | New `pages/agent_settings.py`; `RunSettings` in the package |
 | 10 | H1 +15 min for `RunSettings` in the graph state |
 | 19 | One more item in the Stretch C list, ranked third |
+
+---
+
+## 21. Team and ownership
+
+Status: agreed, 10 Oct 2026. This settles "Who owns what" in section 16. Only Ashvin uses Claude, so the code path stays with him, and everyone else takes work that runs in parallel without it. Each person owns their own folders, so nobody hits merge conflicts.
+
+### 21.1 Who does what
+
+| Person | Role | Owns | Folders and outputs |
+|---|---|---|---|
+| **Ashvin** (with Claude) | Lead, core code | Repo scaffold and CI; state models and `RunSettings`; parser and redaction; agents and prompts; the LangGraph graph and approval gate; Slack and JIRA clients; Streamlit UI; reviewing and merging pull requests | `incident_suite/`, `app.py`, `tests/`, `.github/` |
+| **Raphael** | Integrations and deploy | OpenRouter key with a credit limit (section 22); Slack workspace, app, bot token and webhook; JIRA site, OPS project, API token and the two automation rules; Jira Cloud app in Slack; LangSmith; Streamlit Cloud app and its secrets. Later: test the live Slack and JIRA flows end to end (new ticket, repeat comment, regression, "resolved" message) and take screenshots | Accounts, `docs/setup-slack-jira.md`, screenshots |
+| **Gulam Mohammad** | Data | The 17 sample logs and `labels.json`; about 15 runbooks (DB pool, OOM, disk, TLS, auth, 5xx, timeouts, crash loop, config, rate limit, DNS, Kafka lag and so on). Later: run the eval and fill in the README results table | `sample_logs/`, `data/runbooks/`, eval results |
+| **Safwan** | QA, docs and demo | Manual test checklist, run after every deploy; planted-secret examples for the redaction tests; architecture diagram; README fresh-clone test on Windows; video script, recording and editing; demo-day checklist (wake the app, run the samples) | `docs/`, the video, bug reports as GitHub issues |
+
+### 21.2 Timeline
+
+| When | Ashvin + Claude | Raphael | Gulam Mohammad | Safwan |
+|---|---|---|---|---|
+| Today, evening | Scaffold, state models, parser, OpenRouter smoke test, bare deploy | All accounts and keys | First 5 logs and 5 runbooks | Video script, test checklist |
+| Tomorrow, morning | Agents, graph, Slack and JIRA clients | Live Slack and JIRA testing from about H5 | Remaining logs, runbooks and `labels.json` | Test each deploy, file issues |
+| Tomorrow, afternoon | UI, then feature freeze around 4 PM | Screenshots, final secrets check | Eval run, README results table | README fresh-clone test, screenshots, recording at about 5 PM |
+| Tomorrow, 7:30 PM | Submit | | | |
+
+### 21.3 Ground rules
+
+- **Claude helps the others through Ashvin.** Before they start, Claude drafts the templates they work from: an example log in each format, a runbook template, the `labels.json` schema, the test checklist and the video script outline.
+- **A branch per person, pull requests into `main`.** Ashvin reviews each pull request. Nobody edits another person's folders.
+- **No secrets in git or chat.** Raphael shares keys privately and puts them straight into Streamlit secrets and each person's `.env`.
+- **Two check-ins:** tonight before stopping, and tomorrow around 1 PM.
+- **Syncing after a pull from GitHub:** `git fetch` and then `git reset origin/main` (or `git pull` when you have no local changes). Never `git reset --hard` with unsaved work.
+
+---
+
+## 22. Model provider: OpenRouter instead of OpenAI
+
+Status: agreed, 10 Oct 2026. All model calls and embeddings go through OpenRouter with one key, `OPENROUTER_API_KEY`. Everything else in the stack (section 2) stays the same and is free: Streamlit Community Cloud, GitHub and Actions on a public repo, Slack free plan, Jira Cloud Free, LangSmith Developer.
+
+### 22.1 Why it still fits the plan
+
+- OpenRouter serves both chat models and embeddings (`POST /api/v1/embeddings`, for example `openai/text-embedding-3-small`), so runbook search (RAG) stays as planned.
+- LangChain's existing OpenAI classes work against it by changing the base URL. No new framework.
+- One key reaches models from several providers, which also makes the model list on the Agent settings page (section 20) easy to widen later.
+
+### 22.2 How we wire it
+
+```python
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+llm = ChatOpenAI(
+    model=settings.classifier_model,          # e.g. "openai/<model>"
+    base_url=OPENROUTER_BASE_URL,
+    api_key=settings.openrouter_api_key,
+)
+
+embeddings = OpenAIEmbeddings(
+    model=settings.embedding_model,           # e.g. "openai/text-embedding-3-small"
+    base_url=OPENROUTER_BASE_URL,
+    api_key=settings.openrouter_api_key,
+    check_embedding_ctx_length=False,          # send plain text, not OpenAI token IDs
+)
+```
+
+- `check_embedding_ctx_length=False` matters. By default LangChain turns text into OpenAI token IDs before sending it, and providers other than OpenAI can reject that.
+- The base URL lives in `config.py`, not scattered through agents.
+- Exact model names get picked in H1, with prices in the same allow-list the cost panel and the Agent settings page use.
+
+### 22.3 H1 smoke test (about 5 minutes, before anything is built on it)
+
+One chat call and one embedding call with the real key, run as a small script and kept as an opt-in integration test (skipped when no key is set, so CI stays key-free). If embeddings fail, fall back to calling the OpenRouter embeddings endpoint directly with a tiny LangChain `Embeddings` wrapper.
+
+### 22.4 Cost and limits
+
+- Put a **credit limit on the key** in OpenRouter (replaces the $10 OpenAI spend cap in section 13). Revoke it after the hackathon.
+- Use a cheap paid model for the demo. The free `:free` models are rate-limited and can be busy, which is risky on camera.
+- The run token budget, the ticket cap and the per-session rate limit (section 12.1) stay as they are.
+
+### 22.5 Free-plan limits worth knowing
+
+| Service | Limit | Effect on us |
+|---|---|---|
+| Jira Cloud Free automation | 100 rule runs a month | Our two rules only fire on assign and resolve. Don't burn runs testing them; our app's API calls don't count |
+| LangSmith Developer | 5,000 traces a month | Far more than we need |
+| Streamlit Community Cloud | Sleeps when idle | Wake it before judging (section 12.4) |
+
+### 22.6 Changes to earlier sections
+
+| Section | Change |
+|---|---|
+| 2 | "LangChain with OpenAI" becomes "LangChain with OpenRouter"; embeddings through OpenRouter |
+| 8 | `OPENAI_API_KEY` becomes `OPENROUTER_API_KEY`. Model variables hold OpenRouter model names |
+| 10 | H1 adds the smoke test in 22.3 |
+| 13 | OpenAI account step becomes: create an OpenRouter key with a credit limit (Raphael) |
+| 14 | New risk: OpenRouter embeddings not drop-in compatible. Mitigation in 22.3 |
+| 15 | New decision: OpenRouter as the single model provider |
+| 20.5 | Multiple providers become possible through OpenRouter's one key, if time allows |
+
+---
+
+## 23. Supported log formats
+
+Status: agreed, 10 Oct 2026. Logs arrive in many shapes, so upload accepts more than plain text. This extends section 3, step 1 (Upload) and step 2 (parsing). Everything else in the flow stays the same: whatever the format, the parser turns it into the same `LogLine` records before grouping, so the agents never see the difference.
+
+### 23.1 Accepted formats
+
+| Format | Extensions | How we read it |
+|---|---|---|
+| Plain text | `.log`, `.txt` | Line by line. Format detection as in section 3 (app logs, nginx access and error, Kubernetes/syslog) |
+| JSON lines | `.jsonl`, `.ndjson`, `.json` with one object per line | One record per line |
+| JSON document | `.json` holding an array of objects, or an object with a list inside (e.g. `{"logs": [...]}`) | One record per array item |
+| CSV / TSV | `.csv`, `.tsv` | Header row gives the column names; delimiter sniffed |
+| Parquet | `.parquet` | Read with `pyarrow` in batches, one record per row |
+| Gzip | any of the above with `.gz` (e.g. `app.log.gz`) | Decompressed as a stream, then read as the inner format |
+| Pasted text | text box (Stretch C) | Same as plain text |
+
+Not supported (README says so): Windows `.evtx`, binary journald files, Excel, and archives holding several files (`.zip`, `.tar`).
+
+### 23.2 Detection
+
+- We look at the content, not just the extension: Parquet files start with `PAR1`, gzip with `1f 8b`, JSON with `{` or `[`, and CSV is confirmed with Python's `csv.Sniffer`.
+- If the content disagrees with the extension, the content wins and the app says what it detected ("Detected CSV, 3 columns").
+- If nothing matches, the file is read as plain text, with replacement characters for bad bytes.
+
+### 23.3 Structured files: mapping columns to fields
+
+CSV, TSV, Parquet and JSON records have named fields, not one text line. We map them onto `LogLine` by common names, case-insensitive:
+
+| `LogLine` field | Column names we look for |
+|---|---|
+| `timestamp` | `timestamp`, `@timestamp`, `time`, `ts`, `datetime`, `date` |
+| `level` | `level`, `severity`, `loglevel`, `log_level`, `lvl` |
+| `service` / `host` | `service`, `app`, `application`, `component`, `host`, `hostname`, `pod`, `container` |
+| `message` | `message`, `msg`, `log`, `text`, `event`, `description` |
+| `error_code` | `error_code`, `code`, `status`, `status_code` |
+| `trace_id` | `trace_id`, `traceid`, `request_id`, `correlation_id`, `span_id` |
+
+- Columns we don't recognise are kept as extra fields and shown in the parsed table.
+- If no message column exists, the message is built from the remaining columns as `key=value` pairs, so grouping and the model still have text to work with.
+- The line number becomes the row number, and evidence on screen, in Slack and in JIRA says "row 412" for structured files.
+- The app shows the mapping it used, so a wrong guess is visible.
+
+### 23.4 Limits and safety
+
+- **Upload cap** stays at `MAX_UPLOAD_MB` (default 5) for the uploaded bytes. Compressed formats can expand a lot, so there are also caps after reading: at most 50 MB decompressed for `.gz`, at most 200,000 rows or lines, at most 200 columns, and the existing line-length cap per cell or line. Going over a cap stops the read with a clear message rather than running out of memory.
+- **Gzip** is decompressed as a stream with the size cap enforced as we go, which protects against zip bombs.
+- **Parquet** is read with `pyarrow` only, in batches, with no pickle or custom-type loading.
+- **JSON** has a nesting-depth limit; nested objects are flattened with dotted keys (`http.status`) up to that depth.
+- **Redaction (18.2)** runs on every field of every record, not just `message`.
+- We never write the uploaded file to disk under the user's file name (12.1).
+
+### 23.5 Code and dependencies
+
+- New module `incident_suite/parsing/readers.py`: one small reader per format, all returning the same records, plus `detect_format()`.
+- New dependency: `pyarrow` for Parquet. CSV, TSV, JSON and gzip use the standard library, so we don't need pandas just for this. The H1 bare deploy checks `pyarrow` installs on Streamlit Cloud.
+- `.streamlit/config.toml` and the uploader's allowed types list the new extensions.
+- **Tests** (all key-free): one per format, wrong extension vs real content, column mapping with odd names, missing message column, malformed CSV row, invalid JSON, gzip over the size cap, a Parquet file with too many rows.
+- **Time:** about 45 to 60 minutes, in H2 with the parser.
+
+### 23.6 Sample logs, updated to cover every format
+
+The 17 samples keep the same scenarios but spread across the formats. Gulam writes the text, JSON and CSV files by hand; the Parquet and gzip files are generated from them by `sample_logs/make_samples.py` (Claude drafts the script), because they're binary.
+
+| # | File | Format | Scenario | Severity |
+|---|---|---|---|---|
+| 1 | `payment_db_conn_refused.log` | Plain text | DB pool exhausted, `Connection refused`, starts after a deploy | Critical |
+| 2 | `orders_oom_killed.log` | Kubernetes/syslog | Memory climbing, `OOMKilled`, pod restart | Critical |
+| 3 | `api_disk_full.txt` | Plain text (syslog) | `No space left on device`, failed writes | Critical |
+| 4 | `gateway_tls_expired.jsonl` | JSON lines | Certificate-expiry warnings, then handshake failures | High |
+| 5 | `auth_bruteforce.json` | JSON array | Burst of failed logins from a few IPs, lockouts | High |
+| 6 | `nginx_5xx_spike.log` | Nginx access | 502/503/504 spike on `/api/checkout` | High |
+| 7 | `search_upstream_timeouts.tsv` | TSV | `upstream timed out` to the search service | Medium |
+| 8 | `worker_crashloop.log` | Kubernetes | `CrashLoopBackOff`, back-off restarts | Critical |
+| 9 | `inventory_bad_config.txt` | Plain text | Missing env var / bad YAML at startup | High |
+| 10 | `api_rate_limited.csv` | CSV | 429s from a third-party API, retries | Medium |
+| 11 | `notify_dns_failures.log` | Syslog | `NXDOMAIN`, name resolution failures | High |
+| 12 | `kafka_consumer_lag.parquet` | Parquet (generated) | Consumer lag rising, backlog building | Medium |
+| 13 | `healthy_service.csv` | CSV | Mostly INFO, a few harmless WARNs | Low (nothing sent) |
+| 14 | `mixed_incident.json` | JSON document (`{"logs": [...]}`) | Deploy, then DB errors, timeouts and 5xx together | Critical + High |
+| 15 | `payment_db_conn_refused_repeat.log` | Plain text | Same signature as #1, later: tests repeat comment and regression | Critical |
+| 16 | `edge_nginx_error.log.gz` | Gzip of nginx error log (generated) | Body too large, 404 floods, minor noise | Low |
+| 17 | `large_50k_mixed.parquet` | Parquet (generated) | 50,000 rows, ~20 patterns hidden in noise: scaling, pattern count, cost | Mixed |
+
+`labels.json` refers to line numbers for text files and row numbers for structured files.
+
+### 23.7 Changes to earlier sections
+
+| Section | Change |
+|---|---|
+| 3, step 1 | Upload accepts the formats in 23.1, detected as in 23.2 |
+| 3, step 2 | Structured records are mapped to `LogLine` as in 23.3 before grouping |
+| 6 | Row caps and streaming reads (23.4) also protect the 50k-row sample |
+| 7 | Sample set as in 23.6 |
+| 9 | New `incident_suite/parsing/readers.py` and `sample_logs/make_samples.py` |
+| 10 | H2 +45 to 60 min |
+| 12.1 | Upload checks also cover decompressed size, row and column caps |
+| 2 | New dependency `pyarrow` |

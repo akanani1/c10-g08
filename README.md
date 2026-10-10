@@ -286,6 +286,45 @@ Changes apply to your session only. You can export them as JSON and import them 
 |---|---|---|---|
 | `ADMIN_PASSCODE` | no | | Lets a session with edited prompts send to Slack and JIRA |
 
+## Using OpenRouter
+
+All model calls and embeddings go through [OpenRouter](https://openrouter.ai), so you only need one key. It replaces `OPENAI_API_KEY` in the sections above.
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `OPENROUTER_API_KEY` | yes | | Model calls and embeddings through OpenRouter |
+| `CLASSIFIER_MODEL`, `REMEDIATION_MODEL`, `EMBEDDING_MODEL` | no | set in config | OpenRouter model names, e.g. `openai/text-embedding-3-small` |
+
+Set a credit limit on the key in your OpenRouter account. Free (`:free`) models work for trying things out but are rate-limited.
+
+## Team roles
+
+| Who | Role |
+|---|---|
+| Ashvin | Lead and core code: agents, LangGraph orchestration, Slack and JIRA clients, UI |
+| Raphael | Integrations and deployment: OpenRouter, Slack, JIRA, LangSmith, Streamlit Cloud |
+| Gulam Mohammad | Data: sample logs, labels, runbooks, evaluation |
+| Safwan | QA, documentation and the demo video |
+
+## Supported log formats
+
+Upload logs in whatever shape you have them. The app detects the format from the content (not just the file extension) and turns every format into the same fields before the agents see it.
+
+| Format | Extensions |
+|---|---|
+| Plain text (app logs, nginx, Kubernetes, syslog) | `.log`, `.txt` |
+| JSON lines | `.jsonl`, `.ndjson`, `.json` |
+| JSON document (an array of records, or `{"logs": [...]}`) | `.json` |
+| CSV / TSV | `.csv`, `.tsv` |
+| Parquet | `.parquet` |
+| Any of the above, gzipped | `.gz` (e.g. `app.log.gz`) |
+
+For CSV, TSV, Parquet and JSON, columns are matched to fields by common names (`timestamp`/`time`, `level`/`severity`, `service`/`host`, `message`/`msg`, `trace_id`/`request_id` and so on). Other columns are kept, and if there's no message column the app builds one from the rest. The app shows which mapping it used, and evidence for structured files points to row numbers.
+
+Limits: the upload cap (`MAX_UPLOAD_MB`, default 5) plus caps after reading: 50 MB decompressed, 200,000 rows or lines, and 200 columns. Not supported yet: Windows `.evtx`, binary journald files, Excel, and multi-file archives (`.zip`, `.tar`).
+
+The sample logs cover every format, including a 50,000-row Parquet file.
+
 ## Team
 
 Team c10-g08, Outskill hackathon, October 2026.
