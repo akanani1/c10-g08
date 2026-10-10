@@ -39,10 +39,12 @@ from incident_suite.rag.runbooks import RUNBOOK_DIR, load_runbooks
 from incident_suite.state import (
     ApprovalStatus,
     Category,
+    Issue,
     NotificationPlan,
     ParsedLog,
     RunSettings,
     Severity,
+    SlackOutcome,
     StepStatus,
     TicketAction,
 )
@@ -446,3 +448,9 @@ def test_command_line_live_needs_the_switch(
     monkeypatch.setattr("incident_suite.config.load_config", lambda: config)
     assert graph_module.main([str(SAMPLE), "--live"]) == 1
     assert "LIVE_INTEGRATIONS=true" in capsys.readouterr().err
+
+
+def test_checkpoints_only_restore_our_state_models() -> None:
+    assert Issue in graph_module.CHECKPOINT_TYPES
+    assert SlackOutcome in graph_module.CHECKPOINT_TYPES
+    assert RunContext not in graph_module.CHECKPOINT_TYPES

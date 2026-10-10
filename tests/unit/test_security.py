@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from incident_suite.security import UploadError, check_upload, display_name, extension_of
+from incident_suite.security import (
+    RateLimitError,
+    RunLimiter,
+    UploadError,
+    check_upload,
+    display_name,
+    extension_of,
+)
 
 
 @pytest.mark.parametrize(
@@ -58,3 +65,15 @@ def test_extension_ignores_gz() -> None:
 )
 def test_display_name(name: str, expected: str) -> None:
     assert display_name(name) == expected
+
+
+def test_run_limiter() -> None:
+    limiter = RunLimiter(max_runs=2, window=60)
+    limiter.check(now=0)
+    limiter.check(now=10)
+    with pytest.raises(RateLimitError, match="Try again in 41 s"):
+        limiter.check(now=20)
+    limiter.check(now=61)  # the first run has left the window
+    with pytest.raises(RateLimitError):
+        limiter.check(now=62)
+    RunLimiter().check()
