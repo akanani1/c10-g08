@@ -1,0 +1,140 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "incident-suite"
+version = "0.1.0"
+description = "Multi-agent DevOps incident analysis: upload ops logs, get fixes, checklists, Slack posts and JIRA tickets."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Team c10-g08" }]
+keywords = ["langgraph", "langchain", "multi-agent", "devops", "sre", "streamlit", "slack", "jira"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Pydantic :: 2",
+    "Topic :: System :: Monitoring",
+]
+# Runtime dependencies. This is the only place they are declared;
+# `make lock` turns them into the pinned requirements.txt.
+dependencies = [
+    "httpx>=0.28",
+    "langchain>=1.4",
+    "langchain-core>=1.6",
+    "langchain-openai>=1.7",
+    "langgraph>=1.2",
+    "pyarrow>=25",
+    "pydantic>=2.14",
+    "python-dotenv>=1.2",
+    "streamlit>=1.65",
+]
+
+[project.optional-dependencies]
+# Developer tooling, locked separately into requirements-dev.txt.
+dev = [
+    "bandit[toml]>=1.9",
+    "mypy>=2.4",
+    "pip-audit>=2.10",
+    "pip-tools>=7.6",
+    "pre-commit>=4.6",
+    "pytest>=9.1",
+    "pytest-cov>=7.1",
+    "ruff>=0.17",
+    "vulture>=2.16",
+]
+
+[project.urls]
+Repository = "https://github.com/akanani1/c10-g08"
+
+# Flat layout: the package lives at the repo root (see docs/build-plan.md, section 9).
+[tool.setuptools.packages.find]
+include = ["incident_suite*"]
+
+# Prompts travel with the package and load through importlib.resources.
+[tool.setuptools.package-data]
+"incident_suite.prompts" = ["*.md"]
+
+# ---------------------------------------------------------------- Ruff
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "vulture_whitelist.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes: unused imports and variables
+    "I",        # import sorting
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplify
+    "C4",       # comprehensions
+    "ARG",      # unused arguments
+    "N",        # naming
+    "S",        # bandit rules
+    "PT",       # pytest style
+    "RET",      # return statements
+    "ERA",      # commented-out code
+    "PL",       # pylint subset
+    "RUF",
+]
+ignore = [
+    "PLR2004",  # magic values in comparisons are fine in tests and bounds
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app.py", "incident_suite", "tests"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["pyarrow.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --import-mode=importlib -m 'not live'"
+markers = [
+    "live: calls real external services; opt-in with `make smoke` (needs keys)",
+]
+filterwarnings = ["error"]
+
+# ---------------------------------------------------------------- coverage
+[tool.coverage.run]
+source = ["incident_suite"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+
+# ---------------------------------------------------------------- vulture
+[tool.vulture]
+paths = ["app.py", "incident_suite", "tests", "vulture_whitelist.py"]
+min_confidence = 60
+ignore_names = ["pytestmark"]
+ignore_decorators = ["@field_validator", "@model_validator", "@pytest.fixture"]
+
+# ---------------------------------------------------------------- bandit
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
