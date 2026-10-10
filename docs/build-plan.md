@@ -1,10 +1,10 @@
 # Build plan: Incident Suite (c10-g08)
 
-Version 8, 10 Oct 2026.
+Version 9, 10 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H4 are merged: scaffold, parsing, agents, runbook search and the LangGraph graph. Next up is H5, the Slack and JIRA clients. Section 16 has the full timeline.
+**Status:** H1 to H4 are merged: scaffold, parsing, agents, runbook search and the LangGraph graph. H5, the Slack and JIRA clients, is in review. Next up is the Streamlit UI (H6 to H7). Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -95,7 +95,9 @@ Upload -> Redact -> Log Reader -> Remediation -> [Cookbook || JIRA plan*] -> Not
 
 **How it's built.** The graph is in `incident_suite/graph.py`. The state holds what the run produces: issues, fixes, the checklist, ticket and Slack plans and outcomes, errors, cost per agent, and one step record per node. Things that stay fixed during a run travel in LangGraph's runtime context instead: the parsed log, the run settings, and the model, runbook, JIRA and Slack services. That way the 50,000-line log isn't copied into every checkpoint. The checkpointer is `InMemorySaver`, the thread ID is the run ID, and the app keeps the compiled graph in `st.session_state`, so a Streamlit rerun doesn't lose a paused run.
 
-You can do a full dry run from the command line: `python -m incident_suite.graph <log file>`.
+You can do a full dry run from the command line: `python -m incident_suite.graph <log file>`. Add `--live` to send for real. It only works with `LIVE_INTEGRATIONS=true` and the credentials set, and it asks on the terminal before sending, just like the approval panel.
+
+**Which runs get real clients.** `connect_services()` in `graph.py` gives the run a JIRA client and a Slack client only when the run is live and that service's credentials are all set. Otherwise the run gets none, and it stays a dry run.
 
 ---
 
@@ -124,7 +126,8 @@ Turns all the fixes into one checklist with three groups: do now, this week, pre
 ### 5.4 JIRA Ticket
 
 - **Plan (read-only):** for each critical issue, up to 3 per run, look up the newest ticket with the same signature and decide whether to create a ticket, comment on an existing one, open a regression, or skip because the cap is reached.
-- **Send (after approval):** create or comment, then link regressions to the old ticket.
+- **Send (after approval):** create or comment, then link regressions to the old ticket. If the ticket is created but the link fails, the ticket still counts as sent and the error is shown.
+- **Link back (after Slack):** add a remote link to the Slack summary on every ticket this run touched.
 - The rules are in section 6.2.
 
 ### 5.5 Notification
@@ -169,7 +172,9 @@ Each ticket carries two labels, `incident-suite` and `sig-<hash>`, where the has
 
 `project = OPS AND labels = "sig-<hash>" ORDER BY created DESC`
 
-If the newest match isn't done, we comment on it. If it is done, we open a new ticket and link it to the old one as a regression.
+If the newest match isn't done, we comment on it. If it is done, we open a new ticket and link it to the old one as a regression ("relates to").
+
+The search goes through `GET /rest/api/3/search/jql`. Atlassian has removed the older `/rest/api/3/search` from Jira Cloud (checked 10 Oct). We ask for one result and only the `status` field, and treat a ticket as done when its status category is `done`. The hash is checked against `[0-9a-f]{8,16}` before it goes into JQL, so nothing else can get into the query.
 
 ### 6.4 Order of calls after approval
 
@@ -177,9 +182,15 @@ If the newest match isn't done, we comment on it. If it is done, we open a new t
 2. Slack: post the summary with `chat.postMessage` and keep the message's `ts`.
 3. Slack: reply in that thread with the checklist and the fix for each issue.
 4. Slack: get the message link with `chat.getPermalink`.
-5. JIRA: on each ticket from step 1, add remote links to the Slack message and the LangSmith trace.
+5. JIRA: on each ticket from step 1, add remote links to the Slack message and the LangSmith trace. The Slack link is in from H5. The trace link joins in H8, through the same call.
 
-Both clients retry on 429 and 5xx with backoff, and respect Slack's `Retry-After` header. Every call has a timeout. If a call fails, the app shows the error and carries on rather than crashing.
+Both clients send every call through one helper, `send_with_retry` in `integrations/__init__.py`:
+
+- Every call has a timeout: 5 seconds to connect, 10 to answer.
+- On a 429 or a 5xx it tries up to 3 times. It waits for `Retry-After` when the service sends a number of seconds, otherwise 1 second and then 2. It never waits more than 30 seconds, so the app doesn't hang.
+- A failed connection is retried, because the request never arrived. A timeout while waiting for the answer is not: JIRA may already have created the ticket, and a duplicate is worse than one error.
+
+If a call fails, the app shows the error and carries on rather than crashing. If the Slack summary posts but the thread or the link fails, the post still counts as sent and the error is shown. Error messages carry the status and the service's error code, never a token.
 
 ### 6.5 What goes into the messages
 
@@ -192,7 +203,15 @@ Both clients retry on 429 and 5xx with backoff, and respect Slack's `Retry-After
   - Description: what happened, evidence lines, fix steps, rationale, runbook sources and run ID
   - Remote links: the Slack thread and the trace
 
-All log text is escaped before it goes into Slack or JIRA, and we never turn a URL found in a log into a link.
+- **JIRA comment on an open ticket:** "Seen again in run <ID>", the pattern's count and time window ("Seen 412 times between 14:00:00 and 14:07:30"), and the evidence lines.
+
+All log text is escaped before it goes into Slack or JIRA, and we never turn a URL found in a log into a link. In practice, `integrations/payloads.py` does this:
+
+- In Slack, log text goes into `plain_text` blocks, so it can't mention `@channel` or fake a link. The only `mrkdwn` is our own ticket links, and any log text near them is escaped (`&`, `<`, `>`).
+- In JIRA, log text goes into plain ADF text nodes with no link marks.
+- In both, URLs in log text are defanged first (`https[:]//`, `www[.]`), and link previews are switched off in Slack.
+- The only links we build point to our own tickets, the Slack message and the trace. JIRA remote links must be `https`.
+- Long text is cut to Slack's limits (150 characters in the header, 3,000 per section, 45 sections) and to JIRA's 255-character title, with a note that the full text is in the app.
 
 ### 6.6 No-code setup (Raphael, about 20 minutes)
 
@@ -392,9 +411,10 @@ c10-g08/
 │   │   ├── runbooks.py           loads and splits the markdown runbooks
 │   │   └── retriever.py          in-memory vector search, whole-runbook results
 │   └── integrations/
-│       ├── slack_client.py       post, thread reply, permalink, retries (planned)
-│       ├── jira_client.py        search, create, comment, links, retries (planned)
-│       └── payloads.py           Slack blocks and JIRA documents, pure functions (planned)
+│       ├── __init__.py           shared retry, backoff and timeout for both clients
+│       ├── slack_client.py       post, thread reply, permalink
+│       ├── jira_client.py        search, create, comment, links
+│       └── payloads.py           Slack blocks and JIRA documents, pure functions
 ├── data/runbooks/                15 markdown runbooks
 ├── sample_logs/                  17 sample logs, labels.json and make_samples.py, which generates them all
 ├── eval/run_eval.py              accuracy report for the README (planned)
@@ -496,8 +516,8 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H2 | Readers for every format, parser, redaction, grouping and pre-filter | Done |
 | H3 | Log Reader, runbook search, Remediation, Cookbook, JIRA and Notification plans; sample logs and runbooks | Done |
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
-| H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Next |
-| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | |
+| H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | In review. Live test with Raphael next |
+| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Next |
 | H8 | LangSmith, eval run, clean-code and security pass | |
 | Extras | Section 17, in order, until the freeze | |
 
@@ -640,7 +660,7 @@ We record at 1080p and upload it unlisted.
 | Slack rate limit (about 1 message per second per channel) | One summary and one thread reply per run, and we respect `Retry-After` |
 | JIRA automation limit on the free plan | Event rules only, with no scheduled rules or test bursts |
 | Public visitors spamming our Slack and JIRA | Live integrations stay off on the public app, and the admin passcode guards the assistant's Slack and JIRA tools |
-| The JIRA API has changed, for example the JQL search endpoint | Check Atlassian's current REST docs at the start of H5 |
+| The JIRA API has changed, for example the JQL search endpoint | Checked on 10 Oct: we use `/rest/api/3/search/jql`, because the old `/search` is gone. The live test with Raphael confirms the rest |
 | Extras eat into core time | Fixed order, one PR each, and a hard stop at 3 PM |
 
 ---
@@ -666,6 +686,7 @@ We record at 1080p and upload it unlisted.
 | 10 Oct | Extras order: settings page, assistant Slack and JIRA updates, runbook drafting, chat, small extras, then replay only if time allows |
 | 10 Oct | AI-drafted runbooks stay in the session and can be downloaded. They're never posted to JIRA or saved to the repo |
 | 10 Oct | The plan and the README are rewritten as one current version. From now on we change sections in place and log the decision here |
+| 10 Oct | H5: the JIRA agent now gets a `TicketDraft` (issue, fix, pattern, run ID), so comments can give the count and time window. Regression links and the link back to Slack are separate steps that can fail without losing the ticket. The shared retry helper lives in `integrations/__init__.py`. Log text goes to Slack as plain text with URLs defanged. The command line gets `--live`, which asks before sending |
 
 **Still open:** the Streamlit Cloud deploy status and the Slack and JIRA credentials (Raphael).
 

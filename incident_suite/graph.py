@@ -11,6 +11,9 @@ The graph state holds what the run produced. The inputs that don't change during
 parsed log, the run settings and the model, runbook, JIRA and Slack services) travel in the
 LangGraph runtime context instead, so the 50k-line log isn't copied into every checkpoint.
 Every node appends a :class:`RunStep`, which feeds the pipeline strip and the run log.
+
+:func:`connect_services` gives the context real Slack and JIRA clients only when the run is
+live and the credentials are there. Otherwise the run is a dry run and nothing is sent.
 """
 
 from __future__ import annotations
@@ -33,10 +36,19 @@ from langgraph.types import Command, interrupt
 
 from incident_suite.agents import StructuredLLM
 from incident_suite.agents.cookbook import synthesize
-from incident_suite.agents.jira_agent import TicketTracker, plan_tickets, send_tickets
+from incident_suite.agents.jira_agent import (
+    TicketDraft,
+    TicketTracker,
+    link_back,
+    plan_tickets,
+    send_tickets,
+)
 from incident_suite.agents.log_reader import classify, widen_context
 from incident_suite.agents.notification import Messenger, plan_notification, send_notification
 from incident_suite.agents.remediation import remediate
+from incident_suite.config import AppConfig
+from incident_suite.integrations.jira_client import JiraClient
+from incident_suite.integrations.slack_client import SlackClient
 from incident_suite.parsing.grouping import group_lines
 from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.state import (
@@ -271,25 +283,42 @@ def approval(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
     return {"approval": status, "steps": [_step("approval", started, detail)]}
 
 
+def _drafts(state: RunState) -> dict[str, TicketDraft]:
+    patterns = {p.signature_hash: p for p in state["grouped"].patterns}
+    fixes = state["remediations"]
+    return {
+        issue.id: TicketDraft(
+            issue=issue,
+            remediation=fixes.get(issue.id),
+            pattern=patterns.get(issue.signature_hash or ""),
+            run_id=state["run_id"],
+        )
+        for issue in state["issues"]
+    }
+
+
 def send(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
-    """JIRA first, so the Slack post can carry the ticket links."""
+    """JIRA first, so the Slack post can carry the ticket links; then link the tickets back."""
     started = time.perf_counter()
     ctx = runtime.context
-    tickets = state.get("tickets", [])
+    planned = state.get("tickets", [])
+    tickets = planned
     if ctx.tracker is not None:
-        tickets = send_tickets(
-            tickets,
-            state["issues"],
-            list(state["remediations"].values()),
-            state["run_id"],
-            ctx.tracker,
-        )
+        tickets = send_tickets(planned, _drafts(state), ctx.tracker)
     slack = SlackOutcome()
     if ctx.messenger is not None:
         slack = send_notification(state["notification"], tickets, ctx.messenger)
-    errors = [f"JIRA ({t.issue_id}): {t.error}" for t in tickets if t.error and t.sent is False]
+    already_shown = {(t.issue_id, t.error) for t in planned}
+    errors = [
+        f"JIRA ({t.issue_id}): {t.error}"
+        for t in tickets
+        if t.error and (t.issue_id, t.error) not in already_shown
+    ]
     if slack.error:
         errors.append(f"Slack: {slack.error}")
+    if ctx.tracker is not None and slack.permalink is not None:
+        links = [(slack.permalink, f"Slack: incident summary ({state['run_id']})")]
+        errors += link_back(tickets, links, ctx.tracker)
     sent = sum(1 for t in tickets if t.sent)
     detail = f"{sent} ticket action(s); Slack {'posted' if slack.sent else 'not posted'}"
     return {
@@ -341,6 +370,20 @@ def build_graph() -> CompiledStateGraph[RunState, RunContext, RunState, RunState
 
 
 # ------------------------------------------------------------------ running
+
+
+def connect_services(
+    config: AppConfig, settings: RunSettings
+) -> tuple[JiraClient | None, SlackClient | None]:
+    """Real JIRA and Slack clients for a live run, each only if its credentials are all set.
+
+    A dry run gets neither, so nothing can be sent however the rest of the run goes.
+    """
+    if not settings.live:
+        return None, None
+    tracker = JiraClient(config) if config.jira_configured else None
+    messenger = SlackClient(config) if config.slack_configured else None
+    return tracker, messenger
 
 
 def _config(run_id: str) -> RunnableConfig:
@@ -424,17 +467,34 @@ def _print(result: RunResult) -> None:
             print(f"  sources: {', '.join(s.runbook for s in fix.sources) or '-'}")
     if result.notification is not None:
         print(f"\nSlack: {result.notification.reason}")
+        if result.slack.permalink:
+            print(f"  posted: {result.slack.permalink}")
     for ticket in result.tickets:
-        print(f"JIRA: {ticket.issue_id} -> {ticket.action}")
+        sent = f" ({ticket.key}, sent)" if ticket.sent else ""
+        print(f"JIRA: {ticket.issue_id} -> {ticket.action}{sent}")
     for error in result.errors:
         print(f"error: {error}")
     cost = sum(u.cost_usd for u in result.usage)
     tokens = sum(u.input_tokens + u.output_tokens for u in result.usage)
-    print(f"\n{tokens} tokens, ${cost:.4f}. Dry run: nothing was sent.")
+    ending = "Dry run: nothing was sent." if result.dry_run else f"Approval: {result.approval}."
+    print(f"\n{tokens} tokens, ${cost:.4f}. {ending}")
+
+
+def _ask(result: RunResult) -> bool:
+    """Show what a paused run would send and ask on the terminal."""
+    if result.notification is not None and result.notification.post:
+        print("\n--- Slack summary ---\n" + result.notification.summary)
+    for ticket in result.tickets:
+        print(f"--- JIRA: {ticket.issue_id} -> {ticket.action} {ticket.key or ''}")
+    return input("\nSend to Slack and JIRA? [y/N] ").strip().lower() == "y"
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m incident_suite.graph <log file>``: one dry run with the real models."""
+    """``python -m incident_suite.graph <log file> [--live]``: one run with the real models.
+
+    It's a dry run unless ``--live`` is given and ``LIVE_INTEGRATIONS=true``. A live run asks on
+    the terminal before anything is sent, like the approval panel in the app.
+    """
     from incident_suite.agents import OpenRouterLLM, make_embeddings  # noqa: PLC0415
     from incident_suite.config import load_config  # noqa: PLC0415
     from incident_suite.parsing.readers import ReadError, parse_upload  # noqa: PLC0415
@@ -443,24 +503,40 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(prog="python -m incident_suite.graph")
     parser.add_argument("path", type=Path, help="log file to analyse")
+    parser.add_argument("--live", action="store_true", help="send to Slack and JIRA")
     args = parser.parse_args(argv)
     config = load_config()
     if not config.llm_configured:
         print("error: OPENROUTER_API_KEY is not set", file=sys.stderr)
+        return 1
+    if args.live and not config.live_integrations:
+        print("error: --live needs LIVE_INTEGRATIONS=true", file=sys.stderr)
         return 1
     try:
         parsed = parse_upload(args.path.read_bytes(), args.path.name)
     except (OSError, ReadError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    settings = RunSettings.from_config(config).model_copy(update={"live": False})
+    settings = RunSettings.from_config(config).model_copy(update={"live": args.live})
+    tracker, messenger = connect_services(config, settings)
     context = RunContext(
         parsed=parsed,
         settings=settings,
         llm=OpenRouterLLM(config),
         retriever=RunbookRetriever(load_runbooks(), make_embeddings(config)),
+        tracker=tracker,
+        messenger=messenger,
     )
-    _print(start_run(build_graph(), context, new_run_id()))
+    graph, run_id = build_graph(), new_run_id()
+    try:
+        result = start_run(graph, context, run_id)
+        if result.approval is ApprovalStatus.PENDING:
+            result = resume_run(graph, context, run_id, approved=_ask(result))
+    finally:
+        for client in (tracker, messenger):
+            if client is not None:
+                client.close()
+    _print(result)
     return 0
 
 

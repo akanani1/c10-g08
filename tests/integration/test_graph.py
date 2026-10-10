@@ -11,8 +11,10 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from langchain_core.embeddings import Embeddings
+from pydantic import SecretStr
 
 from incident_suite import graph as graph_module
 from incident_suite.agents import StructuredLLM
@@ -21,7 +23,16 @@ from incident_suite.agents.jira_agent import TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
-from incident_suite.graph import RunContext, build_graph, resume_run, start_run
+from incident_suite.config import AppConfig
+from incident_suite.graph import (
+    RunContext,
+    build_graph,
+    connect_services,
+    resume_run,
+    start_run,
+)
+from incident_suite.integrations.jira_client import JiraClient
+from incident_suite.integrations.slack_client import SlackClient
 from incident_suite.parsing.readers import parse_upload
 from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.rag.runbooks import RUNBOOK_DIR, load_runbooks
@@ -191,7 +202,10 @@ def test_live_run_pauses_then_sends_once_on_approval(
     done = resume_run(graph, rebuilt, "r5", approved=True)
 
     assert done.approval is ApprovalStatus.APPROVED
-    assert [method for method, _ in jira_calls] == ["find", "create"]
+    assert jira_calls[1:] == [
+        ("create", "ISS-1<--"),
+        ("remote_link", "OPS-101->https://slack.example/archives/C1/p1"),
+    ]
     (ticket,) = done.tickets
     assert ticket.sent
     assert ticket.key == "OPS-101"
@@ -284,3 +298,151 @@ def test_command_line_errors(
     monkeypatch.setattr("incident_suite.config.load_config", lambda: config)
     assert graph_module.main(["/nonexistent/file.log"]) == 1
     assert "error:" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ real clients, mocked network
+
+SITE = "https://team.atlassian.net"
+PERMALINK = "https://team.slack.com/archives/C123/p1700000000000100"
+
+
+def _live_config(config: AppConfig) -> AppConfig:
+    return config.model_copy(
+        update={
+            "live_integrations": True,
+            "slack_bot_token": SecretStr("xoxb-test-token"),
+            "slack_channel_id": "C123",
+            "jira_base_url": SITE,
+            "jira_email": "bot@example.com",
+            "jira_api_token": SecretStr("jira-test-token"),
+            "jira_project_key": "OPS",
+        }
+    )
+
+
+def _network(seen: list[str]) -> httpx.MockTransport:
+    """Answers like Jira Cloud and Slack would. Records ``METHOD path`` for each call."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(f"{request.method} {request.url.path}")
+        replies = {
+            "/rest/api/3/search/jql": {"issues": [], "isLast": True},
+            "/rest/api/3/issue": {"id": "10001", "key": "OPS-101"},
+            "/rest/api/3/issue/OPS-101/remotelink": {"id": 1},
+            "/api/chat.postMessage": {"ok": True, "ts": "1700000000.000100"},
+            "/api/chat.getPermalink": {"ok": True, "permalink": PERMALINK},
+        }
+        return httpx.Response(200, json=replies[request.url.path])
+
+    return httpx.MockTransport(handler)
+
+
+def test_connect_services(config: AppConfig, settings: RunSettings) -> None:
+    live_config = _live_config(config)
+    assert connect_services(live_config, settings) == (None, None)
+
+    tracker, messenger = connect_services(live_config, _live(settings))
+    assert isinstance(tracker, JiraClient)
+    assert isinstance(messenger, SlackClient)
+
+    slack_only = live_config.model_copy(update={"jira_api_token": None})
+    tracker, messenger = connect_services(slack_only, _live(settings))
+    assert tracker is None
+    assert isinstance(messenger, SlackClient)
+
+
+def test_live_run_through_the_real_clients(
+    config: AppConfig,
+    parsed: ParsedLog,
+    settings: RunSettings,
+    retriever: RunbookRetriever,
+    make_llm: MakeLLM,
+) -> None:
+    """Section 6.4 in order: JIRA, Slack summary, thread, permalink, then the link back."""
+    seen: list[str] = []
+    live_config = _live_config(config)
+    tracker = JiraClient(live_config, transport=_network(seen))
+    messenger = SlackClient(live_config, transport=_network(seen))
+    llm, _ = make_llm([_classified(), _fix(), CHECKLIST])
+    context = _context(
+        parsed, _live(settings), llm, retriever, tracker=tracker, messenger=messenger
+    )
+    graph = build_graph()
+
+    start_run(graph, context, "r9")
+    done = resume_run(graph, context, "r9", approved=True)
+
+    assert seen == [
+        "GET /rest/api/3/search/jql",
+        "POST /rest/api/3/issue",
+        "POST /api/chat.postMessage",
+        "POST /api/chat.postMessage",
+        "GET /api/chat.getPermalink",
+        "POST /rest/api/3/issue/OPS-101/remotelink",
+    ]
+    (ticket,) = done.tickets
+    assert ticket.key == "OPS-101"
+    assert ticket.sent
+    assert done.slack.permalink == PERMALINK
+    assert done.errors == []
+
+
+def test_send_reports_new_jira_errors_once(
+    parsed: ParsedLog,
+    settings: RunSettings,
+    retriever: RunbookRetriever,
+    make_llm: MakeLLM,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    llm, _ = make_llm([_classified(), _fix(), CHECKLIST])
+    tracker, _ = make_tracker(fail="remote_link")
+    messenger, _ = make_messenger()
+    context = _context(
+        parsed,
+        _live(settings, require_approval=False),
+        llm,
+        retriever,
+        tracker=tracker,
+        messenger=messenger,
+    )
+    result = start_run(build_graph(), context, "r10")
+    assert result.errors == [
+        "JIRA (OPS-101): link to Slack: incident summary (r10) not added: JIRA returned 503"
+    ]
+
+
+def test_command_line_live_run(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    config: AppConfig,
+    embeddings: Embeddings,
+    make_llm: MakeLLM,
+) -> None:
+    seen: list[str] = []
+    live_config = _live_config(config).model_copy(update={"jira_api_token": None})
+    llm, _ = make_llm([_classified(Severity.HIGH), _fix(), CHECKLIST])
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live_config)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+    monkeypatch.setattr("incident_suite.agents.make_embeddings", lambda _config: embeddings)
+    monkeypatch.setattr(
+        graph_module,
+        "connect_services",
+        lambda cfg, _settings: (None, SlackClient(cfg, transport=_network(seen))),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "y")
+
+    assert graph_module.main([str(SAMPLE), "--live"]) == 0
+    out = capsys.readouterr().out
+    assert "--- Slack summary ---" in out
+    assert f"posted: {PERMALINK}" in out
+    assert "Approval: approved." in out
+    assert len(seen) == 3
+
+
+def test_command_line_live_needs_the_switch(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], config: AppConfig
+) -> None:
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: config)
+    assert graph_module.main([str(SAMPLE), "--live"]) == 1
+    assert "LIVE_INTEGRATIONS=true" in capsys.readouterr().err

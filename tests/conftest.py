@@ -12,13 +12,16 @@ from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, SecretStr
 
 from incident_suite.agents import LLMError, LLMReply, SchemaT, StructuredLLM
-from incident_suite.agents.jira_agent import ExistingTicket, TicketTracker, TrackerError
+from incident_suite.agents.jira_agent import (
+    ExistingTicket,
+    TicketDraft,
+    TicketTracker,
+    TrackerError,
+)
 from incident_suite.agents.notification import Messenger
 from incident_suite.config import AppConfig
 from incident_suite.state import (
-    Issue,
     NotificationPlan,
-    Remediation,
     RunSettings,
     SlackOutcome,
     TicketOutcome,
@@ -68,21 +71,23 @@ class _FakeTracker:
         self._maybe_fail("find")
         return self.existing.get(signature_hash)
 
-    def create(
-        self,
-        issue: Issue,
-        remediation: Remediation | None,  # noqa: ARG002 - part of the interface
-        run_id: str,  # noqa: ARG002 - part of the interface
-        regression_of: str | None,
-    ) -> tuple[str, str]:
-        self.calls.append(("create", f"{issue.id}<-{regression_of or '-'}"))
+    def create(self, draft: TicketDraft, regression_of: str | None) -> tuple[str, str]:
+        self.calls.append(("create", f"{draft.issue.id}<-{regression_of or '-'}"))
         self._maybe_fail("create")
         self._next += 1
         return f"OPS-{self._next}", f"https://team.atlassian.example/browse/OPS-{self._next}"
 
-    def comment(self, key: str, issue: Issue, run_id: str) -> None:  # noqa: ARG002
+    def comment(self, key: str, draft: TicketDraft) -> None:  # noqa: ARG002
         self.calls.append(("comment", key))
         self._maybe_fail("comment")
+
+    def link_regression(self, key: str, closed_key: str) -> None:
+        self.calls.append(("link", f"{key}->{closed_key}"))
+        self._maybe_fail("link")
+
+    def add_remote_link(self, key: str, url: str, title: str) -> None:  # noqa: ARG002
+        self.calls.append(("remote_link", f"{key}->{url}"))
+        self._maybe_fail("remote_link")
 
 
 class _FakeMessenger:
