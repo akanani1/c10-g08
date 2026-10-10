@@ -225,6 +225,7 @@ class Pattern(StrictModel):
     last_seen: datetime | None = None
     example_line_nos: list[int] = Field(min_length=1, max_length=10)
     service: str | None = None
+    error_code: str | None = None
 
     @model_validator(mode="after")
     def _time_order(self) -> Self:
@@ -232,6 +233,32 @@ class Pattern(StrictModel):
             msg = "first_seen is after last_seen"
             raise ValueError(msg)
         return self
+
+
+class ParsedLog(StrictModel):
+    """An uploaded log after reading, redaction and parsing. Every text field is redacted."""
+
+    name: str
+    fingerprint: str = Field(pattern=r"^[0-9a-f]{16}$")
+    format: LogFormat
+    compressed: bool = False
+    note: str = Field(description='What the app detected, e.g. "Detected CSV, 3 columns"')
+    column_mapping: dict[str, str] = Field(default_factory=dict)
+    lines: list[LogLine]
+    redactions: dict[RedactionType, int] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class GroupedLog(StrictModel):
+    """What the pre-filter keeps for the model: WARN+ patterns plus the lines around them."""
+
+    patterns: list[Pattern]
+    patterns_dropped: int = Field(default=0, ge=0, description="WARN+ patterns over the cap")
+    context_lines: list[LogLine] = Field(default_factory=list)
+    change_lines: list[LogLine] = Field(
+        default_factory=list, description="Deploys, config changes and restarts"
+    )
+    quiet_line_count: int = Field(default=0, ge=0, description="Lines below WARN")
 
 
 # ------------------------------------------------------------------ agent outputs
