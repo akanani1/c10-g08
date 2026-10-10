@@ -123,6 +123,8 @@ The app opens at http://localhost:8501. Pick a sample log, upload your own, or p
 
 After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
+The **Replay** tab steps through a finished run with a slider. The graph lights up one step at a time, including the retry when Remediation asked for more context.
+
 The **Timeline** tab shows errors over time, with deploys and config changes marked as dashed lines, so you can see whether a change came just before the errors.
 
 After a run, **Download postmortem draft** gives you a markdown postmortem built from the results: summary, a timeline with deploys and config changes, root causes marked as hypotheses, fixes and follow-ups. It makes no extra model call.
@@ -341,7 +343,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 
 ## What's next
 
-If there's time before the deadline, we'll add a replay of a finished run, with the graph animating step by step.
+A full animated replay, with each agent's input and output, is a later idea. For now the Replay tab steps through the graph.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

@@ -106,7 +106,7 @@ def test_dry_run_shows_the_results() -> None:
         "Roll back payment\\-api \\(ISS\\-1\\)",
         "Alert on pool use above 80% \\(ISS\\-1\\)",
     ]
-    assert len(app.tabs) == 8
+    assert len(app.tabs) == 9
     assert any("ERROR and FATAL lines per" in c.value for c in app.caption)
 
 
@@ -529,3 +529,12 @@ class _AnyHash(dict[str, ExistingTicket]):
 
     def get(self, key: str, default: object = None) -> ExistingTicket:  # noqa: ARG002
         return self.ticket
+
+
+@pytest.mark.usefixtures("keyed")
+def test_replay_tab() -> None:
+    app = _click(_app(), "Analyse")
+    (slider,) = [s for s in app.slider if s.label == "Step"]
+    steps = app.session_state["result"].steps
+    app = slider.set_value(len(steps)).run()
+    assert any(c.value.startswith(f"Step {len(steps)} of {len(steps)}") for c in app.caption)

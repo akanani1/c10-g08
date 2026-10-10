@@ -525,7 +525,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4 and all of 5 (paste, postmortem, seen before, timeline) in review. 6 (replay) not started |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4, all of 5 (paste, postmortem, seen before, timeline) and the fallback version of 6 (replay slider) in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -638,6 +638,7 @@ A chat box in the sidebar that answers questions about this run only. It uses to
 - **Data:** every node already records a step, so no agent changes are needed. A few recorded sample runs can be saved as JSON, so the replay works without a key.
 - **Player:** one self-contained HTML file with an inline SVG, embedded with `components.html`. Run data goes in as escaped JSON, never as raw HTML.
 - **Fallback:** a simple step slider with the static graph and one caption per step.
+- **What's built (11 Oct):** the fallback, as a **Replay** tab. A slider moves through the run's recorded steps. Earlier steps keep their final colour, the current one lights up, and later ones wait. The retry shows as the Log Reader lighting up again, with "(the retry: more context)" in the caption (`ui.replay_frame`). The animated player, recorded sample runs as JSON, and the per-step inputs and outputs are not built: they need new files and agent changes, so they wait for a decision.
 
 ---
 
@@ -731,6 +732,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 3: the model fills the runbook template's fields and our code writes the markdown, so drafts always have the template's shape. `check_runbook()` is shared with our own runbooks. The drafting instructions live in `assistant.md` as a second task, rather than a new prompt file |
 | 11 Oct | Extra 4: the chat is a small tool loop that works through our structured-output client (the model picks one tool or answers), so the same fakes test it. It's open after any run, because it reads only that run |
 | 11 Oct | Extra 5 goes up as one PR per small extra, so each is easy to review. Pasted text is treated exactly like an uploaded `.log` file |
+| 11 Oct | Extra 6 ships only as its planned fallback, a step slider, because the full player needs new files (recorded runs as JSON) and changes to every agent |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

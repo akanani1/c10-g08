@@ -436,3 +436,29 @@ def test_no_timeline_without_timestamped_errors() -> None:
     assert ui.timeline_spec([_line(1, when, LogLevel.ERROR)]) is None
     undated = LogLine(line_no=2, raw="x", message="x", level=LogLevel.ERROR)
     assert ui.timeline_spec([_line(1, when, LogLevel.ERROR), undated]) is None
+
+
+# ------------------------------------------------------------------ replay
+
+
+def test_replay_frames() -> None:
+    steps = [
+        _step("log_reader"),
+        _step("remediation"),
+        RunStep(
+            node="log_reader", status=StepStatus.DONE, seconds=0.2, detail="More context for ISS-1"
+        ),
+        _step("remediation"),
+        _step("cookbook"),
+    ]
+    dot, caption = ui.replay_frame(steps, 1)
+    assert caption == "Step 1 of 5: Log Reader, done, 1.0 s. log_reader done"
+    assert 'log_reader [label="Log Reader", fillcolor="#c2410c"]' in dot  # lit up
+    assert 'remediation [label="Remediation", fillcolor="#27272a"]' in dot  # not reached yet
+
+    dot, caption = ui.replay_frame(steps, 3)
+    assert caption.startswith("Step 3 of 5: Log Reader (the retry: more context), done")
+    assert 'remediation [label="Remediation", fillcolor="#166534"]' in dot
+
+    assert ui.replay_frame(steps, 99)[1].startswith("Step 5 of 5: Cookbook")
+    assert ui.replay_frame(steps, 0)[1].startswith("Step 1 of 5")
