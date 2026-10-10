@@ -106,7 +106,7 @@ line-ending = "lf"
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["app.py", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
+files = ["app.py", "pages", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
@@ -141,7 +141,7 @@ fail_under = 85
 # ---------------------------------------------------------------- vulture
 [tool.vulture]
 # 80: unused imports, arguments and unreachable code. Pydantic fields would be false alarms at 60.
-paths = ["app.py", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
+paths = ["app.py", "pages", "incident_suite", "eval", "tests", "sample_logs/make_samples.py"]
 min_confidence = 80
 # pytest markers and LangChain interface methods are called by the frameworks
 ignore_names = ["pytestmark", "embed_documents", "embed_query"]

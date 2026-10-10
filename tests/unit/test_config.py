@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -11,8 +12,12 @@ from incident_suite.config import (
     CHAT_MODELS,
     DEFAULT_CLASSIFIER_MODEL,
     DEFAULT_REMEDIATION_MODEL,
+    AdminOverrides,
     AppConfig,
+    admin_overrides,
+    effective_config,
     load_config,
+    set_admin_overrides,
 )
 
 
@@ -115,6 +120,7 @@ def test_jira_needs_all_four_values(tmp_path: Path) -> None:
         ("MAX_TICKETS_PER_RUN", "4"),
         ("RUN_TOKEN_BUDGET", "10000000"),
         ("MAX_UPLOAD_MB", "0"),
+        ("MAX_UPLOAD_MB", "6"),
     ],
 )
 def test_invalid_values_are_rejected(tmp_path: Path, key: str, value: str) -> None:
@@ -143,3 +149,37 @@ def test_streamlit_secrets_are_read(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_no_streamlit_secrets_file_is_fine(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.st.secrets", _FakeSecrets(None))
     assert load_config(env_file=None, environ={}).jira_project_key is None
+
+
+def test_admin_overrides_apply_on_top_of_the_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(jira_project_key="SCRUM", run_token_budget=200_000)
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    assert effective_config() == base
+
+    wanted = AdminOverrides(live_integrations=True, max_upload_mb=2, jira_project_key="SCRUM")
+    assert wanted.differences(base) == {"live_integrations": True, "max_upload_mb": 2}
+    set_admin_overrides(wanted)
+    assert admin_overrides() is wanted
+    config = effective_config()
+    assert config.live_integrations
+    assert config.max_upload_mb == 2
+    assert config.jira_project_key == "SCRUM"
+    assert config.run_token_budget == 200_000  # untouched settings keep their defaults
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"max_upload_mb": 6},  # Streamlit's own cap is 5 MB
+        {"max_tickets_per_run": 4},
+        {"run_token_budget": 10_000_000},
+        {"jira_project_key": "scrum; drop"},
+        {"jira_issue_type": "<script>"},
+        {"jira_base_url": "https://evil.example"},  # where a secret goes is never editable
+        {"slack_channel_id": "C999"},
+        {"openrouter_api_key": "sk-x"},
+    ],
+)
+def test_admin_overrides_are_bounded(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        AdminOverrides(**bad)

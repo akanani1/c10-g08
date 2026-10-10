@@ -11,7 +11,10 @@ import re
 from collections.abc import Iterable, Sequence
 from typing import Any
 
+from pydantic import ValidationError
+
 from incident_suite.agents.jira_agent import TicketDraft
+from incident_suite.config import CHAT_MODELS
 from incident_suite.integrations.payloads import defang, jira_summary
 from incident_suite.state import (
     AgentUsage,
@@ -19,6 +22,7 @@ from incident_suite.state import (
     LogLine,
     Pattern,
     Remediation,
+    RunSettings,
     RunStep,
     Severity,
     StepStatus,
@@ -292,3 +296,55 @@ def source_rows(fixes: Sequence[Remediation]) -> list[Row]:
         {"Runbook": name, "Best match": round(score, 2), "Used for": ", ".join(cited_by[name])}
         for name, score in sorted(best.items(), key=lambda item: -item[1])
     ]
+
+
+# ------------------------------------------------------------------ settings page
+
+
+def model_label(model: str) -> str:
+    """A model and its price, such as ``openai/gpt-5-mini ($0.25 in / $2.00 out per M)``."""
+    price = CHAT_MODELS[model]
+    return (
+        f"{model} (${price.input_per_million:.2f} in / "
+        f"${price.output_per_million:.2f} out per M tokens)"
+    )
+
+
+def prompt_override(text: str, default: str) -> str | None:
+    """``None`` when the text is the default prompt (ignoring outer whitespace), else the text."""
+    return None if text.strip() == default.strip() else text
+
+
+def settings_to_json(settings: RunSettings) -> str:
+    """The session's settings as JSON for download."""
+    return settings.model_dump_json(indent=2)
+
+
+def settings_from_json(raw: bytes) -> RunSettings:
+    """Settings from an uploaded JSON file, checked like everything else.
+
+    Raises ``ValueError`` with a short message that names the first bad field.
+    """
+    try:
+        return RunSettings.model_validate_json(raw)
+    except ValidationError as exc:
+        first = exc.errors()[0]
+        where = ".".join(str(part) for part in first["loc"]) or "file"
+        msg = f"That settings file isn't valid ({where}: {first['msg']})."
+        raise ValueError(msg) from exc
+
+
+def decide_live(settings: RunSettings, live_allowed: bool, admin_ok: bool) -> tuple[bool, str]:
+    """Whether this run may send for real, and a note saying why not when it can't.
+
+    Edited prompts can change what gets sent, so they force a dry run unless the admin
+    passcode was entered (plan section 17.1).
+    """
+    if not settings.live or not live_allowed:
+        return False, ""
+    if settings.prompts_edited and not admin_ok:
+        return (
+            False,
+            "Prompts were edited, so this run is a dry run. The admin passcode unlocks it.",
+        )
+    return True, ""

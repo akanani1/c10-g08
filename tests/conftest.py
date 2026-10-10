@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 
 import pytest
 from langchain_core.embeddings import Embeddings
@@ -19,7 +19,7 @@ from incident_suite.agents.jira_agent import (
     TrackerError,
 )
 from incident_suite.agents.notification import Messenger
-from incident_suite.config import AppConfig
+from incident_suite.config import AdminOverrides, AppConfig, set_admin_overrides
 from incident_suite.state import (
     NotificationPlan,
     RunSettings,
@@ -178,3 +178,11 @@ def make_messenger() -> MakeMessenger:
         return fake, fake.posts
 
     return make
+
+
+@pytest.fixture(autouse=True)
+def _no_admin_overrides() -> Iterator[None]:
+    """Admin overrides are shared by the whole process, so every test starts and ends without."""
+    set_admin_overrides(AdminOverrides())
+    yield
+    set_admin_overrides(AdminOverrides())

@@ -51,6 +51,8 @@ DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small"
 # Hard ceilings. RunSettings enforces them too, so no widget or import can exceed them.
 MAX_TICKETS_CEILING = 3
 RUN_TOKEN_BUDGET_CEILING = 500_000
+# Streamlit refuses bigger uploads itself (server.maxUploadSize in .streamlit/config.toml).
+UPLOAD_CEILING_MB = 5
 
 
 def _check_model(value: str, catalog: Mapping[str, ModelPrice], kind: str) -> str:
@@ -99,7 +101,7 @@ class AppConfig(BaseModel):
     langsmith_project: str = Field(default="c10-g08", alias="LANGSMITH_PROJECT")
 
     # Limits
-    max_upload_mb: int = Field(default=5, ge=1, le=50, alias="MAX_UPLOAD_MB")
+    max_upload_mb: int = Field(default=5, ge=1, le=UPLOAD_CEILING_MB, alias="MAX_UPLOAD_MB")
     max_tickets_per_run: int = Field(
         default=MAX_TICKETS_CEILING, ge=0, le=MAX_TICKETS_CEILING, alias="MAX_TICKETS_PER_RUN"
     )
@@ -107,7 +109,7 @@ class AppConfig(BaseModel):
         default=200_000, ge=1_000, le=RUN_TOKEN_BUDGET_CEILING, alias="RUN_TOKEN_BUDGET"
     )
 
-    # Agent settings page: unlocks live sends after a prompt has been edited
+    # Unlocks live sending, live sends with edited prompts, and the Admin card
     admin_passcode: SecretStr | None = Field(default=None, alias="ADMIN_PASSCODE")
 
     @field_validator("classifier_model", "remediation_model")
@@ -189,3 +191,60 @@ def load_config(
     merged |= _clean(os.environ if environ is None else environ)
     merged |= _clean(_streamlit_secrets() if secrets is None else secrets)
     return AppConfig.model_validate(merged)
+
+
+# ------------------------------------------------------------------ admin overrides
+
+_JIRA_KEY = r"^[A-Z][A-Z0-9_]+$"
+_ISSUE_TYPE = r"^[A-Za-z][A-Za-z0-9 _-]{0,49}$"
+
+
+class AdminOverrides(BaseModel):
+    """Deployment settings an admin can change from the app, for every visitor.
+
+    ``None`` means "use the value from .env, the environment or Streamlit secrets". On purpose,
+    nothing here decides where a secret is sent: the JIRA URL and email, the Slack channel,
+    keys and models stay in the deployment's settings. Overrides live in this process's memory
+    only, so they last until the app sleeps, restarts or is redeployed.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    live_integrations: bool | None = None
+    require_approval: bool | None = None
+    max_upload_mb: int | None = Field(default=None, ge=1, le=UPLOAD_CEILING_MB)
+    max_tickets_per_run: int | None = Field(default=None, ge=0, le=MAX_TICKETS_CEILING)
+    run_token_budget: int | None = Field(default=None, ge=1_000, le=RUN_TOKEN_BUDGET_CEILING)
+    jira_project_key: str | None = Field(default=None, pattern=_JIRA_KEY)
+    jira_issue_type: str | None = Field(default=None, pattern=_ISSUE_TYPE)
+
+    def apply(self, config: AppConfig) -> AppConfig:
+        """``config`` with every override that is set."""
+        return config.model_copy(update=self.model_dump(exclude_none=True))
+
+    def differences(self, config: AppConfig) -> dict[str, Any]:
+        """The overrides that actually change ``config``, by field name."""
+        return {
+            name: value
+            for name, value in self.model_dump(exclude_none=True).items()
+            if getattr(config, name) != value
+        }
+
+
+_admin = AdminOverrides()
+
+
+def admin_overrides() -> AdminOverrides:
+    """The overrides in force for every visitor of this running app."""
+    return _admin
+
+
+def set_admin_overrides(overrides: AdminOverrides) -> None:
+    """Replace the overrides for every visitor, until the app restarts."""
+    global _admin  # noqa: PLW0603 - one shared value per process is the point
+    _admin = overrides
+
+
+def effective_config() -> AppConfig:
+    """The deployment's config with the admin's overrides on top. The app calls this."""
+    return _admin.apply(load_config())
