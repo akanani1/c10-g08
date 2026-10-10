@@ -1,10 +1,10 @@
 # Build plan: Incident Suite (c10-g08)
 
-Version 9, 10 Oct 2026.
+Version 10, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H4 are merged: scaffold, parsing, agents, runbook search and the LangGraph graph. H5, the Slack and JIRA clients, is in review. Next up is the Streamlit UI (H6 to H7). Section 16 has the full timeline.
+**Status:** H1 to H5 are merged, and the Slack and JIRA clients passed a live test on 10 Oct. H6 to H7, the Streamlit UI, is in review. Next up is H8: LangSmith, the eval and the security pass. Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -158,7 +158,7 @@ The app doesn't hear about changes in Slack or JIRA as they happen. That would n
 | Nothing, or only low-severity issues | Nothing | Nothing. Results stay in the app, so the channel doesn't fill up with noise |
 | Medium or high issues, nothing critical | Nothing | One summary, with the checklist in a thread |
 | A new critical issue | A new ticket | Summary with a link to each ticket |
-| A critical issue that already has an open ticket | A comment on it: seen again, run ID, count, time window | Summary says "OPS-12 updated, seen again" |
+| A critical issue that already has an open ticket | A comment on it: seen again, run ID, count, time window | Summary says "SCRUM-12 updated, seen again" |
 | A critical issue whose ticket is closed | A new ticket labelled `regression`, linked to the old one | Summary marks it as a regression |
 | More than 3 critical issues | Tickets for the 3 most severe | All listed, with the rest marked "not ticketed" |
 | Rejected at the approval step | Nothing | Nothing. The rejection is shown in the app |
@@ -170,7 +170,7 @@ The app doesn't hear about changes in Slack or JIRA as they happen. That would n
 
 Each ticket carries two labels, `incident-suite` and `sig-<hash>`, where the hash comes from the pattern's signature (section 5.1). Before creating anything, the JIRA agent searches:
 
-`project = OPS AND labels = "sig-<hash>" ORDER BY created DESC`
+`project = SCRUM AND labels = "sig-<hash>" ORDER BY created DESC`
 
 If the newest match isn't done, we comment on it. If it is done, we open a new ticket and link it to the old one as a regression ("relates to").
 
@@ -221,8 +221,8 @@ All log text is escaped before it goes into Slack or JIRA, and we never turn a U
 - Leave its own channel notifications off, so people don't get the same news twice.
 
 **Jira Automation rules** (Project settings, then Automation)
-1. **Resolved:** when an issue labelled `incident-suite` moves to Done, send "OPS-12 resolved by <name>: <summary>" to Slack.
-2. **Picked up:** when an issue labelled `incident-suite` is assigned, send "OPS-12 picked up by <name>".
+1. **Resolved:** when an issue labelled `incident-suite` moves to Done, send "SCRUM-12 resolved by <name>: <summary>" to Slack.
+2. **Picked up:** when an issue labelled `incident-suite` is assigned, send "SCRUM-12 picked up by <name>".
 
 Both rules post through a Slack incoming webhook. It belongs to the same Slack app, but it's a different credential from the bot token. The free JIRA plan allows 100 rule runs a month, so we only use event rules and don't burn runs testing them. Our app's own API calls don't count towards that limit.
 
@@ -295,7 +295,7 @@ Before the Log Reader sees anything, every line and every field is checked for s
 
 ## 9. The app
 
-The page has an upload box and a sample picker. While a run is going, the graph shows which agent is working. The results screen has these parts:
+The page has an upload box and a sample picker. While a run is going, the graph lights up: green for done, orange for working, grey for waiting, dashed for skipped. Each finished step is listed under it. The results screen has these parts:
 
 | Part | What it shows | Where it comes from |
 |---|---|---|
@@ -313,7 +313,10 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 
 - **Confidence reasons come from real signals only:** how many evidence lines support the issue, how well the best runbook matched, and whether JIRA has seen this signature before.
 - **No made-up numbers.** Everything on the page comes from the current run. There are no fleet KPIs or trend charts, because we store no history of runs.
-- `app.py` builds the page. Small functions that prepare things for display (escaping, badges, confidence reasons) go into one module, `incident_suite/ui.py`, so they can be unit-tested. Log text is escaped before it reaches any HTML.
+- `app.py` builds the page. Small functions that prepare things for display (escaping, badges, confidence reasons, the graph picture, the tables) live in `incident_suite/ui.py`, so they can be unit-tested. Log text goes through `ui.md()` before it reaches `st.markdown`: markdown, HTML and links are escaped, and URLs are defanged. Tables and code blocks show text as it is.
+- **A paused run survives reruns.** The compiled graph and the run's context are kept in `st.session_state`, so Approve resumes the same run. The checkpointer only turns our own state models back into objects (an allow-list in `graph.py`).
+- **Abuse limit:** each visitor can start 5 runs per 10 minutes (`RunLimiter` in `security.py`).
+- **Without a key** the page still loads, and Analyse explains that `OPENROUTER_API_KEY` is needed.
 - The sidebar shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
 
 ---
@@ -325,10 +328,10 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - **Redaction:** secrets and personal data are masked before the model sees anything (section 7.5).
 - **Approval:** a person approves before anything is written to Slack or JIRA (section 4).
 - **Uploads:** allowed types, size and row caps, a safe display name, and nothing is saved under the user's file name (section 7.4).
-- **Abuse limits:** a per-session rate limit, a token budget per run (200,000 by default), at most 3 tickets per run, and one retry per issue.
+- **Abuse limits:** 5 runs per 10 minutes per visitor, a token budget per run (200,000 by default), at most 3 tickets per run, and one retry per issue.
 - **Live integrations** are off on the public app. We only switch them on for the recorded demo.
 - **Escaping:** everything sent to Slack or JIRA is escaped, and links are never built from log content.
-- **Least privilege:** the Slack bot only has `chat:write`. The JIRA account only sees the OPS project. The OpenRouter key has a credit limit and is revoked after the hackathon.
+- **Least privilege:** the Slack bot only has `chat:write`. The JIRA account only needs the SCRUM project. The OpenRouter key has a credit limit and is revoked after the hackathon.
 - **Dependencies** are pinned. pip-audit and Bandit run in CI, and Dependabot opens update PRs every week.
 
 ---
@@ -367,7 +370,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `SLACK_CHANNEL_ID` | For live Slack | | ID of `#incident-alerts` |
 | `JIRA_BASE_URL` | For live JIRA | | For example `https://yourteam.atlassian.net`. Must be https |
 | `JIRA_EMAIL`, `JIRA_API_TOKEN` | For live JIRA | | The bot account |
-| `JIRA_PROJECT_KEY` | For live JIRA | | For example `OPS` |
+| `JIRA_PROJECT_KEY` | For live JIRA | | The key in the ticket numbers. Ours is `SCRUM` |
 | `JIRA_ISSUE_TYPE` | No | `Task` | Issue type to create |
 | `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT` | No | off, none, `c10-g08` | Tracing |
 | `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 50) |
@@ -393,7 +396,7 @@ c10-g08/
 │   ├── graph.py                  LangGraph: nodes, routing, retry loop, approval; dry-run CLI
 │   ├── security.py               upload checks and safe display names
 │   ├── telemetry.py              run ID, tokens, cost and time per agent
-│   ├── ui.py                     display helpers for app.py (planned)
+│   ├── ui.py                     display helpers for app.py
 │   ├── parsing/
 │   │   ├── readers.py            format detection, one reader per format, limits; parse_upload()
 │   │   ├── parser.py             text line formats and column mapping into LogLine
@@ -495,7 +498,7 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | Person | Role | Owns |
 |---|---|---|
 | **Ashvin** (with Claude) | Lead, core code | Scaffold and CI, state models, parsing, agents and prompts, the graph, Slack and JIRA clients, UI and extras. Reviews and merges every pull request |
-| **Raphael** | Integrations and deploy | OpenRouter key with a credit limit; Slack workspace, app, token, webhook and (for the assistant) the `channels:history` scope; JIRA site, OPS project, token and the two automation rules; LangSmith; Streamlit Cloud and its secrets, including `ADMIN_PASSCODE`. Tests the live Slack and JIRA flows and takes screenshots |
+| **Raphael** | Integrations and deploy | OpenRouter key with a credit limit; Slack workspace, app, token, webhook and (for the assistant) the `channels:history` scope; JIRA site, SCRUM project, token and the two automation rules; LangSmith; Streamlit Cloud and its secrets, including `ADMIN_PASSCODE`. Tests the live Slack and JIRA flows and takes screenshots |
 | **Gulam Mohammad** | Data | The 15 runbooks, the eval run and the README results table |
 | **Safwan** | QA, docs and demo | QA checklist after each deploy, architecture diagram, README fresh-clone test on Windows, video script, recording and editing, and the demo-day checklist |
 
@@ -504,7 +507,7 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 - One branch per person, with pull requests into `main`. Ashvin reviews each one, and nobody edits another person's folders.
 - No secrets in Git or chat. Raphael shares keys privately and puts them straight into Streamlit secrets and each person's `.env`.
 - Two check-ins: Saturday night before stopping, and Sunday around 1 PM.
-- To sync after a merge: `git fetch`, then `git reset origin/main` (or `git pull` if you have no local changes). Never use `git reset --hard` with unsaved work.
+- To sync after a merge, on `main`: `git pull --ff-only` if you have no local changes. If you do, use `git reset --keep origin/main`, which updates your files and stops rather than overwrite your own edits. Plain `git reset origin/main` isn't enough: it leaves the old files on disk. Never use `git reset --hard` with unsaved work.
 
 ---
 
@@ -516,9 +519,9 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H2 | Readers for every format, parser, redaction, grouping and pre-filter | Done |
 | H3 | Log Reader, runbook search, Remediation, Cookbook, JIRA and Notification plans; sample logs and runbooks | Done |
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
-| H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | In review. Live test with Raphael next |
-| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Next |
-| H8 | LangSmith, eval run, clean-code and security pass | |
+| H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
+| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | In review. Deploy after merge |
+| H8 | LangSmith, eval run, clean-code and security pass | Next |
 | Extras | Section 17, in order, until the freeze | |
 
 **Sunday 11 Oct (IST)**
@@ -634,7 +637,7 @@ We record at 1080p and upload it unlisted.
   5. Add an incoming webhook for the automation rules.
   6. Install the Jira Cloud app.
 - **JIRA:**
-  1. Create a free Atlassian site and a Kanban project with the key `OPS`, with Priority on the create screen.
+  1. Create a free Atlassian site and a project. Ours is a Scrum project with the key `SCRUM`. Priority must be on the create screen.
   2. Create an API token at id.atlassian.com, ideally for a separate bot account.
   3. Add the two automation rules (section 6.6).
 - **LangSmith:** create an API key, and use the project name `c10-g08`.
@@ -687,8 +690,10 @@ We record at 1080p and upload it unlisted.
 | 10 Oct | AI-drafted runbooks stay in the session and can be downloaded. They're never posted to JIRA or saved to the repo |
 | 10 Oct | The plan and the README are rewritten as one current version. From now on we change sections in place and log the decision here |
 | 10 Oct | H5: the JIRA agent now gets a `TicketDraft` (issue, fix, pattern, run ID), so comments can give the count and time window. Regression links and the link back to Slack are separate steps that can fail without losing the ticket. The shared retry helper lives in `integrations/__init__.py`. Log text goes to Slack as plain text with URLs defanged. The command line gets `--live`, which asks before sending |
+| 10 Oct | All four keys checked with a read-only script, then a live run on the payment sample. Our JIRA project key is `SCRUM`, not `OPS`. The sync instruction in section 15 changes, because `git reset origin/main` leaves old files on disk |
+| 11 Oct | H6 to H7: the graph streams each step to the page, so the picture lights up live. 5 runs per 10 minutes per visitor. The checkpointer only restores our own state models |
 
-**Still open:** the Streamlit Cloud deploy status and the Slack and JIRA credentials (Raphael).
+**Still open:** the Streamlit Cloud deploy with this UI (Raphael), and the eval run (Gulam).
 
 ---
 

@@ -4,7 +4,7 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator and the Slack and JIRA clients are done. The app screens are being built now. Links, screenshots and results get filled in as each part lands.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator, the Slack and JIRA clients and the app screens are done. Tracing and the evaluation come next. Links, screenshots and results get filled in as each part lands.
 
 | | |
 |---|---|
@@ -119,7 +119,7 @@ Open `.env` and set `OPENROUTER_API_KEY`. Then:
 streamlit run app.py
 ```
 
-The app opens at http://localhost:8501.
+The app opens at http://localhost:8501. Pick a sample log (or upload your own) and press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
 To run one full analysis from the command line, as a dry run with real models:
 
@@ -143,7 +143,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `SLACK_CHANNEL_ID` | for Slack | | Where to post |
 | `JIRA_BASE_URL` | for JIRA | | Your Atlassian site (https) |
 | `JIRA_EMAIL`, `JIRA_API_TOKEN` | for JIRA | | Account and API token |
-| `JIRA_PROJECT_KEY` | for JIRA | | For example `OPS` |
+| `JIRA_PROJECT_KEY` | for JIRA | | The key in your ticket numbers, for example `SCRUM` |
 | `JIRA_ISSUE_TYPE` | no | `Task` | Issue type to create |
 | `LANGSMITH_TRACING` | no | `false` | Turn tracing on |
 | `LANGSMITH_API_KEY` | no | | LangSmith key |
@@ -230,7 +230,7 @@ Results (filled in after the eval run):
 - **Redaction:** emails, tokens, JWTs, AWS keys, private keys and `password=`-style values are masked before the model sees the log, and only the masked text is shown or sent. This is pattern-based, so unusual formats can slip through.
 - **Log content is data,** never instructions to the model. The agents have no tools that run commands or open URLs.
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
-- **Limits per run:** a token budget, at most 3 tickets, and one retry per issue.
+- **Limits:** 5 runs per 10 minutes per visitor, a token budget per run, at most 3 tickets, and one retry per issue.
 - **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
 - **The public deployment** keeps Slack and JIRA switched off.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.

@@ -22,18 +22,20 @@ import argparse
 import operator
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Command, interrupt
 
+from incident_suite import state as state_models
 from incident_suite.agents import StructuredLLM
 from incident_suite.agents.cookbook import synthesize
 from incident_suite.agents.jira_agent import (
@@ -72,6 +74,13 @@ from incident_suite.state import (
 from incident_suite.telemetry import UsageMeter, merge_usage
 
 WIDE_WINDOW = 10  # lines either side of each evidence line on the "more context" retry
+
+# The only of our types a checkpoint may turn back into objects when a paused run resumes.
+CHECKPOINT_TYPES = tuple(
+    value
+    for value in vars(state_models).values()
+    if isinstance(value, type) and value.__module__ == state_models.__name__
+)
 
 
 @dataclass(frozen=True)
@@ -366,7 +375,8 @@ def build_graph() -> CompiledStateGraph[RunState, RunContext, RunState, RunState
     graph.add_edge("notify_plan", "approval")
     graph.add_conditional_edges("approval", _after_approval, ["send", END])
     graph.add_edge("send", END)
-    return graph.compile(checkpointer=InMemorySaver())
+    serde = JsonPlusSerializer(allowed_msgpack_modules=CHECKPOINT_TYPES)
+    return graph.compile(checkpointer=InMemorySaver(serde=serde))
 
 
 # ------------------------------------------------------------------ running
@@ -386,17 +396,38 @@ def connect_services(
     return tracker, messenger
 
 
+OnStep = Callable[[RunStep], None]
+
+
 def _config(run_id: str) -> RunnableConfig:
     return RunnableConfig(configurable={"thread_id": run_id})
+
+
+def _drive(
+    graph: CompiledStateGraph[RunState, RunContext, RunState, RunState],
+    graph_input: RunState | Command[Any],
+    context: RunContext,
+    run_id: str,
+    on_step: OnStep | None,
+) -> None:
+    """Run the graph, telling ``on_step`` about each step as soon as its node finishes."""
+    for update in graph.stream(
+        graph_input, _config(run_id), context=context, stream_mode="updates"
+    ):
+        for node_update in update.values():
+            if on_step is not None and isinstance(node_update, dict):
+                for step in node_update.get("steps", []):
+                    on_step(step)
 
 
 def start_run(
     graph: CompiledStateGraph[RunState, RunContext, RunState, RunState],
     context: RunContext,
     run_id: str,
+    on_step: OnStep | None = None,
 ) -> RunResult:
     """Run until the end, or until the approval gate pauses."""
-    graph.invoke(RunState(run_id=run_id), _config(run_id), context=context)
+    _drive(graph, RunState(run_id=run_id), context, run_id, on_step)
     return result_of(graph, context, run_id)
 
 
@@ -405,10 +436,11 @@ def resume_run(
     context: RunContext,
     run_id: str,
     approved: bool,
+    on_step: OnStep | None = None,
 ) -> RunResult:
     """Answer the approval gate and finish the run."""
     resume: Command[Any] = Command(resume={"approved": approved})
-    graph.invoke(resume, _config(run_id), context=context)
+    _drive(graph, resume, context, run_id, on_step)
     return result_of(graph, context, run_id)
 
 
