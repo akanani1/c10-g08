@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
@@ -16,6 +19,7 @@ from incident_suite.state import (
     Pattern,
     Remediation,
     RunbookSource,
+    RunSettings,
     RunStep,
     Severity,
     StepStatus,
@@ -220,3 +224,53 @@ def test_tables() -> None:
         {"Runbook": "db_connection_pool", "Best match": 0.82, "Used for": "ISS-1"},
         {"Runbook": "deploy_rollback", "Best match": 0.6, "Used for": "ISS-1, ISS-2"},
     ]
+
+
+# ------------------------------------------------------------------ settings page
+
+
+def test_model_label_and_prompt_override() -> None:
+    assert ui.model_label("openai/gpt-5-mini") == (
+        "openai/gpt-5-mini ($0.25 in / $2.00 out per M tokens)"
+    )
+    assert ui.prompt_override("  Default prompt\n", "Default prompt") is None
+    assert ui.prompt_override("Be brief.", "Default prompt") == "Be brief."
+
+
+def test_settings_json_round_trip(settings: RunSettings) -> None:
+    edited = settings.model_copy(update={"token_budget": 50_000})
+    assert ui.settings_from_json(ui.settings_to_json(edited).encode()) == edited
+
+
+@pytest.mark.parametrize(
+    ("change", "where"),
+    [
+        ({"remediation": {"model": "evil/free-model", "top_k": 3}}, "remediation.model"),
+        ({"token_budget": 10_000_000}, "token_budget"),
+        ({"jira": {"max_tickets": 50}}, "jira.max_tickets"),
+    ],
+)
+def test_settings_import_is_checked(
+    settings: RunSettings, change: dict[str, Any], where: str
+) -> None:
+    raw = json.loads(ui.settings_to_json(settings))
+    for key, value in change.items():
+        raw[key] = raw[key] | value if isinstance(value, dict) else value
+    with pytest.raises(ValueError, match=f"isn't valid \\({re.escape(where)}"):
+        ui.settings_from_json(json.dumps(raw).encode())
+    with pytest.raises(ValueError, match="isn't valid"):
+        ui.settings_from_json(b"not json")
+
+
+def test_decide_live(settings: RunSettings) -> None:
+    live = settings.model_copy(update={"live": True})
+    edited = live.model_copy(
+        update={"cookbook": live.cookbook.model_copy(update={"system_prompt": "Be brief."})}
+    )
+    assert ui.decide_live(settings, live_allowed=True, admin_ok=True) == (False, "")
+    assert ui.decide_live(live, live_allowed=False, admin_ok=True) == (False, "")
+    assert ui.decide_live(live, live_allowed=True, admin_ok=False) == (True, "")
+    allowed, note = ui.decide_live(edited, live_allowed=True, admin_ok=False)
+    assert not allowed
+    assert note.startswith("Prompts were edited")
+    assert ui.decide_live(edited, live_allowed=True, admin_ok=True) == (True, "")

@@ -79,6 +79,12 @@ def _retriever(embedding_model: str) -> RunbookRetriever:
     return RunbookRetriever(load_runbooks(), make_embeddings(config))
 
 
+def _settings(config: AppConfig) -> RunSettings:
+    """This session's settings from the Agent settings page, or the deployment's defaults."""
+    chosen = st.session_state.get("run_settings")
+    return chosen if isinstance(chosen, RunSettings) else RunSettings.from_config(config)
+
+
 def _session(key: str, default: Any) -> Any:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -88,14 +94,25 @@ def _session(key: str, default: Any) -> Any:
 # ------------------------------------------------------------------ sidebar and input
 
 
+def _lock() -> None:
+    st.session_state.admin_ok = False
+
+
 def _live_allowed(config: AppConfig) -> bool:
-    """Live sending, if it's on, needs the admin passcode when one is set."""
+    """Live sending, if it's on, needs the admin passcode when one is set.
+
+    Once entered, the passcode stays unlocked for the session (``admin_ok``), across pages.
+    """
     if not config.live_integrations:
         return False
     if config.admin_passcode is None:
         return True
+    if st.session_state.get("admin_ok"):
+        st.button("Lock live sending", on_click=_lock)
+        return True
     entered = st.text_input("Admin passcode for live sending", type="password")
-    return passcode_ok(entered, config.admin_passcode)
+    st.session_state.admin_ok = passcode_ok(entered, config.admin_passcode)
+    return bool(st.session_state.admin_ok)
 
 
 def _sidebar(config: AppConfig) -> bool:
@@ -116,6 +133,8 @@ def _sidebar(config: AppConfig) -> bool:
             st.info("Dry run: nothing is sent. You see exactly what would go out.")
         with st.expander("Severity legend"):
             st.dataframe(ui.SEVERITY_LEGEND, hide_index=True)
+        if _settings(config) != RunSettings.from_config(config):
+            st.caption("Using custom agent settings for this session.")
         st.caption(f"Version {__version__}. Up to 5 runs per 10 minutes per visitor.")
     return live
 
@@ -159,7 +178,9 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     if not config.llm_configured:
         st.error("This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
-    settings = RunSettings.from_config(config).model_copy(update={"live": live})
+    chosen = _settings(config)
+    live, note = ui.decide_live(chosen, live, st.session_state.get("admin_ok", False))
+    settings = chosen.model_copy(update={"live": live})
     try:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
         retriever = _retriever(config.embedding_model)
@@ -189,7 +210,7 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         chart.graphviz_chart(ui.pipeline_dot(steps, running=True))
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
-    st.session_state.update(context=context, run_id=run_id, result=result)
+    st.session_state.update(context=context, run_id=run_id, result=result, run_note=note)
     st.rerun()
 
 
@@ -328,6 +349,8 @@ def _tabs(result: RunResult, context: RunContext) -> None:
 
 def _results(result: RunResult, context: RunContext) -> None:
     _summary(result)
+    if note := st.session_state.get("run_note"):
+        st.info(note)
     st.graphviz_chart(ui.pipeline_dot(result.steps))
     if result.approval is ApprovalStatus.PENDING:
         _approval(result)

@@ -121,6 +121,8 @@ streamlit run app.py
 
 The app opens at http://localhost:8501. Pick a sample log (or upload your own) and press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
+The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
+
 To run one full analysis from the command line, as a dry run with real models:
 
 ```bash
@@ -303,11 +305,11 @@ pytest -m live                                # real OpenRouter calls (needs the
 CI runs these on every push and pull request:
 
 ```bash
-ruff check app.py incident_suite eval tests sample_logs
-ruff format --check app.py incident_suite eval tests sample_logs
+ruff check app.py pages incident_suite eval tests sample_logs
+ruff format --check app.py pages incident_suite eval tests sample_logs
 mypy
 vulture
-bandit -q -c pyproject.toml -r app.py incident_suite
+bandit -q -c pyproject.toml -r app.py pages incident_suite eval
 pytest --cov
 pip-audit -r requirements.txt
 ```
@@ -328,11 +330,10 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. An agent settings page: pick models and edit prompts for your session.
-2. A sidebar assistant that summarises the latest Slack and JIRA updates on this incident.
-3. Runbook drafting when no runbook matches.
-4. A chat about the current run.
-5. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+1. A sidebar assistant that summarises the latest Slack and JIRA updates on this incident.
+2. Runbook drafting when no runbook matches.
+3. A chat about the current run.
+4. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

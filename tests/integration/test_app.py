@@ -18,7 +18,8 @@ from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
 from incident_suite.config import AppConfig
-from incident_suite.state import Category, NotificationPlan, Severity
+from incident_suite.prompts import load_prompt
+from incident_suite.state import Category, NotificationPlan, RunSettings, Severity
 
 APP = Path(__file__).resolve().parents[2] / "app.py"
 MakeLLM = Callable[[Sequence[Any]], tuple[StructuredLLM, list[tuple[str, str, str]]]]
@@ -173,3 +174,72 @@ def test_live_sending_needs_the_passcode(
     assert "Live mode" in admin.sidebar.warning[0].value
     paused = _click(admin, "Analyse")
     assert [h for h in paused.subheader if h.value == "Approval needed"]
+
+
+# ------------------------------------------------------------------ agent settings page
+
+SETTINGS_PAGE = APP.parent / "pages" / "agent_settings.py"
+
+
+def _settings_page() -> AppTest:
+    return AppTest.from_file(str(SETTINGS_PAGE), default_timeout=30).run()
+
+
+def test_settings_page_saves_for_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
+    page = _settings_page()
+    assert not page.exception
+    assert page.title[0].value == "Agent settings"
+
+    (model,) = [s for s in page.selectbox if s.key == "model_remediation"]
+    model.set_value("openai/gpt-5-nano")
+    (top_k,) = [s for s in page.slider if s.key == "top_k"]
+    top_k.set_value(5)
+    page = _click(page.run(), "Save settings")
+
+    saved = page.session_state["run_settings"]
+    assert saved.remediation.model == "openai/gpt-5-nano"
+    assert saved.remediation.top_k == 5
+    assert not saved.prompts_edited
+    assert "Saved" in page.info[0].value
+
+
+def test_editing_a_prompt_and_resetting(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
+    page = _settings_page()
+    (prompt,) = [t for t in page.text_area if t.key == "prompt_cookbook"]
+    prompt.input("Reply in one line.")
+    page = _click(page.run(), "Save settings")
+    assert page.session_state["run_settings"].cookbook.system_prompt == "Reply in one line."
+    assert "edited prompts" in page.warning[0].value
+
+    page = _click(page, "Reset everything")
+    assert not page.session_state["run_settings"].prompts_edited
+    assert page.session_state["prompt_cookbook"] == load_prompt("cookbook")
+
+
+def test_edited_prompts_make_a_live_run_dry(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    live = keyed.model_copy(update={"live_integrations": True})
+    tracker, jira_calls = make_tracker()
+    messenger, _ = make_messenger()
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services",
+        lambda _config, settings: (tracker, messenger) if settings.live else (None, None),
+    )
+    defaults = RunSettings.from_config(live)
+    edited = defaults.model_copy(
+        update={"cookbook": defaults.cookbook.model_copy(update={"system_prompt": "Be brief."})}
+    )
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["run_settings"] = edited
+    app = _click(app.run(), "Analyse")
+
+    assert any(i.value.startswith("Prompts were edited") for i in app.info)
+    assert jira_calls == []
+    assert "custom agent settings" in " ".join(c.value for c in app.sidebar.caption)

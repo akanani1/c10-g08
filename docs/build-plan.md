@@ -4,7 +4,7 @@ Version 10, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H7 are merged, and the Slack and JIRA clients passed a live test on 10 Oct. H8 (tracing, the eval script and the security pass) is in review. Next: Gulam runs the eval, Raphael redeploys, then the extras in section 17. Section 16 has the full timeline.
+**Status:** H1 to H8 (the whole core) are merged, and the Slack and JIRA clients passed a live test on 10 Oct. Extra 1, the agent settings page, is in review. Next: Gulam runs the eval, Raphael redeploys, then the next extra in section 17. Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -523,8 +523,8 @@ Extras add `pages/agent_settings.py`, `incident_suite/agents/assistant.py` and `
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
-| H8 | LangSmith, eval run, clean-code and security pass | In review. Gulam runs the eval after merge |
-| Extras | Section 17, in order, until the freeze | |
+| H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
+| Extras | Section 17, in order, until the freeze | 1 (settings page) in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -568,7 +568,8 @@ A second page, `pages/agent_settings.py`, with one card per agent and a global c
 | Integrations | Slack, JIRA and LangSmith shown as connected or not. Never the keys |
 
 - **Changes are kept for your session only,** in `st.session_state`. Nothing is written to disk, so one visitor can't change prompts for everyone. You can export and import settings as JSON (validated like everything else) and reset them to the defaults.
-- **Safety:** models only come from the allow-list, and the limits are enforced by `RunSettings`, not just by the widgets. If any prompt differs from the default, the run switches to dry run unless the admin passcode is entered.
+- **Safety:** models only come from the allow-list, and the limits are enforced by `RunSettings`, not just by the widgets. If any prompt differs from the default, the run switches to dry run unless the admin passcode is entered (`ui.decide_live`), and the results say so.
+- **How it's built:** `pages/agent_settings.py` stores a `RunSettings` in `st.session_state.run_settings`, and `app.py` uses it for every run. The admin passcode, once entered in the main page's sidebar, stays unlocked for the session (`admin_ok`) until you press Lock. The live toggle is greyed out unless the deployment has `LIVE_INTEGRATIONS=true`.
 - **Slim version,** if time is short: models and prompts only, without export and import.
 - **Demo moment:** switch the Remediation model, run the same sample again, and compare the cost and the output.
 
@@ -695,6 +696,7 @@ We record at 1080p and upload it unlisted.
 | 10 Oct | All four keys checked with a read-only script, then a live run on the payment sample. Our JIRA project key is `SCRUM`, not `OPS`. The sync instruction in section 15 changes, because `git reset origin/main` leaves old files on disk |
 | 11 Oct | H6 to H7: the graph streams each step to the page, so the picture lights up live. 5 runs per 10 minutes per visitor. The checkpointer only restores our own state models |
 | 11 Oct | H8: we choose the trace ID before each run, so the LangSmith link goes into the app, Slack and JIRA. The eval script scores against `labels.json` and prints the README table. Security pass: when `ADMIN_PASSCODE` is set, live sending needs it; a shared cap of 60 runs an hour; file names, errors and the service name in the Remediation prompt are now escaped. `langsmith` is declared as a direct dependency |
+| 11 Oct | Extra 1, the agent settings page, ships in full (export and import included). The admin passcode stays unlocked for the session once entered. `pages/` joins the CI tools |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
