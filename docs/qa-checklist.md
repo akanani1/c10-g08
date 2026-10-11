@@ -29,14 +29,14 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 
 | Result | Count |
 |---|---:|
-| PASS | 49 |
-| FAIL | 3 |
+| PASS | 51 |
+| FAIL | 1 |
 | BLOCKED | 7 |
 | NOT LANDED | 0 |
 
-**Release decision:** `NO-GO` (JIRA integration returns 404; session reset on refresh)  
-**Blocking issue numbers:** #TBD (JIRA 404 on ticket creation/assistant, Session state reset on approval refresh)  
-**Evidence links:** Streamlit Cloud live run & Slack alert screenshots  
+**Release decision:** `NO-GO` (Uncaught Pydantic ValidationError in log_reader crashes app during analysis)  
+**Blocking issue numbers:** #TBD (Pydantic ValidationError in GroupedLog validation during log_reader node)  
+**Evidence links:** Streamlit Cloud traceback logs  
 
 > This run tested live deployment `20c2b13`.
 
@@ -132,15 +132,15 @@ credential key/value, named secret columns, and a private-key block.
 | E2E-03 | Observe an uncertain remediation | Remediation requests more context from Log Reader and then continues | PASS on `20c2b13` |
 | E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | PASS on `8dbf7d6` / `20c2b13` |
 | E2E-05 | Reject a prepared live run (local/demo only) | Nothing is sent and rejection is recorded in the run log | PASS on `20c2b13` |
-| E2E-06 | Approve a prepared live run (local/demo only) | Each planned action sends once; result links are shown | FAIL (Partial) on `20c2b13` (Slack sent, but JIRA ticket failed: "JIRA returned 404") |
-| E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | FAIL on `20c2b13` (App state reset to default on browser refresh) |
+| E2E-06 | Approve a prepared live run (local/demo only) | Each planned action sends once; result links are shown | PASS (Fixed: JIRA ticket and Slack alert sent) |
+| E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | PASS (Fixed: approval state retained on refresh) |
 | E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS on `8dbf7d6` / `20c2b13` |
-| E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | PASS on `20c2b13` |
+| E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | FAIL on live deploy (Uncaught `ValidationError` in `log_reader` / `group_lines` crashed app with raw Streamlit traceback) |
 | E2E-10 | Resize to phone width (about 390px), tablet (768px) and 1024px with the left bar open | Nothing runs off the screen; the health bar wraps above the title; under 1200px the assistant is an **Assistant** menu item (no passcode) instead of a right-hand column; settings cards are one list; the footer is the last line of the page | PASS on `8dbf7d6` / `20c2b13` |
 | E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | PASS on `20c2b13` |
 | E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | PASS on `20c2b13` |
 | E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | PASS on `20c2b13` |
-| E2E-14 | In a new session with JIRA connected, unlock with the passcode and press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | FAIL on `20c2b13` (Assistant "Load latest incidents" returns "JIRA returned 404") |
+| E2E-14 | In a new session with JIRA connected, unlock with the passcode and press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | PASS (Fixed: incidents loaded from JIRA) |
 
 ### 7.1 Settings pages
 
