@@ -106,7 +106,8 @@ def test_dry_run_shows_the_results() -> None:
         "Roll back payment\\-api \\(ISS\\-1\\)",
         "Alert on pool use above 80% \\(ISS\\-1\\)",
     ]
-    assert len(app.tabs) == 7
+    assert len(app.tabs) == 8
+    assert any("ERROR and FATAL lines per" in c.value for c in app.caption)
 
 
 def test_live_run_waits_for_approval_then_sends(

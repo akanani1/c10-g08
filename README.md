@@ -123,6 +123,8 @@ The app opens at http://localhost:8501. Pick a sample log, upload your own, or p
 
 After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
+The **Timeline** tab shows errors over time, with deploys and config changes marked as dashed lines, so you can see whether a change came just before the errors.
+
 After a run, **Download postmortem draft** gives you a markdown postmortem built from the results: summary, a timeline with deploys and config changes, root causes marked as hypotheses, fixes and follow-ups. It makes no extra model call.
 
 After any run, the sidebar's **Ask about this run** box answers questions such as "why is ISS-1 critical?". It looks things up with read-only tools over this run's issues, evidence, fixes, checklist, tickets and costs, cites log line numbers, and stops after 4 lookups.
@@ -339,8 +341,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 
 ## What's next
 
-We're adding these after the core, in this order, as time allows:
-1. An error timeline.
+If there's time before the deadline, we'll add a replay of a finished run, with the graph animating step by step.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

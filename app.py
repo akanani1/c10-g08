@@ -437,7 +437,16 @@ def _draft_box(key: str, issue_id: str) -> None:
 def _tabs(result: RunResult, context: RunContext) -> None:
     parsed = context.parsed
     tabs = st.tabs(
-        ["Checklist", "Slack and JIRA", "Parsed log", "Patterns", "Runbooks", "Run log", "Cost"]
+        [
+            "Checklist",
+            "Slack and JIRA",
+            "Timeline",
+            "Parsed log",
+            "Patterns",
+            "Runbooks",
+            "Run log",
+            "Cost",
+        ]
     )
     with tabs[0]:
         for heading, items in (
@@ -456,6 +465,17 @@ def _tabs(result: RunResult, context: RunContext) -> None:
             st.info("Dry run: nothing was sent. This is exactly what would go out.")
         _outbox(result)
     with tabs[2]:
+        timeline = ui.timeline_spec(parsed.lines)
+        if timeline is None:
+            st.caption("Not enough timestamped errors to draw a timeline.")
+        else:
+            spec, bucket = timeline
+            st.caption(
+                f"ERROR and FATAL lines per {bucket} minute(s), UTC. Dashed lines are deploys "
+                "and config changes. Hover for details."
+            )
+            st.vega_lite_chart(spec)
+    with tabs[3]:
         st.caption(ui.md(parsed.note))
         if parsed.redactions:
             counts = ", ".join(f"{kind}: {n}" for kind, n in parsed.redactions.items())
@@ -465,14 +485,14 @@ def _tabs(result: RunResult, context: RunContext) -> None:
         if len(parsed.lines) > ui.MAX_TABLE_ROWS:
             st.caption(f"Showing the first {ui.MAX_TABLE_ROWS:,} of {len(parsed.lines):,}.")
         st.dataframe(ui.line_rows(parsed.lines), hide_index=True)
-    with tabs[3]:
-        st.dataframe(ui.pattern_rows(result.patterns), hide_index=True)
     with tabs[4]:
-        st.dataframe(ui.source_rows(result.remediations), hide_index=True)
+        st.dataframe(ui.pattern_rows(result.patterns), hide_index=True)
     with tabs[5]:
+        st.dataframe(ui.source_rows(result.remediations), hide_index=True)
+    with tabs[6]:
         st.dataframe(ui.pipeline_strip(result.steps), hide_index=True)
         st.dataframe(ui.run_log_rows(result.steps), hide_index=True)
-    with tabs[6]:
+    with tabs[7]:
         st.dataframe(ui.usage_rows(result.usage), hide_index=True)
         if result.trace_url:
             st.link_button("Open the trace", result.trace_url)
