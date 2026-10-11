@@ -95,3 +95,25 @@ def to_documents(runbooks: list[Runbook]) -> list[Document]:
                 )
             )
     return documents
+
+
+REQUIRED_SECTIONS = ("Symptoms", "Likely causes", "Diagnose", "Fix now", "Prevent", "References")
+_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,60}$")
+
+
+def check_runbook(runbook: Runbook, known_categories: frozenset[str]) -> list[str]:
+    """What's wrong with a runbook, or nothing. Our own runbooks and AI drafts both pass this."""
+    problems = []
+    if not _ID.fullmatch(runbook.id):
+        problems.append("the id must be lowercase letters, digits and dashes")
+    if not runbook.title.strip():
+        problems.append("it needs a title")
+    if not runbook.categories or not set(runbook.categories) <= known_categories:
+        problems.append("it needs at least one known category")
+    if not runbook.signals:
+        problems.append("it needs at least one signal")
+    present = {name for name, _ in runbook.sections}
+    missing = [name for name in REQUIRED_SECTIONS if name not in present]
+    if missing:
+        problems.append("missing sections: " + ", ".join(missing))
+    return problems

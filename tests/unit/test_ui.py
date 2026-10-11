@@ -274,3 +274,11 @@ def test_decide_live(settings: RunSettings) -> None:
     assert not allowed
     assert note.startswith("Prompts were edited")
     assert ui.decide_live(edited, live_allowed=True, admin_ok=True) == (True, "")
+
+
+def test_needs_runbook() -> None:
+    assert ui.needs_runbook(None)
+    assert ui.needs_runbook(FIX.model_copy(update={"sources": []}))
+    weak = [RunbookSource(runbook="x", score=0.2)]
+    assert ui.needs_runbook(FIX.model_copy(update={"sources": weak}))
+    assert not ui.needs_runbook(FIX)

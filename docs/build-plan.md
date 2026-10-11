@@ -525,7 +525,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2 in review |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2 and 3 in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -609,6 +609,11 @@ This first assistant feature answers "what's happened since?" for this run's inc
 - **When:** an issue still has no good runbook match after its retry.
 - **What it does:** the assistant offers to draft a runbook in our template (front matter, then Symptoms, Likely causes, Diagnose, Fix now, Prevent, References), based on the issue and its evidence. The draft is labelled "AI draft, not reviewed".
 - **Approval:** Approve or Discard. An approved draft has to pass the same checks as our own runbooks. It's then added to this session's search index and offered as a `.md` download. It's never written to disk, the repo, JIRA or Slack (decision 10 Oct, section 21).
+- **How it's built:**
+  - **When it's offered:** a card shows **Draft a runbook (AI)** when the issue's fix has no runbook source, or its best match is under 0.35 (`ui.needs_runbook`).
+  - **The draft:** the assistant (`draft_runbook` in `agents/assistant.py`, cheap model, the `runbook` task in `prompts/assistant.md`) gets the issue, the steps suggested so far, and up to 20 redacted evidence lines in tags. It returns the template's fields, never markdown. Our code writes the file: front matter with `status: AI draft, not reviewed`, an id we choose (`draft-<category>-<hash>`), and the six sections in order.
+  - **The checks:** `check_runbook()` in `rag/runbooks.py`, which every shipped runbook passes too (there's a test for that). Approve is greyed out while a check fails.
+  - **After approval:** later runs in the session search a session-only index of our 15 runbooks plus the approved drafts. The draft's cost goes into the run's Cost tab.
 
 ### 17.4 Assistant: chat about the current run
 
@@ -719,6 +724,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 1, the agent settings page, ships in full (export and import included). The admin passcode stays unlocked for the session once entered. `pages/` joins the CI tools |
 | 11 Oct | Extra 1 gets an Admin card. With the passcode, an admin changes live mode, approval, the upload limit, tickets per run, the token budget and the JIRA project and issue type for everyone, until the app sleeps or restarts. Defaults come from env. Where secrets are sent (JIRA URL and email, Slack channel) stays env-only. `MAX_UPLOAD_MB` is now 1 to 5, Streamlit's own cap |
 | 11 Oct | Extra 2, the assistant, ships read-only. It's a three-step LangGraph on the cheap model; it reads only this run's threads and tickets, redacted and inside tags. New tickets store their Slack thread as a JIRA issue property. Replying in the original Slack thread is left out for time. Extras go up as stacked PRs overnight, to merge in order |
+| 11 Oct | Extra 3: the model fills the runbook template's fields and our code writes the markdown, so drafts always have the template's shape. `check_runbook()` is shared with our own runbooks. The drafting instructions live in `assistant.md` as a second task, rather than a new prompt file |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from incident_suite.agents.jira_agent import TicketDraft
+from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
 from incident_suite.config import CHAT_MODELS
 from incident_suite.integrations.payloads import defang, jira_summary
 from incident_suite.state import (
@@ -348,3 +349,10 @@ def decide_live(settings: RunSettings, live_allowed: bool, admin_ok: bool) -> tu
             "Prompts were edited, so this run is a dry run. The admin passcode unlocks it.",
         )
     return True, ""
+
+
+def needs_runbook(fix: Remediation | None) -> bool:
+    """True when an issue ended up without a good runbook match (plan section 17.3)."""
+    if fix is None or not fix.sources:
+        return True
+    return max(source.score for source in fix.sources) < MIN_RUNBOOK_SCORE

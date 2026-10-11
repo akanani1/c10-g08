@@ -123,6 +123,8 @@ The app opens at http://localhost:8501. Pick a sample log (or upload your own) a
 
 After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
+When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The draft follows our runbook template, is labelled "AI draft, not reviewed", and must pass the same checks as our own runbooks. If you approve it, later runs in your session can use it, and you can download it as a `.md` file. It isn't saved anywhere else.
+
 The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
 
 At the bottom of that page, the **Admin** card (needs `ADMIN_PASSCODE`) changes a few settings for every visitor: live mode, approval, the upload limit (up to 5 MB), tickets per run, the token budget, and the JIRA project and issue type. The values start from your `.env` or Streamlit secrets. A change lasts until the app sleeps, restarts or is redeployed. Keys, the JIRA site and account, and the Slack channel can only be set in the deployment's settings.
@@ -334,9 +336,8 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. Runbook drafting when no runbook matches.
-2. A chat about the current run.
-3. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+1. A chat about the current run.
+2. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

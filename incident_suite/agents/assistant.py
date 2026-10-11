@@ -1,4 +1,11 @@
-"""Assistant: what has happened in Slack and JIRA since this run posted (plan section 17.2).
+"""Assistant: Slack and JIRA updates since a run (plan 17.2), and runbook drafts (plan 17.3).
+
+**Runbook drafts.** When an issue still has no good runbook after its retry, the assistant can
+draft one. The model fills in the template's fields; our code writes the markdown, so a draft
+always has the right shape, and it must pass the same checks as our own runbooks. A draft is
+labelled "AI draft, not reviewed". It only ever lives in the person's session and their download.
+
+**Updates since the run:**
 
 A small, read-only LangGraph agent with three steps:
 
@@ -23,18 +30,33 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, TypedDict
 
+import yaml
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from incident_suite.agents import LLMError, StructuredLLM
 from incident_suite.parsing.redact import Redactor
 from incident_suite.prompts import load_prompt
-from incident_suite.state import AgentUsage, RunResult, TicketAction
+from incident_suite.rag.runbooks import Runbook, check_runbook, parse_runbook
+from incident_suite.state import (
+    AgentUsage,
+    Category,
+    Issue,
+    Remediation,
+    RunResult,
+    TicketAction,
+)
 from incident_suite.telemetry import UsageMeter
 
 MODEL = "openai/gpt-5-nano"  # the cheap model on the allow-list
+TASK_UPDATES = "<task>updates</task>\n"
+TASK_RUNBOOK = "<task>runbook</task>\n"
+DRAFT_LABEL = "AI draft, not reviewed"
+MAX_EVIDENCE_LINES = 20
 MAX_CHARS_PER_MESSAGE = 1_000
-_TAG = re.compile(r"</?\s*(slack_thread|jira_ticket|run)\b[^>]*>", re.IGNORECASE)
+_TAG = re.compile(
+    r"</?\s*(slack_thread|jira_ticket|run|task|issue|evidence)\b[^>]*>", re.IGNORECASE
+)
 
 
 class ReaderError(RuntimeError):
@@ -208,7 +230,7 @@ def _graph(data: AssistantInput) -> Any:
         )
         started = time.perf_counter()
         try:
-            reply = data.llm(MODEL, load_prompt("assistant"), user, AssistantAnswer)
+            reply = data.llm(MODEL, load_prompt("assistant"), TASK_UPDATES + user, AssistantAnswer)
         except LLMError as exc:
             meter.record_failure(exc, time.perf_counter() - started)
             return {"answer": None, "error": str(exc), "usage": meter.usage}
@@ -239,4 +261,100 @@ def latest_updates(data: AssistantInput) -> AssistantResult:
         error=state.get("error"),
         sources=state.get("sources", []),
         usage=state.get("usage"),
+    )
+
+
+# ------------------------------------------------------------------ runbook drafts
+
+
+class RunbookFields(BaseModel):
+    """What the model fills in. Our code turns it into the runbook template."""
+
+    title: str = Field(min_length=3, max_length=120)
+    signals: list[str] = Field(min_length=1, max_length=5, description="Log lines that show it")
+    symptoms: list[str] = Field(min_length=1, max_length=6)
+    likely_causes: list[str] = Field(min_length=1, max_length=6)
+    diagnose: list[str] = Field(min_length=1, max_length=6)
+    fix_now: list[str] = Field(min_length=1, max_length=6)
+    prevent: list[str] = Field(min_length=1, max_length=6)
+    references: list[str] = Field(default_factory=list, max_length=4)
+
+
+@dataclass
+class DraftResult:
+    """A rendered draft and whether it passed the runbook checks."""
+
+    text: str = ""
+    runbook: Runbook | None = None
+    problems: list[str] = field(default_factory=list)
+    error: str | None = None
+    usage: AgentUsage | None = None
+
+
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
+
+
+def render_runbook(fields: RunbookFields, issue: Issue) -> str:
+    """The draft as a runbook file: front matter, then the template's sections."""
+    suffix = (issue.signature_hash or issue.id.lower())[:8]
+    meta = {
+        "title": _one_line(fields.title),
+        "id": f"draft-{issue.category.value.replace('_', '-')}-{suffix}",
+        "status": DRAFT_LABEL,
+        "categories": [issue.category.value],
+        "typical_severity": issue.severity.value,
+        "services": [issue.affected_service] if issue.affected_service else [],
+        "signals": [_one_line(signal) for signal in fields.signals],
+    }
+    sections = [
+        ("Symptoms", fields.symptoms, "-"),
+        ("Likely causes", fields.likely_causes, "1."),
+        ("Diagnose", fields.diagnose, "1."),
+        ("Fix now", fields.fix_now, "1."),
+        ("Prevent", fields.prevent, "-"),
+        (
+            "References",
+            fields.references or ["None yet. Add links once this has been reviewed."],
+            "-",
+        ),
+    ]
+    body = [f"# {meta['title']}", "", f"> {DRAFT_LABEL}. Check every step before using it.", ""]
+    for heading, items, bullet in sections:
+        body += [f"## {heading}", "", *(f"{bullet} {_one_line(item)}" for item in items), ""]
+    front = yaml.safe_dump(meta, sort_keys=False, allow_unicode=True).strip()
+    return f"---\n{front}\n---\n\n" + "\n".join(body)
+
+
+def draft_runbook(
+    issue: Issue,
+    evidence: Sequence[str],
+    fix: Remediation | None,
+    llm: StructuredLLM,
+    redactor: Redactor,
+) -> DraftResult:
+    """Ask the model for a runbook for ``issue``, render it, and check it like our own."""
+    meter = UsageMeter("assistant", MODEL)
+    lines = "\n".join(_escape(redactor.redact(line)) for line in evidence[:MAX_EVIDENCE_LINES])
+    tried = "\n".join(f"- {_escape(step)}" for step in fix.steps) if fix else "- none"
+    user = (
+        f"{TASK_RUNBOOK}<issue>\n{issue.id}: {_escape(issue.title)}\ncategory={issue.category} "
+        f"severity={issue.severity} service={_escape(issue.affected_service or '-')}\n"
+        f"steps suggested so far:\n{tried}\n</issue>\n<evidence>\n{lines}\n</evidence>"
+    )
+    started = time.perf_counter()
+    try:
+        reply = llm(MODEL, load_prompt("assistant"), user, RunbookFields)
+    except LLMError as exc:
+        meter.record_failure(exc, time.perf_counter() - started)
+        return DraftResult(error=str(exc), usage=meter.usage)
+    meter.record(reply)
+    text = render_runbook(reply.parsed, issue)
+    runbook = parse_runbook(text, "draft")
+    categories = frozenset(category.value for category in Category)
+    return DraftResult(
+        text=text,
+        runbook=runbook,
+        problems=check_runbook(runbook, categories),
+        usage=meter.usage,
     )

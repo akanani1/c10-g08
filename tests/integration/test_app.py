@@ -11,8 +11,8 @@ from langchain_core.embeddings import Embeddings
 from pydantic import SecretStr
 from streamlit.testing.v1 import AppTest
 
-from incident_suite.agents import StructuredLLM
-from incident_suite.agents.assistant import AssistantAnswer
+from incident_suite.agents import LLMError, LLMReply, StructuredLLM
+from incident_suite.agents.assistant import AssistantAnswer, RunbookFields
 from incident_suite.agents.cookbook import CookbookAnswer, ItemDraft
 from incident_suite.agents.jira_agent import TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
@@ -362,3 +362,76 @@ def test_assistant_needs_the_passcode(
     app = _click(_app(), "Analyse")  # no ADMIN_PASSCODE: sends, but the assistant stays off
     assert any("admin passcode" in c.value for c in app.sidebar.caption)
     assert not [b for b in app.sidebar.button if b.label == "What's happened since?"]
+
+
+# ------------------------------------------------------------------ runbook drafts
+
+
+class _ByType:
+    """A fake model that answers by the schema asked for, so call order doesn't matter."""
+
+    def __init__(
+        self, answers: Sequence[Any], failures: dict[type[Any], LLMError] | None = None
+    ) -> None:
+        self.answers = {type(answer): answer for answer in answers}
+        self.failures = failures or {}
+        self.asked: list[str] = []
+
+    def __call__(self, model: str, system: str, user: str, schema: type[Any]) -> LLMReply[Any]:  # noqa: ARG002
+        self.asked.append(schema.__name__)
+        if schema in self.failures:
+            raise self.failures[schema]
+        return LLMReply(
+            self.answers[schema], model, input_tokens=500, output_tokens=100, seconds=0.1
+        )
+
+
+@pytest.mark.usefixtures("keyed")
+def test_draft_approve_and_reuse_a_runbook(monkeypatch: pytest.MonkeyPatch) -> None:
+    no_source = ANSWERS[1].model_copy(update={"source_ids": []})
+    fields = RunbookFields(
+        title="Payment DB pool too small",
+        signals=["Connection refused to db:<port>"],
+        symptoms=["503s on payment-api"],
+        likely_causes=["Pool shrank in the deploy"],
+        diagnose=["Compare db.pool.max_size before and after"],
+        fix_now=["Roll back payment-api"],
+        prevent=["Alert on pool use"],
+    )
+    llm = _ByType([ANSWERS[0], no_source, ANSWERS[2], fields])
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+
+    app = _click(_app(), "Analyse")
+    assert any("No runbook matched" in c.value for c in app.caption)
+    app = _click(app, "Draft a runbook (AI)")
+    assert not app.exception
+    assert "RunbookFields" in llm.asked
+    assert any("AI draft, not reviewed" in w.value for w in app.warning)
+    assert any("draft-database-" in c.value for c in app.code)
+
+    app = _click(app, "Approve")
+    approved = app.session_state["approved_runbooks"]
+    (runbook_id,) = approved
+    assert runbook_id.startswith("draft-database-")
+    assert any("Approved" in s.value for s in app.success)
+    usage = {u.agent for u in app.session_state["result"].usage}
+    assert "assistant" in usage
+
+    app = _click(app, "Analyse")  # the next run searches the session's own index
+    ids, index = app.session_state["draft_index"]
+    assert ids == (runbook_id,)
+    assert index.size == 16
+
+
+@pytest.mark.usefixtures("keyed")
+def test_a_failed_draft_can_be_tried_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    no_source = ANSWERS[1].model_copy(update={"source_ids": []})
+    failure = LLMError("The model call failed (APITimeoutError).", 100, 0)
+    llm = _ByType([ANSWERS[0], no_source, ANSWERS[2]], failures={RunbookFields: failure})
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+
+    app = _click(_click(_app(), "Analyse"), "Draft a runbook (AI)")
+    assert not app.exception
+    assert any("APITimeoutError" in w.value for w in app.warning)
+    app = _click(app, "Try again")
+    assert [b for b in app.button if b.label == "Draft a runbook (AI)"]
