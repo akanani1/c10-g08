@@ -201,7 +201,7 @@ def test_jira_description_has_every_part() -> None:
         "Log lines L12, L13",
         "Roll back to v2.14.0",
         "db_connection_pool (match 0.82)",
-        "Opened by Incident Suite, run run-1.",
+        "Opened by TriageGraph, run run-1.",
     ):
         assert expected in texts
     assert all(t for t in texts)  # ADF rejects empty text nodes

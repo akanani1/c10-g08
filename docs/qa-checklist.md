@@ -1,4 +1,4 @@
-# Incident Suite QA test checklist
+# TriageGraph QA test checklist
 
 **Owner:** Safwan  
 **Purpose:** Repeatable QA record for local runs and every Streamlit Cloud deploy  
@@ -14,10 +14,10 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 
 | Field | Value |
 |---|---|
-| Test-run issue | |
-| Commit / deploy SHA | |
+| Test-run issue | none yet: reports were attached to PR #30 |
+| Commit / deploy SHA | `8dbf7d6` (merge of #19, before extras 2 to 6, the UI rework and the TriageGraph name) |
 | App URL | |
-| Date and time (IST) | |
+| Date and time (IST) | 11 Oct, 6:26 to 6:30 AM (pytest reports) |
 | Tester | Safwan |
 | Browser and version | |
 | Operating system | |
@@ -29,14 +29,16 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 
 | Result | Count |
 |---|---:|
-| PASS | |
+| PASS | 38 |
 | FAIL | |
 | BLOCKED | |
 | NOT LANDED | |
 
 **Release decision:** `GO` / `NO-GO`  
 **Blocking issue numbers:**  
-**Evidence links:**  
+**Evidence links:** pytest-html reports in PR #30: unit 369 passed, integration 75 passed, 0 failed  
+
+> This run tested `8dbf7d6`. Everything merged since (extras 2 to 6, the layout, settings pages, several samples, the new name) still needs a run on the current `main`: the empty rows below, SMK-03 (now the health bar) and a quick repeat of E2E-01 and E2E-04.
 
 ## 2. Execution rules
 
@@ -55,11 +57,12 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 | ID | Check | Expected result | Status / evidence |
 |---|---|---|---|
 | SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | |
-| SMK-02 | Inspect the page title and main content | Title is `Incident Suite`; no red error box or raw traceback | |
-| SMK-03 | Inspect the integrations panel | Models, Slack, and JIRA show connected/not connected status; no key or token is displayed | PASS |
-| SMK-04 | Inspect public mode | Public deployment reports `dry run` | PASS |
+| SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | |
+| SMK-03 | Inspect the health bar at the top | OpenRouter, Slack, JIRA and LangSmith show connected or not; no key or token is displayed | |
+| SMK-04 | Inspect public mode | Public deployment reports `dry run` | PASS on `8dbf7d6` |
 | SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | |
 | SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | |
+| SMK-07 | Inspect the layout | Left bar has only the TriageGraph name and the menu (Analyze, Agent Settings, App Settings); the assistant is on the right; the footer shows the version and limits | |
 
 ## 4. Current repository verification
 
@@ -68,18 +71,18 @@ run before the complete agent flow lands.
 
 | ID | Repository check | Expected result | Status / evidence |
 |---|---|---|---|
-| REP-01 | Run `pytest tests/unit/test_config.py` | Defaults, precedence, validation, and secret-safe representations pass | PASS |
-| REP-02 | Run `pytest tests/unit/parsing/test_readers.py` | Plain text, JSONL, JSON, CSV, TSV, Parquet, gzip, detection, row/line, and size limits pass | PASS |
-| REP-03 | Run `pytest tests/unit/parsing/test_parser.py` | Supported log formats, fields, levels, timestamps, and column mapping pass | PASS |
-| REP-04 | Run `pytest tests/unit/parsing/test_grouping.py` | Pattern grouping, signatures, context, sorting, and caps pass | PASS |
-| REP-05 | Run `pytest tests/unit/parsing/test_redact.py tests/unit/parsing/test_readers.py` | Fake secrets are redacted before parsed output; counts and disabled types behave correctly | PASS |
-| REP-06 | Run `pytest tests/unit/test_security.py` | Allowed formats pass; disallowed formats, empty files, and upload caps fail clearly | PASS |
-| REP-07 | Run `pytest tests/unit/test_state.py` | State validation, evidence requirements, severity ordering, settings bounds, and result totals pass | PASS |
-| REP-08 | Run `pytest tests/integration/test_sample_logs.py` | All 17 sample logs match their format and labelled evidence, the files match `make_samples.py`, and every labelled issue finds its runbook | PASS |
-| REP-09 | Run `pytest tests/integration/test_app.py` | Streamlit renders without API keys or an exception | PASS |
-| REP-10 | Run `pytest tests/unit/agents tests/unit/rag tests/unit/prompts tests/unit/test_telemetry.py` | Log Reader, Remediation, Cookbook, runbook search, prompts and cost tracking pass with a fake model | PASS |
-| REP-11 | Run `pytest` | The whole suite passes without an API key | PASS |
-| REP-12 | Run `pytest -m live -v` (local only, needs `OPENROUTER_API_KEY` in `.env`) | 4 passed: two chat models, embeddings, and one real classification of `payment_db_conn_refused.log` | PASS |
+| REP-01 | Run `pytest tests/unit/test_config.py` | Defaults, precedence, validation, and secret-safe representations pass | PASS on `8dbf7d6` |
+| REP-02 | Run `pytest tests/unit/parsing/test_readers.py` | Plain text, JSONL, JSON, CSV, TSV, Parquet, gzip, detection, row/line, and size limits pass | PASS on `8dbf7d6` |
+| REP-03 | Run `pytest tests/unit/parsing/test_parser.py` | Supported log formats, fields, levels, timestamps, and column mapping pass | PASS on `8dbf7d6` |
+| REP-04 | Run `pytest tests/unit/parsing/test_grouping.py` | Pattern grouping, signatures, context, sorting, and caps pass | PASS on `8dbf7d6` |
+| REP-05 | Run `pytest tests/unit/parsing/test_redact.py tests/unit/parsing/test_readers.py` | Fake secrets are redacted before parsed output; counts and disabled types behave correctly | PASS on `8dbf7d6` |
+| REP-06 | Run `pytest tests/unit/test_security.py` | Allowed formats pass; disallowed formats, empty files, and upload caps fail clearly | PASS on `8dbf7d6` |
+| REP-07 | Run `pytest tests/unit/test_state.py` | State validation, evidence requirements, severity ordering, settings bounds, and result totals pass | PASS on `8dbf7d6` |
+| REP-08 | Run `pytest tests/integration/test_sample_logs.py` | All 17 sample logs match their format and labelled evidence, the files match `make_samples.py`, and every labelled issue finds its runbook | PASS on `8dbf7d6` |
+| REP-09 | Run `pytest tests/integration/test_app.py` | Streamlit renders without API keys or an exception | PASS on `8dbf7d6` |
+| REP-10 | Run `pytest tests/unit/agents tests/unit/rag tests/unit/prompts tests/unit/test_telemetry.py` | Log Reader, Remediation, Cookbook, runbook search, prompts and cost tracking pass with a fake model | PASS on `8dbf7d6` |
+| REP-11 | Run `pytest` | The whole suite passes without an API key | PASS on `8dbf7d6` |
+| REP-12 | Run `pytest -m live -v` (local only, needs `OPENROUTER_API_KEY` in `.env`) | 4 passed: two chat models, embeddings, and one real classification of `payment_db_conn_refused.log` | PASS on `8dbf7d6` |
 
 ## 5. Upload and parsing acceptance tests
 
@@ -88,12 +91,12 @@ and the examples supplied by the data owner.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| UPL-01 | Upload `.log` and `.txt` plain text | Format is detected and line numbers start at one | PASS |
-| UPL-02 | Upload `.jsonl` / `.ndjson` | Records parse into common fields; malformed text is retained or reported clearly | PASS |
-| UPL-03 | Upload JSON array and `{"logs": [...]}` | Structured records parse; non-object items do not crash the app | PASS |
-| UPL-04 | Upload `.csv` and `.tsv` | Column mapping is shown and evidence uses row numbers | PASS |
-| UPL-05 | Upload `.parquet` | Rows parse and the mapping is shown | PASS |
-| UPL-06 | Upload `.gz` | Inner format is detected; nested gzip is refused clearly | PASS |
+| UPL-01 | Upload `.log` and `.txt` plain text | Format is detected and line numbers start at one | PASS on `8dbf7d6` |
+| UPL-02 | Upload `.jsonl` / `.ndjson` | Records parse into common fields; malformed text is retained or reported clearly | PASS on `8dbf7d6` |
+| UPL-03 | Upload JSON array and `{"logs": [...]}` | Structured records parse; non-object items do not crash the app | PASS on `8dbf7d6` |
+| UPL-04 | Upload `.csv` and `.tsv` | Column mapping is shown and evidence uses row numbers | PASS on `8dbf7d6` |
+| UPL-05 | Upload `.parquet` | Rows parse and the mapping is shown | PASS on `8dbf7d6` |
+| UPL-06 | Upload `.gz` | Inner format is detected; nested gzip is refused clearly | PASS on `8dbf7d6` |
 | UPL-07 | Rename a CSV to `.log` | Content detection identifies it as CSV and explains the detection | |
 | UPL-08 | Upload a file larger than `MAX_UPLOAD_MB` (default 5 MB) | Upload is refused with a clear message | |
 | UPL-09 | Upload `.zip`, `.tar`, `.exe`, `.xlsx`, an extensionless file, and bare `.gz` | Each is refused with a clear message | |
@@ -112,30 +115,48 @@ credential key/value, named secret columns, and a private-key block.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| SEC-01 | Upload `planted_secrets.log` | Every planted value becomes `[REDACTED:<type>]` before display or model processing | PASS |
-| SEC-02 | Inspect the parsed table and evidence | No original planted value is visible; line/row evidence remains usable | PASS |
-| SEC-03 | Inspect Slack/JIRA previews in dry run | No original planted value appears in either preview | PASS |
-| SEC-04 | Inspect the redaction summary | Count by type is shown, for example `3 emails, 1 AWS key redacted` | PASS |
-| SEC-05 | Search the page with Ctrl+F | Each planted secret is absent from the rendered page | PASS |
-| SEC-06 | Inspect logs, errors, and screenshots | No API key, token, `.env` content, or private key is exposed | PASS |
-| SEC-07 | Run the redaction and reader unit tests | `test_redact.py` and `test_readers.py` pass | PASS |
+| SEC-01 | Upload `planted_secrets.log` | Every planted value becomes `[REDACTED:<type>]` before display or model processing | PASS on `8dbf7d6` |
+| SEC-02 | Inspect the parsed table and evidence | No original planted value is visible; line/row evidence remains usable | PASS on `8dbf7d6` |
+| SEC-03 | Inspect Slack/JIRA previews in dry run | No original planted value appears in either preview | PASS on `8dbf7d6` |
+| SEC-04 | Inspect the redaction summary | Count by type is shown, for example `3 emails, 1 AWS key redacted` | PASS on `8dbf7d6` |
+| SEC-05 | Search the page with Ctrl+F | Each planted secret is absent from the rendered page | PASS on `8dbf7d6` |
+| SEC-06 | Inspect logs, errors, and screenshots | No API key, token, `.env` content, or private key is exposed | PASS on `8dbf7d6` |
+| SEC-07 | Run the redaction and reader unit tests | `test_redact.py` and `test_readers.py` pass | PASS on `8dbf7d6` |
 
 ## 7. End-to-end flow and approval gate
 
-These tests are `NOT LANDED` until the final graph and UI are available.
-
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | PASS |
-| E2E-02 | Run the healthy sample `healthy_service.csv` (#13) | No JIRA ticket is planned and the app says nothing would be sent to Slack | PASS |
+| E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | PASS on `8dbf7d6` |
+| E2E-02 | Run the healthy sample `healthy_service.csv` (#13) | No JIRA ticket is planned and the app says nothing would be sent to Slack | PASS on `8dbf7d6` |
 | E2E-03 | Observe an uncertain remediation | Remediation requests more context from Log Reader and then continues | |
-| E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | PASS |
+| E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | PASS on `8dbf7d6` |
 | E2E-05 | Reject a prepared live run (local/demo only) | Nothing is sent and rejection is recorded in the run log | |
 | E2E-06 | Approve a prepared live run (local/demo only) | Each planned action sends once; result links are shown | |
 | E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | |
-| E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS |
+| E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS on `8dbf7d6` |
 | E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | |
-| E2E-10 | Resize to phone width | Layout remains usable and does not hide critical controls | PASS |
+| E2E-10 | Resize to phone width | Layout remains usable and does not hide critical controls | PASS on `8dbf7d6` |
+| E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | |
+| E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | |
+| E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | |
+| E2E-14 | In a new session with JIRA connected, unlock with the passcode and press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | |
+
+### 7.1 Settings pages
+
+Run these locally with `ADMIN_PASSCODE` set, or on the deploy with Raphael. A saved change
+applies to every visitor, so press **Back to defaults** when you're done.
+
+| ID | Test | Expected result | Status / evidence |
+|---|---|---|---|
+| ADM-01 | Click **Agent Settings** in the menu | A passcode dialog opens; Enter or Unlock submits; a wrong passcode shows an error and the page doesn't open | |
+| ADM-02 | Enter the right passcode | The page opens; App Settings then opens without asking again; **Lock** returns to Analyze | |
+| ADM-03 | Run without `ADMIN_PASSCODE` set (local) | Settings pages open read-only and say how to enable them | |
+| ADM-04 | Change the Remediation model and Save | A toast confirms; a second browser window shows the new model; the next run's Cost tab uses it | |
+| ADM-05 | Inspect every key box | Shows only a hint (first and last 4 characters) or "not set"; the full key is nowhere in the page source; a typed key is cleared after Save | |
+| ADM-06 | Change the JIRA base URL without the token, then Save | Refused: "Changing the JIRA site or email needs the JIRA API token too."; nothing is saved | |
+| ADM-07 | Press **Back to defaults** | The "changed from the defaults" note disappears and the settings match the deployment's values | |
+| ADM-08 | Change one card, Save, then press that card's **Restore defaults** | Only that card goes back to the deployment's values; other cards keep their changes; the button is greyed out when a card has no changes | |
 
 ## 8. Slack and JIRA integration tests
 
@@ -158,13 +179,13 @@ Run on a machine that has not previously installed this repository.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| WIN-01 | Clone the repository and follow README setup verbatim in PowerShell | No undocumented step is required | PASS |
-| WIN-02 | Create and activate `.venv` | Activation and dependency installation succeed | PASS |
-| WIN-03 | Run the documented test command | All non-live tests pass without an API key | PASS |
-| WIN-04 | Start the app | Streamlit starts and opens the documented local URL | PASS |
-| WIN-05 | Run the README's developer commands (`pip install -c requirements.txt -e ".[dev]"`, `pre-commit install`, `pytest`) | Each works in PowerShell as written | PASS |
-| WIN-06 | Record friction | Every guess, missing dependency, platform mismatch, or unclear README step is documented | PASS |
-| WIN-07 | Run final CI checks | CI is green; no lockfile, lint, type, security, test, or secret-scan failure remains | PASS |
+| WIN-01 | Clone the repository and follow README setup verbatim in PowerShell | No undocumented step is required | PASS on `8dbf7d6` |
+| WIN-02 | Create and activate `.venv` | Activation and dependency installation succeed | PASS on `8dbf7d6` |
+| WIN-03 | Run the documented test command | All non-live tests pass without an API key | PASS on `8dbf7d6` |
+| WIN-04 | Start the app | Streamlit starts and opens the documented local URL | PASS on `8dbf7d6` |
+| WIN-05 | Run the README's developer commands (`pip install -c requirements.txt -e ".[dev]"`, `pre-commit install`, `pytest`) | Each works in PowerShell as written | PASS on `8dbf7d6` |
+| WIN-06 | Record friction | Every guess, missing dependency, platform mismatch, or unclear README step is documented | PASS on `8dbf7d6` |
+| WIN-07 | Run final CI checks | CI is green; no lockfile, lint, type, security, test, or secret-scan failure remains | PASS on `8dbf7d6` |
 
 ## 10. Bug report template
 

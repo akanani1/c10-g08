@@ -12,6 +12,7 @@ from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, SecretStr
 
 from incident_suite.agents import LLMError, LLMReply, SchemaT, StructuredLLM
+from incident_suite.agents.assistant import ReaderError, RecentTicket, ThreadMessage, TicketUpdate
 from incident_suite.agents.jira_agent import (
     ExistingTicket,
     TicketDraft,
@@ -89,6 +90,31 @@ class _FakeTracker:
         self.calls.append(("remote_link", f"{key}->{url}"))
         self._maybe_fail("remote_link")
 
+    def set_slack_thread(self, key: str, channel: str, ts: str) -> None:
+        self.calls.append(("slack_thread", f"{key}->{channel}/{ts}"))
+        self._maybe_fail("slack_thread")
+
+    # Read-only, for the assistant
+    def updates(self, key: str) -> TicketUpdate:
+        self.calls.append(("updates", key))
+        return TicketUpdate(key=key, status="In Progress", assignee="Priya", comments=("On it",))
+
+    def slack_thread(self, key: str) -> tuple[str, str] | None:
+        return ("C123", "1700000000.000100") if key == "OPS-7" else None
+
+    def recent(self, limit: int = 5) -> list[RecentTicket]:
+        self.calls.append(("recent", str(limit)))
+        if self.fail == "recent":
+            msg = "JIRA returned 401"
+            raise ReaderError(msg)
+        return [
+            RecentTicket("OPS-7", "[CRITICAL] payment-api: pool exhausted", "Done", "2026-10-10"),
+            RecentTicket("OPS-5", "[CRITICAL] orders: OOM killed", "In Progress", "2026-10-09"),
+        ]
+
+    def close(self) -> None:
+        """Nothing to close."""
+
 
 class _FakeMessenger:
     """In-memory Slack: records every post."""
@@ -101,7 +127,15 @@ class _FakeMessenger:
         self.posts.append(plan)
         if self.error:
             return SlackOutcome(error=self.error)
-        return SlackOutcome(sent=True, permalink="https://slack.example/archives/C1/p1")
+        return SlackOutcome(
+            sent=True, permalink="https://slack.example/archives/C1/p1", channel="C1", ts="1.2"
+        )
+
+    def replies(self, channel: str, ts: str, limit: int = 20) -> list[ThreadMessage]:  # noqa: ARG002
+        return [ThreadMessage(author="person", text=f"Looking at {channel}/{ts}", ts="1.3")]
+
+    def close(self) -> None:
+        """Nothing to close."""
 
 
 MakeTracker = Callable[..., tuple[TicketTracker, list[TrackerCall]]]

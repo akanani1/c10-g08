@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from incident_suite.rag.runbooks import load_runbooks, parse_runbook, to_documents
+from incident_suite.rag.runbooks import check_runbook, load_runbooks, parse_runbook, to_documents
+from incident_suite.state import Category
 
 RUNBOOK = """\
 ---
@@ -93,3 +94,24 @@ def test_load_and_split(tmp_path: Path) -> None:
 
 def test_missing_folder_means_no_runbooks(tmp_path: Path) -> None:
     assert load_runbooks(tmp_path / "nope") == []
+
+
+CATEGORIES = frozenset(category.value for category in Category)
+
+
+def test_every_shipped_runbook_passes_the_checks() -> None:
+    runbooks = load_runbooks()
+    assert len(runbooks) == 15
+    assert {r.id: check_runbook(r, CATEGORIES) for r in runbooks} == {r.id: [] for r in runbooks}
+
+
+def test_check_runbook_finds_problems() -> None:
+    bad = parse_runbook("# \n\n## Fix now\nRestart.\n", "Not An Id!")
+    assert check_runbook(bad, CATEGORIES) == [
+        "the id must be lowercase letters, digits and dashes",
+        "it needs at least one known category",
+        "it needs at least one signal",
+        "missing sections: Symptoms, Likely causes, Diagnose, Prevent, References",
+    ]
+    odd = parse_runbook("---\ncategories: [astrology]\nsignals: x\n---\n## Fix now\nx\n", "odd-one")
+    assert "it needs at least one known category" in check_runbook(odd, CATEGORIES)

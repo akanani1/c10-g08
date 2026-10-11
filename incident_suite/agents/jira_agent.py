@@ -21,6 +21,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from incident_suite.parsing.redact import Redactor
 from incident_suite.state import (
     Issue,
     Pattern,
@@ -29,6 +30,8 @@ from incident_suite.state import (
     TicketAction,
     TicketOutcome,
 )
+
+MAX_PREVIOUS_FIX = 500
 
 
 class TrackerError(RuntimeError):
@@ -42,6 +45,7 @@ class ExistingTicket:
     key: str
     url: str
     done: bool
+    last_comment: str | None = None  # how it was fixed, when the ticket is closed
 
 
 @dataclass(frozen=True)
@@ -77,6 +81,10 @@ class TicketTracker(Protocol):
         """Add a link to something outside JIRA, such as the Slack thread."""
         ...
 
+    def set_slack_thread(self, key: str, channel: str, ts: str) -> None:
+        """Remember which Slack message first reported this ticket."""
+        ...
+
 
 def _candidates(issues: Sequence[Issue], settings: RunSettings) -> list[Issue]:
     threshold = settings.jira.min_severity.rank
@@ -87,7 +95,11 @@ def _candidates(issues: Sequence[Issue], settings: RunSettings) -> list[Issue]:
 def plan_tickets(
     issues: Sequence[Issue], settings: RunSettings, tracker: TicketTracker | None
 ) -> list[TicketOutcome]:
-    """Decide what to do in JIRA for each eligible issue. Writes nothing."""
+    """Decide what to do in JIRA for each eligible issue. Writes nothing.
+
+    For a closed ticket, its last comment is kept (redacted) as how it was fixed last time.
+    """
+    redactor = Redactor(settings.redaction)
     plan = []
     for position, issue in enumerate(_candidates(issues, settings)):
         if position >= settings.jira.max_tickets:
@@ -107,9 +119,13 @@ def plan_tickets(
         if existing is None:
             plan.append(TicketOutcome(issue_id=issue.id, action=TicketAction.CREATE))
         elif existing.done:
+            previous = existing.last_comment
             plan.append(
                 TicketOutcome(
-                    issue_id=issue.id, action=TicketAction.REGRESSION, related_key=existing.key
+                    issue_id=issue.id,
+                    action=TicketAction.REGRESSION,
+                    related_key=existing.key,
+                    previous_fix=redactor.redact(previous)[:MAX_PREVIOUS_FIX] if previous else None,
                 )
             )
         else:
@@ -176,4 +192,18 @@ def link_back(
                 tracker.add_remote_link(ticket.key, url, title)
             except TrackerError as exc:
                 errors.append(f"JIRA ({ticket.key}): link to {title} not added: {exc}")
+    return errors
+
+
+def remember_thread(
+    tickets: Sequence[TicketOutcome], channel: str, ts: str, tracker: TicketTracker
+) -> list[str]:
+    """Store the Slack thread on each ticket this run opened. Comments keep their first thread."""
+    errors = []
+    for ticket in tickets:
+        if ticket.sent and ticket.key and ticket.action is not TicketAction.COMMENT:
+            try:
+                tracker.set_slack_thread(ticket.key, channel, ts)
+            except TrackerError as exc:
+                errors.append(f"JIRA ({ticket.key}): Slack thread not stored: {exc}")
     return errors

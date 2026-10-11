@@ -1,4 +1,4 @@
-# Incident Suite: multi-agent log analysis for DevOps teams
+# TriageGraph: multi-agent log analysis for DevOps teams
 
 Upload an ops log. A small team of AI agents reads it, works out what went wrong, suggests a fix for each problem, writes you a checklist, posts the result to Slack and opens JIRA tickets for anything critical.
 
@@ -17,7 +17,7 @@ Built for the Outskill hackathon by team c10-g08.
 
 When something breaks at 3 AM, the on-call engineer gets thousands of log lines and a pager going off. Most of the time goes on reading: which errors matter, which are noise, what changed just before, and whether this has happened before. Then comes the paperwork: post an update, open a ticket, write down what to check.
 
-Incident Suite does that first pass. It doesn't replace the engineer. It hands them a sorted list of problems, a suggested fix for each one with a reason and a source, and a Slack post and JIRA ticket ready to go.
+TriageGraph does that first pass. It doesn't replace the engineer. It hands them a sorted list of problems, a suggested fix for each one with a reason and a source, and a Slack post and JIRA ticket ready to go.
 
 ## What it does
 
@@ -26,7 +26,7 @@ Incident Suite does that first pass. It doesn't replace the engineer. It hands t
 3. **Finds fixes.** For each issue it searches our runbooks and suggests steps, a likely root cause and the runbook it used. If it's unsure, it pulls more of the log and tries again.
 4. **Writes a checklist:** do now, this week, prevent next time.
 5. **Asks before sending.** It shows exactly what it would post to Slack and JIRA, and waits for you to approve.
-6. **Opens JIRA tickets** for critical issues only. If an issue already has an open ticket, it adds a comment instead of a duplicate. If the old ticket is closed, it opens a new one marked as a regression.
+6. **Opens JIRA tickets** for critical issues only. If an issue already has an open ticket, it adds a comment instead of a duplicate. If the old ticket is closed, it opens a new one marked as a regression, and the app shows how it was fixed last time (the closed ticket's last comment).
 7. **Posts to Slack:** a short summary in the channel, with the checklist and fixes in a thread and links to the tickets.
 
 You can follow each step in the app, along with the tokens, cost and time each agent used.
@@ -119,11 +119,23 @@ Open `.env` and set `OPENROUTER_API_KEY`. Then:
 streamlit run app.py
 ```
 
-The app opens at http://localhost:8501. Pick a sample log (or upload your own) and press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
+The app opens at http://localhost:8501. The bar at the top shows what's connected and whether runs are live, and the footer shows the limits. Pick up to three sample logs, upload your own, or paste log lines, then press **Analyse**. Each sample is its own run, and a switch above the results moves between them. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
-The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
+After a live run has posted, the **Assistant** column on the right answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode (opening a settings page asks for it once per session), and its cost shows in the Cost tab. Without a run, for example in a new session, the column offers **Earlier incidents**: it lists the latest TriageGraph tickets from JIRA, and you can ask what has happened to any of them.
 
-At the bottom of that page, the **Admin** card (needs `ADMIN_PASSCODE`) changes a few settings for every visitor: live mode, approval, the upload limit (up to 5 MB), tickets per run, the token budget, and the JIRA project and issue type. The values start from your `.env` or Streamlit secrets. A change lasts until the app sleeps, restarts or is redeployed. Keys, the JIRA site and account, and the Slack channel can only be set in the deployment's settings.
+The **Replay** tab steps through a finished run with a slider. The graph lights up one step at a time, including the retry when Remediation asked for more context.
+
+The **Timeline** tab shows errors over time, with deploys and config changes marked as dashed lines, so you can see whether a change came just before the errors.
+
+After a run, **Download postmortem draft** gives you a markdown postmortem built from the results: summary, a timeline with deploys and config changes, root causes marked as hypotheses, fixes and follow-ups. It makes no extra model call.
+
+After any run, the **Ask about this run** box in the Assistant column answers questions such as "why is ISS-1 critical?". It looks things up with read-only tools over this run's issues, evidence, fixes, checklist, tickets and costs, cites log line numbers, and stops after 4 lookups.
+
+When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The draft follows our runbook template, is labelled "AI draft, not reviewed", and must pass the same checks as our own runbooks. If you approve it, later runs in your session can use it, and you can download it as a `.md` file. It isn't saved anywhere else.
+
+The left bar is a menu with three pages: **Analyze**, **Agent Settings** and **App Settings**. The assistant stays on the right of every page. **Agent Settings** picks each agent's provider and model (with its price), the OpenRouter key, the token budget, context lines, runbook matches and the retry confidence. **App Settings** covers live mode, approval, the upload limit (up to 5 MB), tickets per run (1 to 5), and the Slack, JIRA and LangSmith settings. Each card has its own Save button.
+
+Opening either settings page asks for `ADMIN_PASSCODE` once per session; without one in your settings, the pages are read-only. The values start from your `.env` or Streamlit secrets, and a saved change applies to every visitor until the app sleeps, restarts or is redeployed. Keys are never shown, only a hint like `sk-o…a1b2` so you can tell which one is in use. Changing where a key is sent (the JIRA site or email, the Slack channel) needs that key too.
 
 To run one full analysis from the command line, as a dry run with real models:
 
@@ -138,12 +150,16 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `OPENROUTER_API_KEY` | for analysis | | Model calls and embeddings |
-| `CLASSIFIER_MODEL` | no | `openai/gpt-4.1-mini` | Log Reader and Cookbook |
+| `CLASSIFIER_MODEL` | no | `openai/gpt-4.1-mini` | Log Reader, and Cookbook when `COOKBOOK_MODEL` is blank |
 | `REMEDIATION_MODEL` | no | `openai/gpt-5-mini` | Remediation |
+| `COOKBOOK_MODEL` | no | same as `CLASSIFIER_MODEL` | Cookbook |
 | `EMBEDDING_MODEL` | no | `openai/text-embedding-3-small` | Runbook search |
+| `CONTEXT_LINES` | no | `3` | Log lines kept around each error (0 to 20) |
+| `RUNBOOK_TOP_K` | no | `3` | Runbooks shown to Remediation (1 to 10) |
+| `RETRY_CONFIDENCE` | no | `0.5` | Below this confidence, Remediation tries once more (0 to 1) |
 | `LIVE_INTEGRATIONS` | no | `false` | Actually send to Slack and JIRA |
 | `REQUIRE_APPROVAL` | no | `true` | Ask before sending to Slack or JIRA |
-| `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` |
+| `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` (and `channels:history` for the assistant) |
 | `SLACK_CHANNEL_ID` | for Slack | | Where to post |
 | `JIRA_BASE_URL` | for JIRA | | Your Atlassian site (https) |
 | `JIRA_EMAIL`, `JIRA_API_TOKEN` | for JIRA | | Account and API token |
@@ -153,18 +169,18 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `LANGSMITH_API_KEY` | no | | LangSmith key |
 | `LANGSMITH_PROJECT` | no | `c10-g08` | LangSmith project |
 | `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 5, Streamlit's own cap) |
-| `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (0 to 3) |
+| `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (1 to 5) |
 | `RUN_TOKEN_BUDGET` | no | `200000` | Token cap per run |
-| `ADMIN_PASSCODE` | no | | When set, live sending in the app needs this passcode. Everyone else gets a dry run |
+| `ADMIN_PASSCODE` | no | | Unlocks the settings pages. When set, live sending in the app also needs it, and everyone else gets a dry run |
 
 Models must be on the allow-list in `incident_suite/config.py`, which also holds their prices for the cost panel. Set a credit limit on your OpenRouter key. Free (`:free`) models work for trying things out, but they're rate-limited.
 
 ## Connect Slack, JIRA and LangSmith (optional)
 
 **Slack**
-1. Create an app at https://api.slack.com/apps. Under OAuth & Permissions, add the bot scope `chat:write`, then install the app to your workspace.
+1. Create an app at https://api.slack.com/apps. Under OAuth & Permissions, add the bot scope `chat:write` (and `channels:history` if you want the assistant to read replies), then install the app to your workspace.
 2. Copy the bot token (`xoxb-...`) into `SLACK_BOT_TOKEN`.
-3. Invite the bot to your channel (`/invite @Incident Suite`) and put the channel ID in `SLACK_CHANNEL_ID`.
+3. Invite the bot to your channel (`/invite @TriageGraph`) and put the channel ID in `SLACK_CHANNEL_ID`.
 
 **JIRA**
 1. Create an API token at https://id.atlassian.com/manage-profile/security/api-tokens.
@@ -248,7 +264,7 @@ Results (filled in after the eval run):
 - **Redaction:** emails, tokens, JWTs, AWS keys, private keys and `password=`-style values are masked before the model sees the log, and only the masked text is shown or sent. This is pattern-based, so unusual formats can slip through.
 - **Log content is data,** never instructions to the model. The agents have no tools that run commands or open URLs.
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
-- **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets, and one retry per issue.
+- **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets by default (up to 5), and one retry per issue.
 - **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
 - **The public deployment** keeps Slack and JIRA switched off. When we switch them on for the demo, `ADMIN_PASSCODE` keeps visitors on a dry run.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.
@@ -307,11 +323,11 @@ pytest -m live                                # real OpenRouter calls (needs the
 CI runs these on every push and pull request:
 
 ```bash
-ruff check app.py pages incident_suite eval tests sample_logs
-ruff format --check app.py pages incident_suite eval tests sample_logs
+ruff check app.py incident_suite eval tests sample_logs
+ruff format --check app.py incident_suite eval tests sample_logs
 mypy
 vulture
-bandit -q -c pyproject.toml -r app.py pages incident_suite eval
+bandit -q -c pyproject.toml -r app.py incident_suite eval
 pytest --cov
 pip-audit -r requirements.txt
 ```
@@ -331,11 +347,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 
 ## What's next
 
-We're adding these after the core, in this order, as time allows:
-1. A sidebar assistant that summarises the latest Slack and JIRA updates on this incident.
-2. Runbook drafting when no runbook matches.
-3. A chat about the current run.
-4. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+A full animated replay, with each agent's input and output, is a later idea. For now the Replay tab steps through the graph.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

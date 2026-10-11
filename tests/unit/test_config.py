@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from incident_suite.config import (
     CHAT_MODELS,
@@ -17,6 +17,8 @@ from incident_suite.config import (
     admin_overrides,
     effective_config,
     load_config,
+    restore_admin_defaults,
+    save_admin_changes,
     set_admin_overrides,
 )
 
@@ -117,7 +119,10 @@ def test_jira_needs_all_four_values(tmp_path: Path) -> None:
         ("CLASSIFIER_MODEL", "someone/free-text-model"),
         ("EMBEDDING_MODEL", "openai/gpt-4.1-mini"),
         ("JIRA_BASE_URL", "http://team.atlassian.net"),
-        ("MAX_TICKETS_PER_RUN", "4"),
+        ("MAX_TICKETS_PER_RUN", "6"),
+        ("MAX_TICKETS_PER_RUN", "0"),
+        ("COOKBOOK_MODEL", "someone/free-text-model"),
+        ("RETRY_CONFIDENCE", "1.5"),
         ("RUN_TOKEN_BUDGET", "10000000"),
         ("MAX_UPLOAD_MB", "0"),
         ("MAX_UPLOAD_MB", "6"),
@@ -171,15 +176,77 @@ def test_admin_overrides_apply_on_top_of_the_defaults(monkeypatch: pytest.Monkey
     "bad",
     [
         {"max_upload_mb": 6},  # Streamlit's own cap is 5 MB
-        {"max_tickets_per_run": 4},
+        {"max_tickets_per_run": 6},
+        {"max_tickets_per_run": 0},
         {"run_token_budget": 10_000_000},
         {"jira_project_key": "scrum; drop"},
-        {"jira_issue_type": "<script>"},
-        {"jira_base_url": "https://evil.example"},  # where a secret goes is never editable
-        {"slack_channel_id": "C999"},
-        {"openrouter_api_key": "sk-x"},
+        {"slack_channel_id": "#general"},
+        {"langsmith_project": "<script>"},
+        {"jira_issue_type": "Bug"},  # fixed to Task: not an override at all
     ],
 )
 def test_admin_overrides_are_bounded(bad: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         AdminOverrides(**bad)
+
+
+def test_apply_checks_like_the_env_does() -> None:
+    base = AppConfig()
+    with pytest.raises(ValidationError, match="unknown chat model"):
+        AdminOverrides(remediation_model="someone/free-model").apply(base)
+    with pytest.raises(ValidationError, match="must start with https"):
+        AdminOverrides(jira_base_url="http://jira.example").apply(base)
+    applied = AdminOverrides(cookbook_model="openai/gpt-5-nano", runbook_top_k=5).apply(base)
+    assert (applied.cookbook_model, applied.runbook_top_k) == ("openai/gpt-5-nano", 5)
+
+
+def test_where_a_secret_goes_changes_only_with_the_secret() -> None:
+    base = AppConfig(jira_base_url="https://ours.atlassian.net", jira_project_key="SCRUM")
+    redirected = AdminOverrides(jira_base_url="https://evil.example")
+    assert redirected.credential_problems(base) == [
+        "Changing the JIRA site or email needs the JIRA API token too."
+    ]
+    with_token = redirected.model_copy(update={"jira_api_token": SecretStr("their-token")})
+    assert with_token.credential_problems(base) == []
+    channel = AdminOverrides(slack_channel_id="C999")
+    assert channel.credential_problems(base) == [
+        "Changing the Slack channel needs the Slack bot token too."
+    ]
+    assert AdminOverrides(jira_project_key="OPS").credential_problems(base) == []
+
+
+def test_save_admin_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(
+        jira_base_url="https://ours.atlassian.net",
+        jira_api_token=SecretStr("ours"),
+        run_token_budget=200_000,
+    )
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+
+    assert save_admin_changes({"run_token_budget": 50_000, "live_integrations": True}) == []
+    assert admin_overrides() == AdminOverrides(run_token_budget=50_000, live_integrations=True)
+
+    # equal to the deployment's own value: dropped; a blank secret: keep the current one
+    assert save_admin_changes({"run_token_budget": 200_000, "jira_api_token": SecretStr("")}) == []
+    assert admin_overrides() == AdminOverrides(live_integrations=True)
+
+    problems = save_admin_changes({"jira_base_url": "https://evil.example"})
+    assert problems == ["Changing the JIRA site or email needs the JIRA API token too."]
+    assert admin_overrides() == AdminOverrides(live_integrations=True)  # nothing stored
+
+    assert save_admin_changes({"remediation_model": "someone/free-model"}) == [
+        "remediation_model: unknown chat model 'someone/free-model'; add it to config.py first "
+        "(allowed: google/gemini-2.5-flash, openai/gpt-4.1-mini, openai/gpt-5-mini, "
+        "openai/gpt-5-nano)"
+    ]
+    assert save_admin_changes({"max_tickets_per_run": 9})[0].startswith("max_tickets_per_run:")
+
+
+def test_restore_drops_only_the_named_settings() -> None:
+    set_admin_overrides(
+        AdminOverrides(remediation_model="openai/gpt-5-nano", runbook_top_k=5, max_upload_mb=2)
+    )
+    restore_admin_defaults(iter(["remediation_model", "runbook_top_k"]))
+    assert admin_overrides() == AdminOverrides(max_upload_mb=2)
+    with pytest.raises(ValueError, match="not admin settings"):
+        restore_admin_defaults(["jira_issue_type"])

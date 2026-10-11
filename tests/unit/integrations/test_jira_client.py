@@ -10,9 +10,10 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
+from incident_suite.agents.assistant import ReaderError, RecentTicket, TicketUpdate
 from incident_suite.agents.jira_agent import ExistingTicket, TicketDraft, TrackerError
 from incident_suite.config import AppConfig
-from incident_suite.integrations.jira_client import JiraClient
+from incident_suite.integrations.jira_client import JiraClient, adf_text
 from incident_suite.state import Category, Issue, Severity
 
 SITE = "https://team.atlassian.net"
@@ -248,3 +249,144 @@ def test_a_read_timeout_is_not_retried(make_client: MakeClient) -> None:
         client.create(DRAFT, regression_of=None)
     assert len(requests) == 1
     client.close()
+
+
+def _adf(*paragraphs: str) -> dict[str, Any]:
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": text}]}
+            for text in paragraphs
+        ],
+    }
+
+
+def test_store_and_read_the_slack_thread(make_client: MakeClient) -> None:
+    client, requests, _ = make_client(
+        httpx.Response(200),
+        httpx.Response(
+            200, json={"key": "incident_suite.slack", "value": {"channel": "C1", "ts": "1.2"}}
+        ),
+        httpx.Response(404, json={"errorMessages": ["not found"]}),
+        httpx.Response(200, json={"value": {"channel": "c1; drop", "ts": "x"}}),
+    )
+    client.set_slack_thread("SCRUM-1", "C1", "1.2")
+    assert client.slack_thread("SCRUM-1") == ("C1", "1.2")
+    assert client.slack_thread("SCRUM-2") is None  # never stored
+    assert client.slack_thread("SCRUM-3") is None  # stored value isn't a real thread
+
+    put = requests[0]
+    assert put.method == "PUT"
+    assert put.url.path == "/rest/api/3/issue/SCRUM-1/properties/incident_suite.slack"
+    assert _body(put) == {"channel": "C1", "ts": "1.2"}
+
+
+def test_reading_the_thread_when_jira_is_down(make_client: MakeClient) -> None:
+    client, _, _ = make_client(httpx.Response(401))
+    with pytest.raises(ReaderError, match="JIRA returned 401"):
+        client.slack_thread("SCRUM-1")
+
+
+def test_updates(make_client: MakeClient) -> None:
+    fields = {
+        "labels": ["incident-suite", "sig-a1b2c3d4e5f6"],
+        "status": {"name": "In Progress"},
+        "assignee": {"displayName": "Priya"},
+        "comment": {
+            "comments": [
+                {"body": _adf("old")},
+                {"body": _adf("Pool raised", "to 50")},
+                {"body": _adf("Watching")},
+                {"body": _adf("Errors gone")},
+            ]
+        },
+    }
+    client, requests, _ = make_client(
+        httpx.Response(200, json={"key": "SCRUM-1", "fields": fields})
+    )
+    update = client.updates("SCRUM-1")
+
+    assert update == TicketUpdate(
+        key="SCRUM-1",
+        status="In Progress",
+        assignee="Priya",
+        comments=("Pool raised\nto 50", "Watching", "Errors gone"),
+    )
+    assert requests[0].url.params["fields"] == "status,assignee,labels,comment"
+
+
+def test_updates_unassigned_and_not_ours(make_client: MakeClient) -> None:
+    ours = {"labels": ["incident-suite"], "status": {"name": "To Do"}, "assignee": None}
+    client, _, _ = make_client(
+        httpx.Response(200, json={"fields": ours}),
+        httpx.Response(200, json={"fields": {"labels": ["finance"]}}),
+        httpx.Response(503),
+        httpx.Response(503),
+        httpx.Response(503),
+    )
+    update = client.updates("SCRUM-1")
+    assert (update.assignee, update.comments) == ("unassigned", ())
+    with pytest.raises(ReaderError, match="isn't a TriageGraph ticket"):
+        client.updates("FIN-9")
+    with pytest.raises(ReaderError, match="JIRA returned 503"):
+        client.updates("SCRUM-1")
+
+
+def test_recent_lists_only_our_latest_tickets(make_client: MakeClient) -> None:
+    issues = [
+        {
+            "key": "OPS-7",
+            "fields": {
+                "summary": "[CRITICAL] payment-api: DB pool exhausted",
+                "status": {"name": "Done"},
+                "created": "2026-10-11T03:12:09.000+0530",
+            },
+        },
+        {"key": "not a key", "fields": {}},
+        {"key": "OPS-6", "fields": {"summary": "x" * 300}},
+    ]
+    client, requests, _ = make_client(
+        httpx.Response(200, json={"issues": issues}), httpx.Response(401)
+    )
+    tickets = client.recent(limit=50)
+
+    assert tickets[0] == RecentTicket(
+        key="OPS-7",
+        summary="[CRITICAL] payment-api: DB pool exhausted",
+        status="Done",
+        created="2026-10-11",
+    )
+    assert [t.key for t in tickets] == ["OPS-7", "OPS-6"]  # a bad key is skipped
+    assert (len(tickets[1].summary), tickets[1].status) == (120, "unknown")
+    params = requests[0].url.params
+    assert params["jql"] == 'project = "OPS" AND labels = "incident-suite" ORDER BY created DESC'
+    assert params["maxResults"] == "10"  # capped
+    with pytest.raises(ReaderError, match="JIRA returned 401"):
+        client.recent()
+
+
+def test_adf_text() -> None:
+    assert adf_text(_adf("a", "b")) == "a\nb"
+    assert adf_text({"type": "bulletList", "content": [{"type": "listItem", "content": []}]}) == ""
+    assert adf_text(None) == ""
+
+
+def test_find_latest_keeps_how_a_closed_ticket_was_fixed(make_client: MakeClient) -> None:
+    def ticket(category: str) -> httpx.Response:
+        fields = {
+            "status": {"statusCategory": {"key": category}},
+            "comment": {
+                "comments": [{"body": _adf("old note")}, {"body": _adf("Raised the pool to 50")}]
+            },
+        }
+        return httpx.Response(200, json={"issues": [{"key": "SCRUM-1", "fields": fields}]})
+
+    client, requests, _ = make_client(ticket("done"), ticket("indeterminate"))
+    closed = client.find_latest("a1b2c3d4e5f6")
+    assert closed is not None
+    assert closed.last_comment == "Raised the pool to 50"
+    assert requests[0].url.params["fields"] == "status,comment"
+    still_open = client.find_latest("a1b2c3d4e5f6")
+    assert still_open is not None
+    assert still_open.last_comment is None  # only a closed ticket tells us how it was fixed

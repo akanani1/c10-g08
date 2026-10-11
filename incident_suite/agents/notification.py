@@ -28,7 +28,7 @@ _TICKET_WORDS = {
     TicketAction.CREATE: "new ticket",
     TicketAction.COMMENT: "updated, seen again",
     TicketAction.REGRESSION: "regression",
-    TicketAction.SKIPPED_OVER_CAP: "not ticketed (over the cap of 3)",
+    TicketAction.SKIPPED_OVER_CAP: "not ticketed (over the ticket cap)",
 }
 
 

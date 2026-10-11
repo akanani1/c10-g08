@@ -11,6 +11,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
+from incident_suite.agents.assistant import ReaderError
 from incident_suite.config import AppConfig
 from incident_suite.integrations.slack_client import SlackClient
 from incident_suite.state import NotificationPlan, SlackOutcome
@@ -66,7 +67,9 @@ def test_post_summary_thread_and_permalink(make_client: MakeClient) -> None:
     client, requests, _ = make_client(POSTED, REPLIED, PERMALINK)
     outcome = client.post(PLAN, [])
 
-    assert outcome == SlackOutcome(sent=True, permalink=LINK)
+    assert outcome == SlackOutcome(
+        sent=True, permalink=LINK, channel="C123", ts="1700000000.000100"
+    )
     summary, thread, permalink = requests
     assert summary.url.path == "/api/chat.postMessage"
     assert summary.headers["Authorization"] == "Bearer xoxb-test-token"
@@ -136,3 +139,30 @@ def test_rate_limit_waits_for_retry_after(make_client: MakeClient) -> None:
     assert len(requests) == 4
     assert waits == [3.0]
     client.close()
+
+
+def test_replies_skip_the_first_message(make_client: MakeClient) -> None:
+    thread = {
+        "ok": True,
+        "messages": [
+            {"ts": "1.0", "text": "our summary", "bot_id": "B1"},
+            {"ts": "1.1", "text": "Rolling back now", "user": "U1"},
+            {"ts": "1.2", "text": "SCRUM-5 picked up", "bot_id": "B2"},
+        ],
+    }
+    client, requests, _ = make_client(httpx.Response(200, json=thread))
+    replies = client.replies("C123", "1.0", limit=5)
+
+    assert [(m.author, m.text) for m in replies] == [
+        ("person", "Rolling back now"),
+        ("bot", "SCRUM-5 picked up"),
+    ]
+    (request,) = requests
+    assert request.url.path == "/api/conversations.replies"
+    assert dict(request.url.params) == {"channel": "C123", "ts": "1.0", "limit": "6"}
+
+
+def test_replies_without_the_scope(make_client: MakeClient) -> None:
+    client, _, _ = make_client(httpx.Response(200, json={"ok": False, "error": "missing_scope"}))
+    with pytest.raises(ReaderError, match="missing_scope"):
+        client.replies("C123", "1.0")
