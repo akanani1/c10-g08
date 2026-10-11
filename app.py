@@ -78,6 +78,7 @@ from incident_suite.state import (
 from incident_suite.telemetry import enable_tracing, merge_usage, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
+ICON = Path(__file__).resolve().parent / "assets" / "triagegraph.svg"
 CHAT_HEIGHT = 380
 # Layout only: a health bar pinned in the header strip, a fixed footer and a sticky assistant
 # column. Static, so it can go through st.markdown with unsafe_allow_html: no log or user text
@@ -125,22 +126,21 @@ div[data-testid="stMetricValue"] { font-size: 1.6rem; }
 }
 /* The rest reacts to the room the page actually has (an open left bar takes some). */
 .block-container { container-type: inline-size; container-name: page; }
-@container page (max-width: 860px) {
+/* The health bar fits in the header strip from 1300px; below that it joins the page. */
+@media (max-width: 1299px) {
   .st-key-topbar {
     position: static; transform: none; max-width: 100%; width: 100%; margin: 0.6rem 0 0.25rem;
     z-index: auto;  /* a flex item keeps its z-index even when static: stay under the menu */
   }
   .st-key-topbar p { white-space: normal; line-height: 2; font-size: 0.85rem; }
+}
+@container page (max-width: 860px) {
   .st-key-footer {
     position: static; height: auto; padding: 1rem 0 0; border: 0; background: transparent;
     z-index: auto;  /* like the health bar: stay under the open menu */
   }
   .st-key-footer p { white-space: normal; text-align: center; }
   .block-container { padding-bottom: 2rem; }
-  .st-key-cards div[data-testid="stHorizontalBlock"]:has(> div[data-testid="stColumn"]) {
-    flex-direction: column;
-  }
-  .st-key-cards div[data-testid="stColumn"] { width: 100% !important; flex: 1 1 100% !important; }
   div[data-testid="stMetricValue"] { font-size: 1.2rem; }
 }
 </style>
@@ -334,8 +334,7 @@ def _model_picker(card: str, current: str, models: Iterable[str], locked: bool) 
 
 
 def _agent_settings(config: AppConfig, locked: bool) -> None:
-    left, right = st.columns(2)
-    with left, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/key: OpenRouter and budget**")
         key = _secret("OpenRouter API key", config.openrouter_api_key, "or_key", locked)
         budget = st.number_input(
@@ -348,13 +347,13 @@ def _agent_settings(config: AppConfig, locked: bool) -> None:
             help="A run stops calling the models once it has used this many tokens.",
         )
         _actions("models", {"openrouter_api_key": key, "run_token_budget": budget}, locked)
-    with right, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/manage_search: Log Reader / Classifier**")
         model = _model_picker("log_reader", config.classifier_model, CHAT_MODELS, locked)
         lines = st.slider("Context lines", 0, 20, config.context_lines, disabled=locked)
         st.caption("Lines kept around each error, so the model sees what led up to it.")
         _actions("log_reader", {"classifier_model": model, "context_lines": lines}, locked)
-    with left, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/build: Remediation**")
         model = _model_picker("remediation", config.remediation_model, CHAT_MODELS, locked)
         top_k = st.slider("Runbook matches (top-k)", 1, 10, config.runbook_top_k, disabled=locked)
@@ -372,20 +371,19 @@ def _agent_settings(config: AppConfig, locked: bool) -> None:
             },
             locked,
         )
-    with right, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/checklist: Cookbook**")
         current = config.cookbook_model or config.classifier_model
         model = _model_picker("cookbook", current, CHAT_MODELS, locked)
         _actions("cookbook", {"cookbook_model": model}, locked)
-    with right, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/hub: Embedding (runbook search)**")
         model = _model_picker("embedding", config.embedding_model, EMBEDDING_MODELS, locked)
         _actions("embedding", {"embedding_model": model}, locked)
 
 
 def _app_settings(config: AppConfig, locked: bool) -> None:
-    left, right = st.columns(2)
-    with left, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/tune: General**")
         live = st.toggle("Send to Slack and JIRA", config.live_integrations, disabled=locked)
         approval = st.toggle("Human approval", config.require_approval, disabled=locked)
@@ -409,13 +407,13 @@ def _app_settings(config: AppConfig, locked: bool) -> None:
             },
             locked,
         )
-    with left, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/forum: Slack**")
         token = _secret("Bot token (xoxb-...)", config.slack_bot_token, "slack_token", locked)
         channel = st.text_input("Channel ID", config.slack_channel_id or "", disabled=locked)
         slack = {"slack_bot_token": token, "slack_channel_id": channel.strip() or None}
         _actions("slack", slack, locked)
-    with right, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/confirmation_number: JIRA**")
         url = st.text_input("Base URL", config.jira_base_url or "", disabled=locked)
         email = st.text_input("Email", config.jira_email or "", disabled=locked)
@@ -432,7 +430,7 @@ def _app_settings(config: AppConfig, locked: bool) -> None:
             },
             locked,
         )
-    with right, st.container(border=True):
+    with st.container(border=True):
         st.markdown("**:material/timeline: LangSmith**")
         tracing = st.toggle("Tracing", config.langsmith_tracing, disabled=locked)
         project = st.text_input("Project", config.langsmith_project, disabled=locked)
@@ -460,24 +458,31 @@ PAGES = {
     "assistant": ("Assistant", ":material/forum:"),  # in the menu only on narrow screens
 }
 SETTINGS_PAGES = ("agents", "app")
+UNLOCKED_MARK = ":material/lock_open:"  # on the settings items while the passcode is in
 
 
 def _menu() -> str:
     """Left bar: the app's name and the menu, nothing else. Returns the chosen page."""
     current = str(st.session_state.get("page", "analyze"))
     with st.sidebar:
-        st.markdown("## :material/emergency_home: TriageGraph")
+        with st.container(horizontal=True, vertical_alignment="center", gap="small", key="brand"):
+            st.image(str(ICON), width=34)
+            st.markdown("## TriageGraph")
         st.caption("Multi-agent incident triage")
+        unlocked = bool(st.session_state.get("admin_ok"))
         with st.container(key="menu"):
             chosen = [
                 page
                 for page, (label, icon) in PAGES.items()
                 if st.button(
-                    label,
+                    f"{label} {UNLOCKED_MARK}" if unlocked and page in SETTINGS_PAGES else label,
                     icon=icon,
                     key=f"menu_{page}",
                     type="primary" if page == current else "tertiary",
                     width="stretch",
+                    help="Unlocked for this session. Press Lock on the page to lock it again."
+                    if unlocked and page in SETTINGS_PAGES
+                    else None,
                 )
             ]
     passcode = load_config().admin_passcode
@@ -504,11 +509,10 @@ def _settings_page(config: AppConfig, page: str) -> None:
     if toast:
         st.toast(str(toast), icon=":material/check:")
     locked = _lock_state(base)
-    with st.container(key="cards"):  # two columns of cards, one when space is short
-        if page == "agents":
-            _agent_settings(config, locked)
-        else:
-            _app_settings(config, locked)
+    if page == "agents":
+        _agent_settings(config, locked)
+    else:
+        _app_settings(config, locked)
     changed = admin_overrides().differences(base)
     if changed:
         st.caption(
@@ -1184,7 +1188,7 @@ def _analyze(config: AppConfig, live: bool) -> None:
 
 def main() -> None:
     """Render the page."""
-    st.set_page_config(page_title="TriageGraph", page_icon=":rotating_light:", layout="wide")
+    st.set_page_config(page_title="TriageGraph", page_icon=str(ICON), layout="wide")
     config = effective_config()
     st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
     page = _menu()
