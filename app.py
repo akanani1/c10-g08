@@ -716,9 +716,9 @@ def _approval(result: RunResult) -> None:
         st.subheader("Approval needed")
         st.write("Nothing has been sent yet. This is exactly what will go to Slack and JIRA.")
         _outbox(result)
-        approve, reject, _ = st.columns([1, 1, 4])
-        approve.button("Approve and send", type="primary", on_click=_answer, args=(True,))
-        reject.button("Reject", on_click=_answer, args=(False,))
+        row = st.container(horizontal=True, gap="small")  # buttons as wide as their labels
+        row.button("Approve and send", type="primary", on_click=_answer, args=(True,))
+        row.button("Reject", on_click=_answer, args=(False,))
 
 
 def _outbox(result: RunResult) -> None:
@@ -853,15 +853,15 @@ def _draft_box(key: str, issue_id: str) -> None:
         return
     for problem in draft.problems:
         st.error(f"Can't approve: {ui.md(problem)}")
-    approve, discard, _ = st.columns([1, 1, 3])
-    approve.button(
+    row = st.container(horizontal=True, gap="small")
+    row.button(
         "Approve",
         key=f"approve-{key}",
         on_click=_approve_draft,
         args=(key,),
         disabled=bool(draft.problems),
     )
-    discard.button("Discard", key=f"discard-{key}", on_click=_discard_draft, args=(key,))
+    row.button("Discard", key=f"discard-{key}", on_click=_discard_draft, args=(key,))
 
 
 def _tabs(result: RunResult, context: RunContext) -> None:
@@ -1182,6 +1182,7 @@ def _analyze(config: AppConfig, live: bool) -> None:
     if clicked and picked:
         for key in (*RUN_KEYS, "runs", "run_name", "run_errors"):
             st.session_state.pop(key, None)
+        area.empty()  # drop the old results at once, not when the new run finishes
         with area.container():
             for data, filename in picked:
                 _start(config, live, data, filename)
