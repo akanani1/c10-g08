@@ -30,3 +30,6 @@ coverage.xml
 build/
 dist/
 Thumbs.db
+
+# Demo video script: kept locally, not in the repo
+docs/demo-video-script.md
