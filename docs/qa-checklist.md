@@ -136,7 +136,7 @@ credential key/value, named secret columns, and a private-key block.
 | E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | |
 | E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS on `8dbf7d6` |
 | E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | |
-| E2E-10 | Resize to phone width | Layout remains usable and does not hide critical controls | PASS on `8dbf7d6` |
+| E2E-10 | Resize to phone width (about 390px), tablet (768px) and 1024px with the left bar open | Nothing runs off the screen; the health bar wraps above the title; under 1200px the assistant is an **Assistant** menu item (no passcode) instead of a right-hand column; settings cards are one column; the footer is the last line of the page | PASS on `8dbf7d6` (phone only, before the new layout) |
 | E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | |
 | E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | |
 | E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | |

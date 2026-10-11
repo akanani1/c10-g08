@@ -237,7 +237,12 @@ def _unlock(app: AppTest, page: str, passcode: str) -> AppTest:
 def test_left_bar_is_just_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
     app = _app()
-    assert [b.label for b in app.sidebar.button] == ["Analyze", "Agent Settings", "App Settings"]
+    assert [b.label for b in app.sidebar.button] == [
+        "Analyze",
+        "Agent Settings",
+        "App Settings",
+        "Assistant",  # shown by CSS on narrow screens only
+    ]
     assert not app.sidebar.text_input
     assert app.sidebar.button(key="menu_analyze").proto.type == "primary"
     app = _open(app, "agents")
@@ -245,6 +250,16 @@ def test_left_bar_is_just_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [t.value for t in app.title] == [":material/smart_toy: Agent Settings"]
     assert ":material/forum: Assistant" in [s.value for s in app.subheader]  # always on the right
     assert all(b.proto.icon == ":material/save:" for b in app.button if b.label == "Save")
+
+
+def test_assistant_page_for_narrow_screens(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(admin_passcode=SecretStr("open-sesame"))
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    app = _open(_app(), "assistant")
+    assert not app.text_input  # no passcode dialog: the assistant isn't a settings page
+    assert app.session_state["page"] == "assistant"
+    assert [s.value for s in app.subheader] == [":material/forum: Assistant"]  # once, mid-page
+    assert not app.columns
 
 
 def test_console_is_read_only_without_a_passcode(monkeypatch: pytest.MonkeyPatch) -> None:
