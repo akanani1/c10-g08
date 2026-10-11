@@ -21,6 +21,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from incident_suite.parsing.redact import Redactor
 from incident_suite.state import (
     Issue,
     Pattern,
@@ -29,6 +30,8 @@ from incident_suite.state import (
     TicketAction,
     TicketOutcome,
 )
+
+MAX_PREVIOUS_FIX = 500
 
 
 class TrackerError(RuntimeError):
@@ -42,6 +45,7 @@ class ExistingTicket:
     key: str
     url: str
     done: bool
+    last_comment: str | None = None  # how it was fixed, when the ticket is closed
 
 
 @dataclass(frozen=True)
@@ -91,7 +95,11 @@ def _candidates(issues: Sequence[Issue], settings: RunSettings) -> list[Issue]:
 def plan_tickets(
     issues: Sequence[Issue], settings: RunSettings, tracker: TicketTracker | None
 ) -> list[TicketOutcome]:
-    """Decide what to do in JIRA for each eligible issue. Writes nothing."""
+    """Decide what to do in JIRA for each eligible issue. Writes nothing.
+
+    For a closed ticket, its last comment is kept (redacted) as how it was fixed last time.
+    """
+    redactor = Redactor(settings.redaction)
     plan = []
     for position, issue in enumerate(_candidates(issues, settings)):
         if position >= settings.jira.max_tickets:
@@ -111,9 +119,13 @@ def plan_tickets(
         if existing is None:
             plan.append(TicketOutcome(issue_id=issue.id, action=TicketAction.CREATE))
         elif existing.done:
+            previous = existing.last_comment
             plan.append(
                 TicketOutcome(
-                    issue_id=issue.id, action=TicketAction.REGRESSION, related_key=existing.key
+                    issue_id=issue.id,
+                    action=TicketAction.REGRESSION,
+                    related_key=existing.key,
+                    previous_fix=redactor.redact(previous)[:MAX_PREVIOUS_FIX] if previous else None,
                 )
             )
         else:

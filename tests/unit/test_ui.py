@@ -358,3 +358,14 @@ def test_postmortem_with_little_to_say() -> None:
     assert "- No timestamps or change events in the log." in ui.postmortem_markdown(
         result.model_copy(update={"issues": []}), []
     )
+
+
+def test_previous_fix_is_a_confidence_reason() -> None:
+    regression = TicketOutcome(
+        issue_id="ISS-1",
+        action=TicketAction.REGRESSION,
+        related_key="SCRUM-2",
+        previous_fix="Raised the pool to 50 and restarted payment-api",
+    )
+    reasons = ui.confidence_reasons(ISSUE, FIX, regression, dry_run=False)
+    assert reasons[-1] == "Last time it was fixed: Raised the pool to 50 and restarted payment-api"

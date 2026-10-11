@@ -342,6 +342,12 @@ def _card(issue: Issue, result: RunResult, evidence: dict[int, str]) -> None:
         with st.expander("Evidence"):
             lines = [f"{n:>7}  {evidence[n]}" for n in issue.evidence_lines if n in evidence]
             st.code("\n".join(lines) or "Not available", language=None, wrap_lines=True)
+        ticket = tickets.get(issue.id)
+        if ticket is not None and ticket.previous_fix:
+            st.info(
+                f"**Seen before in {ticket.related_key}.** Last time it was fixed like this: "
+                f"{ui.md(ticket.previous_fix)}"
+            )
         if ui.needs_runbook(fix):
             _draft_box(f"{result.run_id}-{issue.id}", issue.id)
 

@@ -337,3 +337,23 @@ def test_adf_text() -> None:
     assert adf_text(_adf("a", "b")) == "a\nb"
     assert adf_text({"type": "bulletList", "content": [{"type": "listItem", "content": []}]}) == ""
     assert adf_text(None) == ""
+
+
+def test_find_latest_keeps_how_a_closed_ticket_was_fixed(make_client: MakeClient) -> None:
+    def ticket(category: str) -> httpx.Response:
+        fields = {
+            "status": {"statusCategory": {"key": category}},
+            "comment": {
+                "comments": [{"body": _adf("old note")}, {"body": _adf("Raised the pool to 50")}]
+            },
+        }
+        return httpx.Response(200, json={"issues": [{"key": "SCRUM-1", "fields": fields}]})
+
+    client, requests, _ = make_client(ticket("done"), ticket("indeterminate"))
+    closed = client.find_latest("a1b2c3d4e5f6")
+    assert closed is not None
+    assert closed.last_comment == "Raised the pool to 50"
+    assert requests[0].url.params["fields"] == "status,comment"
+    still_open = client.find_latest("a1b2c3d4e5f6")
+    assert still_open is not None
+    assert still_open.last_comment is None  # only a closed ticket tells us how it was fixed
