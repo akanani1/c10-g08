@@ -1,4 +1,9 @@
-"""Assistant: Slack and JIRA updates since a run (plan 17.2), and runbook drafts (plan 17.3).
+"""Assistant: Slack and JIRA updates (17.2), runbook drafts (17.3) and a chat about a run (17.4).
+
+**Chat about the run.** A small tool loop: each turn the model either picks one read-only tool
+(issues, evidence, fix, checklist, tickets, costs) or answers. Tool results come back inside
+``<tool_result>`` tags as data. After ``MAX_TOOL_CALLS`` it has to answer. It only sees this
+run, and it cites line numbers from the evidence.
 
 **Runbook drafts.** When an issue still has no good runbook after its retry, the assistant can
 draft one. The model fills in the template's fields; our code writes the markdown, so a draft
@@ -28,7 +33,7 @@ import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol, TypedDict
+from typing import Any, Literal, Protocol, TypedDict
 
 import yaml
 from langgraph.graph import END, START, StateGraph
@@ -51,11 +56,16 @@ from incident_suite.telemetry import UsageMeter
 MODEL = "openai/gpt-5-nano"  # the cheap model on the allow-list
 TASK_UPDATES = "<task>updates</task>\n"
 TASK_RUNBOOK = "<task>runbook</task>\n"
+TASK_CHAT = "<task>chat</task>\n"
+MAX_TOOL_CALLS = 4
+MAX_QUESTION_CHARS = 500
+MAX_HISTORY = 3
 DRAFT_LABEL = "AI draft, not reviewed"
 MAX_EVIDENCE_LINES = 20
 MAX_CHARS_PER_MESSAGE = 1_000
 _TAG = re.compile(
-    r"</?\s*(slack_thread|jira_ticket|run|task|issue|evidence)\b[^>]*>", re.IGNORECASE
+    r"</?\s*(slack_thread|jira_ticket|run|task|issue|evidence|question|tool_result|earlier)\b[^>]*>",
+    re.IGNORECASE,
 )
 
 
@@ -356,5 +366,175 @@ def draft_runbook(
         text=text,
         runbook=runbook,
         problems=check_runbook(runbook, categories),
+        usage=meter.usage,
+    )
+
+
+# ------------------------------------------------------------------ chat about the run
+
+Tool = Literal["issues", "evidence", "fix", "checklist", "tickets", "costs"]
+
+
+class ChatStep(BaseModel):
+    """One turn: a tool to call, or the final answer."""
+
+    tool: Tool | None = Field(default=None, description="A tool to call, or null to answer")
+    issue_id: str | None = Field(default=None, description="For evidence and fix, e.g. ISS-1")
+    answer: str | None = Field(default=None, description="The answer, when no tool is called")
+
+
+@dataclass
+class ChatResult:
+    """The answer, the tools used, and what it cost."""
+
+    answer: str = ""
+    tools_used: list[str] = field(default_factory=list)
+    error: str | None = None
+    usage: AgentUsage | None = None
+
+
+class _ChatState(TypedDict):
+    transcript: list[str]
+    steps: int
+    answer: str
+    tools_used: list[str]
+    error: str | None
+
+
+def _issue_line(issue: Issue) -> str:
+    lines = ", ".join(f"L{n}" for n in issue.evidence_lines[:20])
+    return (
+        f"{issue.id} [{issue.severity}] {_escape(issue.title)} "
+        f"(service {_escape(issue.affected_service or '-')}, {issue.category}); evidence {lines}"
+    )
+
+
+def _fix_text(fix: Remediation | None) -> str:
+    if fix is None:
+        return "No fix was suggested for this issue."
+    steps = "\n".join(f"{n}. {_escape(s)}" for n, s in enumerate(fix.steps, start=1))
+    sources = ", ".join(f"{s.runbook} ({s.score:.2f})" for s in fix.sources) or "none"
+    return (
+        f"Root cause (hypothesis): {_escape(fix.root_cause)}\n{steps}\n"
+        f"Why: {_escape(fix.rationale)}\nRunbooks: {sources}\nConfidence: {fix.confidence:.0%}"
+    )
+
+
+def _checklist_text(result: RunResult) -> str:
+    groups = (
+        ("Do now", result.checklist.do_now),
+        ("This week", result.checklist.this_week),
+        ("Prevent", result.checklist.prevent),
+    )
+    lines = [
+        f"{name}: {_escape(item.text)} ({', '.join(item.issue_ids)})"
+        for name, items in groups
+        for item in items
+    ]
+    return "\n".join(lines) or "The checklist is empty."
+
+
+def _tickets_text(result: RunResult) -> str:
+    lines = [
+        f"{t.issue_id}: {t.action}, key {t.key or t.related_key or '-'}, "
+        f"{'sent' if t.sent else 'not sent'}" + (f", error: {_escape(t.error)}" if t.error else "")
+        for t in result.tickets
+    ]
+    return "\n".join(lines) or "No tickets for this run."
+
+
+def _costs_text(result: RunResult) -> str:
+    lines = [
+        f"{u.agent}: {u.input_tokens + u.output_tokens} tokens, ${u.cost_usd:.4f}"
+        for u in result.usage
+    ]
+    return "\n".join([*lines, f"Total: ${result.total_cost_usd:.4f}"])
+
+
+def run_tool(step: ChatStep, result: RunResult, evidence: dict[int, str]) -> str:
+    """Run one read-only tool over this run's results. Unknown input gets a plain answer."""
+    if step.tool == "issues":
+        return "\n".join(_issue_line(i) for i in result.issues) or "No issues were found."
+    if step.tool == "checklist":
+        return _checklist_text(result)
+    if step.tool == "tickets":
+        return _tickets_text(result)
+    if step.tool == "costs":
+        return _costs_text(result)
+    issue = next((i for i in result.issues if i.id == step.issue_id), None)
+    if issue is None:
+        return f"No issue {_escape(step.issue_id or '')!r}. Call issues to see the IDs."
+    if step.tool == "fix":
+        return _fix_text(next((f for f in result.remediations if f.issue_id == issue.id), None))
+    return "\n".join(
+        f"L{n}: {_escape(evidence[n][:MAX_CHARS_PER_MESSAGE])}"
+        for n in issue.evidence_lines[:20]
+        if n in evidence
+    )
+
+
+def ask_about_run(
+    question: str,
+    history: Sequence[tuple[str, str]],
+    result: RunResult,
+    evidence: dict[int, str],
+    llm: StructuredLLM,
+    token_budget: int,
+) -> ChatResult:
+    """Answer one question about this run, calling at most ``MAX_TOOL_CALLS`` tools."""
+    spent = sum(u.input_tokens + u.output_tokens for u in result.usage)
+    if spent >= token_budget:
+        return ChatResult(error="This run has used its token budget.")
+    meter = UsageMeter("assistant", MODEL)
+    earlier = "\n".join(
+        f"Q: {_escape(q)}\nA: {_escape(a)}" for q, a in list(history)[-MAX_HISTORY:]
+    )
+    header = (
+        f'{TASK_CHAT}<run id="{result.run_id}" log="{_escape(result.log_name)}" />\n'
+        + (f"<earlier>\n{earlier}\n</earlier>\n" if earlier else "")
+        + f"<question>{_escape(question[:MAX_QUESTION_CHARS])}</question>"
+    )
+
+    def agent(state: _ChatState) -> dict[str, Any]:
+        last_turn = state["steps"] >= MAX_TOOL_CALLS
+        note = "\nYou have used all your tool calls: answer now." if last_turn else ""
+        started = time.perf_counter()
+        try:
+            reply = llm(
+                MODEL, load_prompt("assistant"), "\n".join(state["transcript"]) + note, ChatStep
+            )
+        except LLMError as exc:
+            meter.record_failure(exc, time.perf_counter() - started)
+            return {"error": str(exc)}
+        meter.record(reply)
+        step = reply.parsed
+        if step.tool is None or last_turn:
+            fallback = "I couldn't answer that within my tool limit. Try a narrower question."
+            return {"answer": step.answer or fallback}
+        call = f"{step.tool}({step.issue_id or ''})"
+        output = run_tool(step, result, evidence)
+        return {
+            "transcript": [
+                *state["transcript"],
+                f'<tool_result call="{call}">\n{output}\n</tool_result>',
+            ],
+            "steps": state["steps"] + 1,
+            "tools_used": [*state["tools_used"], call],
+        }
+
+    def route(state: _ChatState) -> str:
+        return END if state["answer"] or state["error"] else "agent"
+
+    graph = StateGraph(_ChatState)
+    graph.add_node("agent", agent)
+    graph.add_edge(START, "agent")
+    graph.add_conditional_edges("agent", route, ["agent", END])
+    final = graph.compile().invoke(
+        _ChatState(transcript=[header], steps=0, answer="", tools_used=[], error=None)
+    )
+    return ChatResult(
+        answer=final["answer"],
+        tools_used=final["tools_used"],
+        error=final["error"],
         usage=meter.usage,
     )
