@@ -1,6 +1,6 @@
-# Build plan: Incident Suite (c10-g08)
+# Build plan: TriageGraph (c10-g08)
 
-Version 11, 11 Oct 2026.
+Version 12, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
@@ -534,7 +534,7 @@ Extras add `incident_suite/agents/assistant.py` and `incident_suite/prompts/assi
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout and the Admin Console in review. Next: the TriageGraph name, then several samples at once if time allows |
+| Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout and the Admin Console in review. TriageGraph name in review. Next: several samples at once if time allows |
 
 **Sunday 11 Oct (IST)**
 
@@ -663,9 +663,9 @@ We record at 1080p and upload it unlisted.
 - **OpenRouter:** a key just for this hackathon, with a credit limit. Revoke it afterwards. Use a cheap paid model for the demo, because free `:free` models are rate-limited and can be busy.
 - **Slack:**
   1. Create a workspace and the `#incident-alerts` channel.
-  2. Create the "Incident Suite" app at api.slack.com/apps with the bot scope `chat:write`, plus `channels:history` if the assistant ships.
+  2. Create the "TriageGraph" app at api.slack.com/apps with the bot scope `chat:write`, plus `channels:history` if the assistant ships.
   3. Install it and copy the `xoxb-` token.
-  4. Run `/invite @Incident Suite` in the channel and copy the channel ID.
+  4. Run `/invite @TriageGraph` in the channel and copy the channel ID.
   5. Add an incoming webhook for the automation rules.
   6. Install the Jira Cloud app.
 - **JIRA:**
@@ -735,6 +735,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | UI review after testing: a new run clears the old results at once; the assistant, chat and runbook drafting show progress; the severity legend is a one-line row above the results; redaction types have plain names. Next: a layout PR (top health bar, sticky footer, assistant in a right-hand column) and an Admin Console in the sidebar (settings for everyone, behind the passcode) |
 | 11 Oct | Layout: health bar in the header strip, fixed footer, assistant in a right-hand column. Sticky positioning didn't work for the top bar, so it's fixed in the header strip, and the column itself is sticky. The admin passcode only appears when live mode is on |
 | 11 Oct | The Admin Console replaces the agent settings page and the Admin card: two pages, Agent Settings and App Settings, reached from a menu in the left bar, with a Save per card, for everyone behind the passcode. The left bar is only a menu, the middle shows the page, and the assistant stays on the right. The passcode is asked in a dialog when a settings page is opened. Keys can now be changed too, with one rule: where a key is sent changes only together with that key. Prompt editing and JSON export are dropped. New settings: `COOKBOOK_MODEL`, `CONTEXT_LINES`, `RUNBOOK_TOP_K`, `RETRY_CONFIDENCE`. Tickets per run is now 1 to 5 (default 3). `pages/` is removed |
+| 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

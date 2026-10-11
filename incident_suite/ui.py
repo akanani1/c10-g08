@@ -401,7 +401,7 @@ def postmortem_markdown(result: RunResult, lines: Sequence[LogLine]) -> str:
     out = [
         f"# Postmortem draft: {defang(result.log_name)}",
         "",
-        "> Draft built by Incident Suite from one log. Root causes are hypotheses. "
+        "> Draft built by TriageGraph from one log. Root causes are hypotheses. "
         "Review it before you share it.",
         "",
         "## Summary",
@@ -647,7 +647,7 @@ def health_markdown(config: AppConfig, live: bool) -> str:
 def footer_text(config: AppConfig, version: str) -> str:
     """The version and the limits every run works within."""
     return (
-        f"Incident Suite {version} · uploads up to {config.max_upload_mb} MB · "
+        f"TriageGraph {version} · uploads up to {config.max_upload_mb} MB · "
         f"{RUNS_PER_WINDOW} runs per {WINDOW_SECONDS // 60} min per visitor, "
         f"{SHARED_RUNS_PER_HOUR} per hour in total · {config.run_token_budget:,} tokens per run · "
         "secrets are redacted before any AI sees the log"

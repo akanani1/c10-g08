@@ -85,7 +85,7 @@ def test_app_renders_without_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
     app = _app()
     assert not app.exception
-    assert app.title[0].value == "Incident Suite"
+    assert app.title[0].value == "TriageGraph"
     assert "Dry run: nothing is sent" in _text(app)
 
 

@@ -392,7 +392,7 @@ def _menu() -> str:
     """Left bar: the app's name and the menu, nothing else. Returns the chosen page."""
     current = str(st.session_state.get("page", "analyze"))
     with st.sidebar:
-        st.markdown("## :material/emergency_home: Incident Suite")
+        st.markdown("## :material/emergency_home: TriageGraph")
         st.caption("Multi-agent incident triage")
         with st.container(key="menu"):
             chosen = [
@@ -957,7 +957,7 @@ def _assistant(config: AppConfig) -> None:
 
 def _analyze(config: AppConfig, live: bool) -> None:
     """The middle of the Analyze page: pick a log, run it, show the results."""
-    st.title("Incident Suite")
+    st.title("TriageGraph")
     st.caption(
         "Upload an ops log. Agents find the problems, suggest fixes with sources, write a "
         "checklist, and prepare the Slack post and JIRA tickets for your approval."
@@ -982,7 +982,7 @@ def _analyze(config: AppConfig, live: bool) -> None:
 
 def main() -> None:
     """Render the page."""
-    st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
+    st.set_page_config(page_title="TriageGraph", page_icon=":rotating_light:", layout="wide")
     config = effective_config()
     st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
     page = _menu()

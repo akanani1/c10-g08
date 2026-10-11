@@ -1,4 +1,4 @@
-# Incident Suite QA test checklist
+# TriageGraph QA test checklist
 
 **Owner:** Safwan  
 **Purpose:** Repeatable QA record for local runs and every Streamlit Cloud deploy  
@@ -55,7 +55,7 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 | ID | Check | Expected result | Status / evidence |
 |---|---|---|---|
 | SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | |
-| SMK-02 | Inspect the page title and main content | Title is `Incident Suite`; no red error box or raw traceback | |
+| SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | |
 | SMK-03 | Inspect the integrations panel | Models, Slack, and JIRA show connected/not connected status; no key or token is displayed | |
 | SMK-04 | Inspect public mode | Public deployment reports `dry run` | |
 | SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | |
