@@ -19,8 +19,7 @@ from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
 from incident_suite.config import AdminOverrides, AppConfig, admin_overrides
-from incident_suite.prompts import load_prompt
-from incident_suite.state import Category, NotificationPlan, RunSettings, Severity
+from incident_suite.state import Category, NotificationPlan, Severity
 
 APP = Path(__file__).resolve().parents[2] / "app.py"
 MakeLLM = Callable[[Sequence[Any]], tuple[StructuredLLM, list[tuple[str, str, str]]]]
@@ -111,7 +110,7 @@ def test_dry_run_shows_the_results() -> None:
         "Roll back payment\\-api \\(ISS\\-1\\)",
         "Alert on pool use above 80% \\(ISS\\-1\\)",
     ]
-    assert len(app.tabs) == 9
+    assert len(app.main.tabs) == 9
     assert any("ERROR and FATAL lines per" in c.value for c in app.caption)
 
 
@@ -181,131 +180,99 @@ def test_live_sending_needs_the_passcode(
     assert jira_calls == []  # a visitor's run never touched JIRA
     assert not [h for h in visitor.subheader if h.value == "Approval needed"]
 
-    admin = _app()
-    admin.sidebar.text_input[0].input("open-sesame").run()
+    admin = _open(_unlock(_app(), "app", "open-sesame"), "analyze")
     assert "Live: approved runs post to Slack and JIRA" in _text(admin)
     paused = _click(admin, "Analyse")
     assert [h for h in paused.subheader if h.value == "Approval needed"]
 
 
-# ------------------------------------------------------------------ agent settings page
-
-SETTINGS_PAGE = APP.parent / "pages" / "agent_settings.py"
+# ------------------------------------------------------------------ admin console
 
 
-def _settings_page() -> AppTest:
-    return AppTest.from_file(str(SETTINGS_PAGE), default_timeout=30).run()
+def _button(app: AppTest, key: str) -> Any:
+    return next(b for b in app.button if b.key == key)
 
 
-def test_settings_page_saves_for_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
+def _open(app: AppTest, page: str) -> AppTest:
+    """Pick a page from the menu in the left bar."""
+    return next(b for b in app.sidebar.button if b.key == f"menu_{page}").click().run()
+
+
+def _unlock(app: AppTest, page: str, passcode: str) -> AppTest:
+    """Pick a settings page and answer the passcode dialog."""
+    app = _open(app, page)
+    app.text_input(key="passcode").input(passcode).run()
+    return app.button(key="unlock").click().run()
+
+
+def test_left_bar_is_just_the_menu(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
-    page = _settings_page()
-    assert not page.exception
-    assert page.title[0].value == "Agent settings"
-
-    (model,) = [s for s in page.selectbox if s.key == "model_remediation"]
-    model.set_value("openai/gpt-5-nano")
-    (top_k,) = [s for s in page.slider if s.key == "top_k"]
-    top_k.set_value(5)
-    page = _click(page.run(), "Save settings")
-
-    saved = page.session_state["run_settings"]
-    assert saved.remediation.model == "openai/gpt-5-nano"
-    assert saved.remediation.top_k == 5
-    assert not saved.prompts_edited
-    assert "Saved" in page.info[0].value
+    app = _app()
+    assert [b.label for b in app.sidebar.button] == ["Analyze", "Agent Settings", "App Settings"]
+    assert not app.sidebar.text_input
+    assert app.sidebar.button(key="menu_analyze").proto.type == "primary"
+    app = _open(app, "agents")
+    assert app.sidebar.button(key="menu_agents").proto.type == "primary"
+    assert [t.value for t in app.title] == [":material/smart_toy: Agent Settings"]
+    assert ":material/forum: Assistant" in [s.value for s in app.subheader]  # always on the right
+    assert all(b.proto.icon == ":material/save:" for b in app.button if b.label == "Save")
 
 
-def test_editing_a_prompt_and_resetting(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_is_read_only_without_a_passcode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
-    page = _settings_page()
-    (prompt,) = [t for t in page.text_area if t.key == "prompt_cookbook"]
-    prompt.input("Reply in one line.")
-    page = _click(page.run(), "Save settings")
-    assert page.session_state["run_settings"].cookbook.system_prompt == "Reply in one line."
-    assert "edited prompts" in page.warning[0].value
-
-    page = _click(page, "Reset everything")
-    assert not page.session_state["run_settings"].prompts_edited
-    assert page.session_state["prompt_cookbook"] == load_prompt("cookbook")
+    app = _open(_app(), "agents")
+    assert any("Set ADMIN_PASSCODE" in c.value for c in app.caption)
+    assert _button(app, "save_models").disabled
+    app = _open(app, "app")
+    assert _button(app, "save_jira").disabled
 
 
-def test_edited_prompts_make_a_live_run_dry(
-    monkeypatch: pytest.MonkeyPatch,
-    keyed: AppConfig,
-    make_tracker: MakeTracker,
-    make_messenger: MakeMessenger,
-) -> None:
-    live = keyed.model_copy(update={"live_integrations": True})
-    tracker, jira_calls = make_tracker()
-    messenger, _ = make_messenger()
-    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
-    monkeypatch.setattr(
-        "incident_suite.graph.connect_services",
-        lambda _config, settings: (tracker, messenger) if settings.live else (None, None),
-    )
-    defaults = RunSettings.from_config(live)
-    edited = defaults.model_copy(
-        update={"cookbook": defaults.cookbook.model_copy(update={"system_prompt": "Be brief."})}
-    )
-    app = AppTest.from_file(str(APP), default_timeout=30)
-    app.session_state["run_settings"] = edited
-    app = _click(app.run(), "Analyse")
-
-    assert any(i.value.startswith("Prompts were edited") for i in app.info)
-    assert jira_calls == []
-    assert "custom agent settings" in " ".join(c.value for c in app.sidebar.caption)
-
-
-# ------------------------------------------------------------------ admin card
-
-
-def test_admin_card_needs_a_passcode_on_the_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
-    page = _settings_page()
-    assert any("Set ADMIN_PASSCODE" in i.value for i in page.info)
-    assert not [b for b in page.button if b.label == "Save for everyone"]
-
-
-def test_admin_changes_apply_to_everyone_until_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_saves_for_everyone(monkeypatch: pytest.MonkeyPatch) -> None:
     base = AppConfig(admin_passcode=SecretStr("open-sesame"), jira_project_key="SCRUM")
     monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    app = _unlock(_app(), "agents", "wrong")
+    assert [e.value for e in app.error] == ["That passcode isn't right."]
+    assert not [b for b in app.button if b.key == "save_models"]  # still on Analyze
 
-    page = _settings_page()
-    (entry,) = [t for t in page.text_input if t.key == "admin_entry"]
-    entry.input("wrong").run()
-    assert not [b for b in page.button if b.label == "Save for everyone"]
+    app = _unlock(_app(), "agents", "open-sesame")
+    assert not _button(app, "save_models").disabled
 
-    page = _settings_page()
-    (entry,) = [t for t in page.text_input if t.key == "admin_entry"]
-    page = entry.input("open-sesame").run()
-    (upload,) = [s for s in page.slider if s.key == "admin_max_upload_mb"]
-    upload.set_value(2)
-    (project,) = [t for t in page.text_input if t.key == "admin_jira_project_key"]
-    project.input("ops2")
-    page = _click(page.run(), "Save for everyone")
+    app.selectbox(key="remediation_model").set_value("openai/gpt-5-nano")
+    app = _button(app.run(), "save_remediation").click().run()
+    key_box = next(t for t in app.text_input if t.label == "OpenRouter API key")
+    key_box.input("sk-or-new-key")
+    app = _button(app.run(), "save_models").click().run()
 
-    assert admin_overrides() == AdminOverrides(max_upload_mb=2, jira_project_key="OPS2")
-    assert "Saved for everyone" in page.info[-1].value
-    assert "max_upload_mb" in " ".join(c.value for c in page.caption)
+    assert admin_overrides().remediation_model == "openai/gpt-5-nano"
+    stored = admin_overrides().openrouter_api_key
+    assert stored is not None
+    assert stored.get_secret_value() == "sk-or-new-key"
+    assert "sk-or-new-key" not in str(app)  # the typed key doesn't linger in the session
+    assert any("remediation_model" in c.value for c in app.caption)
 
-    visitor = _app()  # another session sees the change
-    assert "An admin changed some settings" in " ".join(c.value for c in visitor.sidebar.caption)
+    visitor = _app()  # another session runs with the new model
+    visitor.session_state["page"] = "agents"
+    assert visitor.run().selectbox(key="remediation_model").value == "openai/gpt-5-nano"
 
-    page = _click(page, "Back to defaults")
+    app = _button(app, "back_to_defaults").click().run()
     assert admin_overrides() == AdminOverrides()
 
 
-def test_admin_card_rejects_a_bad_project_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    base = AppConfig(admin_passcode=SecretStr("open-sesame"))
+def test_console_refuses_to_redirect_the_jira_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(
+        admin_passcode=SecretStr("open-sesame"),
+        jira_base_url="https://ours.atlassian.net",
+        jira_api_token=SecretStr("ours"),
+    )
     monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
-    page = AppTest.from_file(str(SETTINGS_PAGE), default_timeout=30)
-    page.session_state["admin_ok"] = True
-    page = page.run()
-    (project,) = [t for t in page.text_input if t.key == "admin_jira_project_key"]
-    project.input("not a key!")
-    page = _click(page.run(), "Save for everyone")
-    assert "Not saved: jira_project_key" in page.info[-1].value
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["admin_ok"] = True
+    app.session_state["page"] = "app"
+    app = app.run()
+    url = next(t for t in app.text_input if t.label == "Base URL")
+    url.input("https://evil.example")
+    app = _button(app.run(), "save_jira").click().run()
+    assert any("needs the JIRA API token too" in e.value for e in app.error)
     assert admin_overrides() == AdminOverrides()
 
 

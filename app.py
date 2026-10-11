@@ -6,14 +6,16 @@ survives the reruns Streamlit does on every click, and Approve resumes the same 
 
 from __future__ import annotations
 
+import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import openai
 import streamlit as st
+from pydantic import SecretStr
 
 from incident_suite import __version__, ui
 from incident_suite.agents import OpenRouterLLM, make_embeddings
@@ -27,7 +29,20 @@ from incident_suite.agents.assistant import (
     draft_runbook,
     latest_updates,
 )
-from incident_suite.config import AppConfig, admin_overrides, effective_config, load_config
+from incident_suite.config import (
+    CHAT_MODELS,
+    EMBEDDING_MODELS,
+    MAX_TICKETS_CEILING,
+    RUN_TOKEN_BUDGET_CEILING,
+    UPLOAD_CEILING_MB,
+    AdminOverrides,
+    AppConfig,
+    admin_overrides,
+    effective_config,
+    load_config,
+    save_admin_changes,
+    set_admin_overrides,
+)
 from incident_suite.graph import (
     RunContext,
     build_graph,
@@ -72,13 +87,19 @@ STYLE = """
 .st-key-footer {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 990; background: #0e1117;
   border-top: 1px solid #262730; padding: 0.45rem 1.5rem; min-height: 2.1rem;
-  display: flex; align-items: center; overflow: visible;
+  display: flex; justify-content: center; overflow: visible;
 }
-.st-key-footer p { font-size: 0.78rem; color: #898781; margin: 0; line-height: 1.2; }
+.st-key-footer > div { width: 100%; }
+.st-key-footer p {
+  font-size: 0.78rem; color: #898781; margin: 0; line-height: 1.2; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 div[data-testid="stColumn"]:has(.st-key-assistant) {
   position: sticky; top: 6.5rem; align-self: flex-start;
 }
 .block-container { padding-bottom: 4.5rem; }
+.st-key-menu button { justify-content: flex-start; }
+.st-key-menu button > div { justify-content: flex-start; }
 </style>
 """
 # Pasted text goes through the same checks, redaction and readers as an upload. The reader
@@ -103,10 +124,10 @@ def _shared_limiter() -> RunLimiter:
     return RunLimiter(max_runs=SHARED_RUNS_PER_HOUR, window=3600)
 
 
-@st.cache_resource(show_spinner="Indexing the runbooks (once per app start)...")
-def _retriever(embedding_model: str) -> RunbookRetriever:
-    """The runbook index, built once and shared by every session."""
-    config = load_config().model_copy(update={"embedding_model": embedding_model})
+@st.cache_resource(show_spinner="Indexing the runbooks (once per model and key)...")
+def _retriever(embedding_model: str, key_id: str) -> RunbookRetriever:  # noqa: ARG001 - cache key
+    """The runbook index, shared by every session. Rebuilt if an admin changes model or key."""
+    config = effective_config().model_copy(update={"embedding_model": embedding_model})
     return RunbookRetriever(load_runbooks(), make_embeddings(config))
 
 
@@ -114,7 +135,9 @@ def _session_retriever(config: AppConfig) -> RunbookRetriever:
     """The shared index, or, once runbook drafts are approved, this session's own index."""
     approved: dict[str, tuple[Runbook, str]] = st.session_state.get("approved_runbooks", {})
     if not approved:
-        return _retriever(config.embedding_model)
+        key = config.openrouter_api_key.get_secret_value() if config.openrouter_api_key else ""
+        key_id = hashlib.sha256(key.encode()).hexdigest()[:12]  # never the key itself
+        return _retriever(config.embedding_model, key_id)
     ids = tuple(sorted(approved))
     cached = st.session_state.get("draft_index")
     if cached is None or cached[0] != ids:
@@ -123,12 +146,6 @@ def _session_retriever(config: AppConfig) -> RunbookRetriever:
         st.session_state.draft_index = cached = (ids, index)
     retriever: RunbookRetriever = cached[1]
     return retriever
-
-
-def _settings(config: AppConfig) -> RunSettings:
-    """This session's settings from the Agent settings page, or the deployment's defaults."""
-    chosen = st.session_state.get("run_settings")
-    return chosen if isinstance(chosen, RunSettings) else RunSettings.from_config(config)
 
 
 def _session(key: str, default: Any) -> Any:
@@ -142,35 +159,299 @@ def _session(key: str, default: Any) -> Any:
 
 def _lock() -> None:
     st.session_state.admin_ok = False
+    st.session_state.page = "analyze"
+
+
+def _stop_unlocking() -> None:
+    st.session_state.pop("unlocking", None)
+
+
+@st.dialog("Admin passcode", icon=":material/lock:", on_dismiss=_stop_unlocking)
+def _unlock(page: str, passcode: SecretStr) -> None:
+    """Asked once per session, when a settings page is opened from the menu."""
+    st.caption("Settings change the app for every visitor, so they need the admin passcode.")
+    entered = st.text_input("Passcode", type="password", key="passcode")
+    if st.button("Unlock", icon=":material/lock_open:", type="primary", key="unlock"):
+        if passcode_ok(entered, passcode):
+            st.session_state.admin_ok = True
+            st.session_state.page = page
+            _stop_unlocking()
+            st.rerun()
+        st.error("That passcode isn't right.")
+
+
+def _lock_state(base: AppConfig) -> bool:
+    """Whether a settings page is read-only, with a Lock button when it isn't."""
+    if base.admin_passcode is None:
+        st.caption("Set ADMIN_PASSCODE in the deployment's settings to change anything here.")
+        return True
+    if st.session_state.get("admin_ok"):
+        st.button("Lock", icon=":material/lock:", on_click=_lock, key="lock")
+        return False
+    return True
+
+
+def _save(card: str, changes: dict[str, Any]) -> None:
+    """Save one card for everyone, or keep its problems to show under it.
+
+    After a save the key boxes get fresh widgets, so a typed key doesn't linger in the session,
+    and the page reruns so everything shows the new settings.
+    """
+    problems = save_admin_changes(changes)
+    st.session_state.console_note = (card, problems)
+    if not problems:
+        st.session_state.secret_round = st.session_state.get("secret_round", 0) + 1
+        st.session_state.saved_toast = True
+        st.rerun()
+
+
+def _note(card: str) -> None:
+    note = st.session_state.get("console_note")
+    if note is not None and note[0] == card:
+        for problem in note[1]:
+            st.error(ui.md(problem))
+
+
+def _secret(label: str, current: SecretStr | None, key: str, locked: bool) -> SecretStr:
+    """A key box that never shows the key. Left blank, the current key stays."""
+    typed = st.text_input(
+        label,
+        type="password",
+        key=f"{key}_{st.session_state.get('secret_round', 0)}",
+        disabled=locked,
+        placeholder="set (hidden); type to replace" if current else "not set",
+    )
+    return SecretStr(typed)
+
+
+def _model_picker(card: str, current: str, models: Iterable[str], locked: bool) -> str:
+    """Provider, then model; the price shows under the model."""
+    grouped = ui.models_by_provider(models)
+    providers = list(grouped)
+    provider = st.selectbox(
+        "Provider",
+        providers,
+        index=providers.index(ui.provider_of(current)),
+        key=f"{card}_provider",
+        disabled=locked,
+    )
+    choices = grouped[provider]
+    model = st.selectbox(
+        "Model",
+        choices,
+        index=choices.index(current) if current in choices else 0,
+        key=f"{card}_model",
+        disabled=locked,
+    )
+    price = ui.embedding_label(model) if model in EMBEDDING_MODELS else ui.model_label(model)
+    st.caption(ui.md(price.removeprefix(f"{model} ").strip("()")))  # md: "$" isn't maths
+    return str(model)
+
+
+def _agent_settings(config: AppConfig, locked: bool) -> None:
+    left, right = st.columns(2)
+    with left, st.container(border=True):
+        st.markdown("**:material/key: OpenRouter and budget**")
+        key = _secret("OpenRouter API key", config.openrouter_api_key, "or_key", locked)
+        budget = st.number_input(
+            "Token budget per run",
+            1_000,
+            RUN_TOKEN_BUDGET_CEILING,
+            config.run_token_budget,
+            step=10_000,
+            disabled=locked,
+            help="A run stops calling the models once it has used this many tokens.",
+        )
+        if st.button("Save", icon=":material/save:", key="save_models", disabled=locked):
+            _save("models", {"openrouter_api_key": key, "run_token_budget": budget})
+        _note("models")
+    with right, st.container(border=True):
+        st.markdown("**:material/manage_search: Log Reader / Classifier**")
+        model = _model_picker("log_reader", config.classifier_model, CHAT_MODELS, locked)
+        lines = st.slider("Context lines", 0, 20, config.context_lines, disabled=locked)
+        st.caption("Lines kept around each error, so the model sees what led up to it.")
+        if st.button("Save", icon=":material/save:", key="save_log_reader", disabled=locked):
+            _save("log_reader", {"classifier_model": model, "context_lines": lines})
+        _note("log_reader")
+    with left, st.container(border=True):
+        st.markdown("**:material/build: Remediation**")
+        model = _model_picker("remediation", config.remediation_model, CHAT_MODELS, locked)
+        top_k = st.slider("Runbook matches (top-k)", 1, 10, config.runbook_top_k, disabled=locked)
+        st.caption("How many of the best-matching runbooks the model reads for each issue.")
+        threshold = st.slider(
+            "Retry below this confidence", 0.0, 1.0, config.retry_confidence, 0.05, disabled=locked
+        )
+        st.caption("Below this, the issue goes back once with more of the log around it.")
+        if st.button("Save", icon=":material/save:", key="save_remediation", disabled=locked):
+            _save(
+                "remediation",
+                {
+                    "remediation_model": model,
+                    "runbook_top_k": top_k,
+                    "retry_confidence": threshold,
+                },
+            )
+        _note("remediation")
+    with right, st.container(border=True):
+        st.markdown("**:material/checklist: Cookbook**")
+        current = config.cookbook_model or config.classifier_model
+        model = _model_picker("cookbook", current, CHAT_MODELS, locked)
+        if st.button("Save", icon=":material/save:", key="save_cookbook", disabled=locked):
+            _save("cookbook", {"cookbook_model": model})
+        _note("cookbook")
+    with right, st.container(border=True):
+        st.markdown("**:material/hub: Embedding (runbook search)**")
+        model = _model_picker("embedding", config.embedding_model, EMBEDDING_MODELS, locked)
+        if st.button("Save", icon=":material/save:", key="save_embedding", disabled=locked):
+            _save("embedding", {"embedding_model": model})
+        _note("embedding")
+
+
+def _app_settings(config: AppConfig, locked: bool) -> None:
+    left, right = st.columns(2)
+    with left, st.container(border=True):
+        st.markdown("**:material/tune: General**")
+        live = st.toggle("Send to Slack and JIRA", config.live_integrations, disabled=locked)
+        approval = st.toggle("Human approval", config.require_approval, disabled=locked)
+        upload = st.slider(
+            "Max upload size (MB)", 1, UPLOAD_CEILING_MB, config.max_upload_mb, disabled=locked
+        )
+        tickets = st.slider(
+            "Max tickets per run",
+            1,
+            MAX_TICKETS_CEILING,
+            config.max_tickets_per_run,
+            disabled=locked,
+        )
+        if st.button("Save", icon=":material/save:", key="save_general", disabled=locked):
+            _save(
+                "general",
+                {
+                    "live_integrations": live,
+                    "require_approval": approval,
+                    "max_upload_mb": upload,
+                    "max_tickets_per_run": tickets,
+                },
+            )
+        _note("general")
+    with left, st.container(border=True):
+        st.markdown("**:material/forum: Slack**")
+        token = _secret("Bot token (xoxb-...)", config.slack_bot_token, "slack_token", locked)
+        channel = st.text_input("Channel ID", config.slack_channel_id or "", disabled=locked)
+        if st.button("Save", icon=":material/save:", key="save_slack", disabled=locked):
+            _save("slack", {"slack_bot_token": token, "slack_channel_id": channel.strip() or None})
+        _note("slack")
+    with right, st.container(border=True):
+        st.markdown("**:material/confirmation_number: JIRA**")
+        url = st.text_input("Base URL", config.jira_base_url or "", disabled=locked)
+        email = st.text_input("Email", config.jira_email or "", disabled=locked)
+        project = st.text_input("Project key", config.jira_project_key or "", disabled=locked)
+        token = _secret("API token", config.jira_api_token, "jira_token", locked)
+        st.text_input("Issue type", config.jira_issue_type, disabled=True, help="Fixed for now.")
+        if st.button("Save", icon=":material/save:", key="save_jira", disabled=locked):
+            _save(
+                "jira",
+                {
+                    "jira_base_url": url.strip().rstrip("/") or None,
+                    "jira_email": email.strip() or None,
+                    "jira_project_key": project.strip().upper() or None,
+                    "jira_api_token": token,
+                },
+            )
+        _note("jira")
+    with right, st.container(border=True):
+        st.markdown("**:material/timeline: LangSmith**")
+        tracing = st.toggle("Tracing", config.langsmith_tracing, disabled=locked)
+        project = st.text_input("Project", config.langsmith_project, disabled=locked)
+        key = _secret("API key", config.langsmith_api_key, "ls_key", locked)
+        if st.button("Save", icon=":material/save:", key="save_langsmith", disabled=locked):
+            _save(
+                "langsmith",
+                {
+                    "langsmith_tracing": tracing,
+                    "langsmith_project": project.strip() or None,
+                    "langsmith_api_key": key,
+                },
+            )
+        _note("langsmith")
+
+
+def _back_to_defaults() -> None:
+    set_admin_overrides(AdminOverrides())
+    st.session_state.console_note = None
+
+
+PAGES = {
+    "analyze": ("Analyze", ":material/monitoring:"),
+    "agents": ("Agent Settings", ":material/smart_toy:"),
+    "app": ("App Settings", ":material/settings:"),
+}
+
+
+def _menu() -> str:
+    """Left bar: the app's name and the menu, nothing else. Returns the chosen page."""
+    current = str(st.session_state.get("page", "analyze"))
+    with st.sidebar:
+        st.markdown("## :material/emergency_home: Incident Suite")
+        st.caption("Multi-agent incident triage")
+        with st.container(key="menu"):
+            chosen = [
+                page
+                for page, (label, icon) in PAGES.items()
+                if st.button(
+                    label,
+                    icon=icon,
+                    key=f"menu_{page}",
+                    type="primary" if page == current else "tertiary",
+                    width="stretch",
+                )
+            ]
+    passcode = load_config().admin_passcode
+    needs_passcode = passcode is not None and not st.session_state.get("admin_ok")
+    if chosen and chosen[0] != current:
+        _stop_unlocking()
+        if chosen[0] != "analyze" and needs_passcode:
+            st.session_state.unlocking = chosen[0]  # the page opens only with the passcode
+        else:
+            st.session_state.page = chosen[0]
+            st.rerun()
+    if passcode is not None and needs_passcode and "unlocking" in st.session_state:
+        _unlock(st.session_state.unlocking, passcode)
+    return current
+
+
+def _settings_page(config: AppConfig, page: str) -> None:
+    """Agent or App Settings: for every visitor, behind the admin passcode (plan section 17.1)."""
+    base = load_config()
+    label, icon = PAGES[page]
+    st.title(f"{icon} {label}")
+    st.caption("A saved change applies to every visitor until the app sleeps or restarts.")
+    if st.session_state.pop("saved_toast", False):
+        st.toast("Saved for everyone, until the app sleeps or restarts.", icon=":material/check:")
+    locked = _lock_state(base)
+    if page == "agents":
+        _agent_settings(config, locked)
+    else:
+        _app_settings(config, locked)
+    changed = admin_overrides().differences(base)
+    if changed:
+        st.caption(
+            "Changed from the defaults until the app restarts: " + ", ".join(sorted(changed))
+        )
+        st.button(
+            "Back to defaults",
+            icon=":material/restart_alt:",
+            on_click=_back_to_defaults,
+            disabled=locked,
+            key="back_to_defaults",
+        )
 
 
 def _live_allowed(config: AppConfig) -> bool:
-    """Live sending, if it's on, needs the admin passcode when one is set.
-
-    Once entered, the passcode stays unlocked for the session (``admin_ok``), across pages.
-    """
+    """Live sending, when it's on, needs the admin passcode if one is set."""
     if not config.live_integrations:
         return False
-    if config.admin_passcode is None:
-        return True
-    if st.session_state.get("admin_ok"):
-        st.button("Lock live sending", on_click=_lock)
-        return True
-    entered = st.text_input("Admin passcode for live sending", type="password")
-    st.session_state.admin_ok = passcode_ok(entered, config.admin_passcode)
-    return bool(st.session_state.admin_ok)
-
-
-def _sidebar(config: AppConfig) -> bool:
-    """The passcode (only when live mode is on) and notes. Returns whether this session may
-    send for real."""
-    with st.sidebar:
-        live = _live_allowed(config)
-        if admin_overrides().differences(load_config()):
-            st.caption("An admin changed some settings until the app restarts.")
-        if _settings(config) != RunSettings.from_config(config):
-            st.caption("Using custom agent settings for this session.")
-    return live
+    return config.admin_passcode is None or bool(st.session_state.get("admin_ok"))
 
 
 def _top_bar(config: AppConfig, live: bool) -> None:
@@ -232,7 +513,7 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     if not config.llm_configured:
         st.error("This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
-    chosen = _settings(config)
+    chosen = RunSettings.from_config(config)
     live, note = ui.decide_live(chosen, live, st.session_state.get("admin_ok", False))
     settings = chosen.model_copy(update={"live": live})
     try:
@@ -674,31 +955,45 @@ def _assistant(config: AppConfig) -> None:
 # ------------------------------------------------------------------ page
 
 
-def main() -> None:
-    """Render the page."""
-    st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
-    config = effective_config()
-    st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
-    live = _sidebar(config)
-    _top_bar(config, live)
+def _analyze(config: AppConfig, live: bool) -> None:
+    """The middle of the Analyze page: pick a log, run it, show the results."""
     st.title("Incident Suite")
     st.caption(
         "Upload an ops log. Agents find the problems, suggest fixes with sources, write a "
         "checklist, and prepare the Slack post and JIRA tickets for your approval."
     )
+    if config.live_integrations and not live:
+        st.caption(
+            "Live mode is on, but your runs stay dry until you unlock Settings with the admin "
+            "passcode."
+        )
+    picked = _pick_log()
+    clicked = st.button("Analyse", type="primary", disabled=picked is None)
+    area = st.empty()  # one slot: a new run replaces the old results straight away
+    if clicked and picked is not None:
+        for key in ("result", "context", "assistant", "chat", "run_note"):
+            st.session_state.pop(key, None)
+        with area.container():
+            _start(config, live, *picked)
+    elif "result" in st.session_state:
+        with area.container():
+            _results(st.session_state.result, st.session_state.context)
+
+
+def main() -> None:
+    """Render the page."""
+    st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
+    config = effective_config()
+    st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
+    page = _menu()
+    live = _live_allowed(config)
+    _top_bar(config, live)
     main_column, assistant_column = st.columns([3, 1.25], gap="large")
     with main_column:
-        picked = _pick_log()
-        clicked = st.button("Analyse", type="primary", disabled=picked is None)
-        area = st.empty()  # one slot: a new run replaces the old results straight away
-        if clicked and picked is not None:
-            for key in ("result", "context", "assistant", "chat", "run_note"):
-                st.session_state.pop(key, None)
-            with area.container():
-                _start(config, live, *picked)
-        elif "result" in st.session_state:
-            with area.container():
-                _results(st.session_state.result, st.session_state.context)
+        if page == "analyze":
+            _analyze(config, live)
+        else:
+            _settings_page(config, page)
     with assistant_column, st.container(key="assistant"):
         _assistant(config)
     _footer(config)

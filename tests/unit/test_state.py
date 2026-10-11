@@ -89,7 +89,7 @@ def test_edited_prompt_is_detected(config: AppConfig) -> None:
         (("remediation", "top_k"), 11),
         (("remediation", "top_k"), 0),
         (("remediation", "confidence_threshold"), 1.5),
-        (("jira", "max_tickets"), 4),
+        (("jira", "max_tickets"), 6),
         (("log_reader", "context_lines"), 50),
         (("log_reader", "model"), "someone/free-text-model"),
         (("token_budget",), 10_000_000),

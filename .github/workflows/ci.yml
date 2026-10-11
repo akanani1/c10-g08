@@ -36,14 +36,14 @@ jobs:
           git diff --exit-code -- requirements.txt
       - name: Lint (Ruff)
         run: |
-          ruff check app.py pages incident_suite eval tests sample_logs
-          ruff format --check app.py pages incident_suite eval tests sample_logs
+          ruff check app.py incident_suite eval tests sample_logs
+          ruff format --check app.py incident_suite eval tests sample_logs
       - name: Types (mypy)
         run: mypy
       - name: Dead code (Vulture)
         run: vulture
       - name: Security (Bandit)
-        run: bandit -q -c pyproject.toml -r app.py pages incident_suite eval
+        run: bandit -q -c pyproject.toml -r app.py incident_suite eval
       - name: Tests (no API key)
         run: pytest --cov
       - name: Dependency audit (pip-audit)

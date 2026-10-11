@@ -133,9 +133,9 @@ After any run, the **Ask about this run** box in the Assistant column answers qu
 
 When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The draft follows our runbook template, is labelled "AI draft, not reviewed", and must pass the same checks as our own runbooks. If you approve it, later runs in your session can use it, and you can download it as a `.md` file. It isn't saved anywhere else.
 
-The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
+The left bar is a menu with three pages: **Analyze**, **Agent Settings** and **App Settings**. The assistant stays on the right of every page. **Agent Settings** picks each agent's provider and model (with its price), the OpenRouter key, the token budget, context lines, runbook matches and the retry confidence. **App Settings** covers live mode, approval, the upload limit (up to 5 MB), tickets per run (1 to 5), and the Slack, JIRA and LangSmith settings. Each card has its own Save button.
 
-At the bottom of that page, the **Admin** card (needs `ADMIN_PASSCODE`) changes a few settings for every visitor: live mode, approval, the upload limit (up to 5 MB), tickets per run, the token budget, and the JIRA project and issue type. The values start from your `.env` or Streamlit secrets. A change lasts until the app sleeps, restarts or is redeployed. Keys, the JIRA site and account, and the Slack channel can only be set in the deployment's settings.
+Opening either settings page asks for `ADMIN_PASSCODE` once per session; without one in your settings, the pages are read-only. The values start from your `.env` or Streamlit secrets, and a saved change applies to every visitor until the app sleeps, restarts or is redeployed. Keys are never shown. Changing where a key is sent (the JIRA site or email, the Slack channel) needs that key too.
 
 To run one full analysis from the command line, as a dry run with real models:
 
@@ -150,9 +150,13 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `OPENROUTER_API_KEY` | for analysis | | Model calls and embeddings |
-| `CLASSIFIER_MODEL` | no | `openai/gpt-4.1-mini` | Log Reader and Cookbook |
+| `CLASSIFIER_MODEL` | no | `openai/gpt-4.1-mini` | Log Reader, and Cookbook when `COOKBOOK_MODEL` is blank |
 | `REMEDIATION_MODEL` | no | `openai/gpt-5-mini` | Remediation |
+| `COOKBOOK_MODEL` | no | same as `CLASSIFIER_MODEL` | Cookbook |
 | `EMBEDDING_MODEL` | no | `openai/text-embedding-3-small` | Runbook search |
+| `CONTEXT_LINES` | no | `3` | Log lines kept around each error (0 to 20) |
+| `RUNBOOK_TOP_K` | no | `3` | Runbooks shown to Remediation (1 to 10) |
+| `RETRY_CONFIDENCE` | no | `0.5` | Below this confidence, Remediation tries once more (0 to 1) |
 | `LIVE_INTEGRATIONS` | no | `false` | Actually send to Slack and JIRA |
 | `REQUIRE_APPROVAL` | no | `true` | Ask before sending to Slack or JIRA |
 | `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` (and `channels:history` for the assistant) |
@@ -165,9 +169,9 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `LANGSMITH_API_KEY` | no | | LangSmith key |
 | `LANGSMITH_PROJECT` | no | `c10-g08` | LangSmith project |
 | `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 5, Streamlit's own cap) |
-| `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (0 to 3) |
+| `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (1 to 5) |
 | `RUN_TOKEN_BUDGET` | no | `200000` | Token cap per run |
-| `ADMIN_PASSCODE` | no | | When set, live sending in the app needs this passcode. Everyone else gets a dry run |
+| `ADMIN_PASSCODE` | no | | Unlocks the settings pages. When set, live sending in the app also needs it, and everyone else gets a dry run |
 
 Models must be on the allow-list in `incident_suite/config.py`, which also holds their prices for the cost panel. Set a credit limit on your OpenRouter key. Free (`:free`) models work for trying things out, but they're rate-limited.
 
@@ -260,7 +264,7 @@ Results (filled in after the eval run):
 - **Redaction:** emails, tokens, JWTs, AWS keys, private keys and `password=`-style values are masked before the model sees the log, and only the masked text is shown or sent. This is pattern-based, so unusual formats can slip through.
 - **Log content is data,** never instructions to the model. The agents have no tools that run commands or open URLs.
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
-- **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets, and one retry per issue.
+- **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets by default (up to 5), and one retry per issue.
 - **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
 - **The public deployment** keeps Slack and JIRA switched off. When we switch them on for the demo, `ADMIN_PASSCODE` keeps visitors on a dry run.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.
@@ -319,11 +323,11 @@ pytest -m live                                # real OpenRouter calls (needs the
 CI runs these on every push and pull request:
 
 ```bash
-ruff check app.py pages incident_suite eval tests sample_logs
-ruff format --check app.py pages incident_suite eval tests sample_logs
+ruff check app.py incident_suite eval tests sample_logs
+ruff format --check app.py incident_suite eval tests sample_logs
 mypy
 vulture
-bandit -q -c pyproject.toml -r app.py pages incident_suite eval
+bandit -q -c pyproject.toml -r app.py incident_suite eval
 pytest --cov
 pip-audit -r requirements.txt
 ```

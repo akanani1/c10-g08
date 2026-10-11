@@ -97,7 +97,7 @@ def test_ticket_notes_for_each_action() -> None:
     summary = plan_notification(issues, [], Checklist(), tickets, "a.log", "r").summary
     assert "JIRA: new ticket" in summary
     assert "OPS-7: regression" in summary
-    assert "not ticketed (over the cap of 3)" in summary
+    assert "not ticketed (over the ticket cap)" in summary
 
 
 def test_send(make_messenger: MakeMessenger) -> None:

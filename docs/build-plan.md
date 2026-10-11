@@ -1,10 +1,10 @@
 # Build plan: Incident Suite (c10-g08)
 
-Version 10, 11 Oct 2026.
+Version 11, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** H1 to H8 (the whole core) and extra 1 (agent settings, with the Admin card) are merged. Extras 2 onwards are in review as stacked PRs, one per extra, to merge in order. Section 16 has the full timeline.
+**Status:** H1 to H8 (the whole core) and extras 1 to 6 are merged. The UI review fixes, the new layout and the Admin Console (which replaces the agent settings page) are in review as stacked PRs, to merge in order. Section 16 has the full timeline.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -125,7 +125,7 @@ Turns all the fixes into one checklist with three groups: do now, this week, pre
 
 ### 5.4 JIRA Ticket
 
-- **Plan (read-only):** for each critical issue, up to 3 per run, look up the newest ticket with the same signature and decide whether to create a ticket, comment on an existing one, open a regression, or skip because the cap is reached.
+- **Plan (read-only):** for each critical issue, up to the ticket cap (3 by default, up to 5), look up the newest ticket with the same signature and decide whether to create a ticket, comment on an existing one, open a regression, or skip because the cap is reached.
 - **Send (after approval):** create or comment, then link regressions to the old ticket. If the ticket is created but the link fails, the ticket still counts as sent and the error is shown.
 - **Link back (after Slack):** add a remote link to the Slack summary on every ticket this run touched.
 - The rules are in section 6.2.
@@ -160,7 +160,7 @@ The app doesn't hear about changes in Slack or JIRA as they happen. That would n
 | A new critical issue | A new ticket | Summary with a link to each ticket |
 | A critical issue that already has an open ticket | A comment on it: seen again, run ID, count, time window | Summary says "SCRUM-12 updated, seen again" |
 | A critical issue whose ticket is closed | A new ticket labelled `regression`, linked to the old one | Summary marks it as a regression |
-| More than 3 critical issues | Tickets for the 3 most severe | All listed, with the rest marked "not ticketed" |
+| More critical issues than the ticket cap (3 by default, up to 5) | Tickets for the most severe, up to the cap | All listed, with the rest marked "not ticketed (over the ticket cap)" |
 | Rejected at the approval step | Nothing | Nothing. The rejection is shown in the app |
 | JIRA is down or the token is wrong | Nothing written, so nothing gets duplicated | Summary still posts, with a warning that tickets failed |
 | Slack is down or the token is wrong | Not affected | The error shows in the app |
@@ -178,7 +178,7 @@ The search goes through `GET /rest/api/3/search/jql`. Atlassian has removed the 
 
 ### 6.4 Order of calls after approval
 
-1. JIRA: for up to 3 critical issues, create or comment. Regressions are linked to the old ticket.
+1. JIRA: for critical issues up to the ticket cap, create or comment. Regressions are linked to the old ticket.
 2. Slack: post the summary with `chat.postMessage` and keep the message's `ts`.
 3. Slack: reply in that thread with the checklist and the fix for each issue.
 4. Slack: get the message link with `chat.getPermalink`.
@@ -323,7 +323,7 @@ The page has an upload box and a sample picker. While a run is going, the graph 
   - A health bar pinned in the header strip shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
   - A fixed footer shows the version and the limits every run works within.
   - The assistant sits in a right-hand column that stays in view while you scroll: chat history at the top, the question box below it, then "Since the run".
-  - The sidebar holds only the admin passcode, shown only when live mode is on.
+  - The left bar is only the app's name and a menu: Analyze, Agent Settings and App Settings. The middle shows the chosen page, and the assistant stays on the right on every page.
   - The bars use a small static CSS block (`STYLE` in `app.py`), which never contains log or user text.
 
 ---
@@ -335,7 +335,7 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - **Redaction:** secrets and personal data are masked before the model sees anything (section 7.5).
 - **Approval:** a person approves before anything is written to Slack or JIRA (section 4).
 - **Uploads:** allowed types, size and row caps, a safe display name, and nothing is saved under the user's file name (section 7.4).
-- **Abuse limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run (200,000 by default), at most 3 tickets per run, and one retry per issue.
+- **Abuse limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run (200,000 by default), at most 3 tickets per run by default (an admin can raise it to 5), and one retry per issue.
 - **Live integrations** are off on the public app. We only switch them on for the recorded demo, and then `ADMIN_PASSCODE` keeps every other visitor on a dry run.
 - **Escaping:** everything sent to Slack or JIRA is escaped, and links are never built from log content.
 - **Least privilege:** the Slack bot only has `chat:write`. The JIRA account only needs the SCRUM project. The OpenRouter key has a credit limit and is revoked after the hackathon.
@@ -369,9 +369,13 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | Variable | Needed? | Default | What it's for |
 |---|---|---|---|
 | `OPENROUTER_API_KEY` | For live analysis | | Model calls and embeddings |
-| `CLASSIFIER_MODEL` | No | `openai/gpt-4.1-mini` | Log Reader and Cookbook |
+| `CLASSIFIER_MODEL` | No | `openai/gpt-4.1-mini` | Log Reader, and Cookbook when `COOKBOOK_MODEL` is blank |
 | `REMEDIATION_MODEL` | No | `openai/gpt-5-mini` | Remediation |
+| `COOKBOOK_MODEL` | No | same as `CLASSIFIER_MODEL` | Cookbook |
 | `EMBEDDING_MODEL` | No | `openai/text-embedding-3-small` | Runbook search |
+| `CONTEXT_LINES` | No | `3` | Log lines kept around each error (0 to 20) |
+| `RUNBOOK_TOP_K` | No | `3` | Runbooks shown to Remediation (1 to 10) |
+| `RETRY_CONFIDENCE` | No | `0.5` | Below this confidence, Remediation tries once more (0 to 1) |
 | `LIVE_INTEGRATIONS` | No | `false` | Only send to Slack and JIRA when this is `true` |
 | `REQUIRE_APPROVAL` | No | `true` | Pause for Approve / Reject before sending |
 | `SLACK_BOT_TOKEN` | For live Slack | | Bot token (`xoxb-...`) |
@@ -382,11 +386,11 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `JIRA_ISSUE_TYPE` | No | `Task` | Issue type to create |
 | `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT` | No | off, none, `c10-g08` | Tracing |
 | `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 5, Streamlit's own limit) |
-| `MAX_TICKETS_PER_RUN` | No | `3` | Ticket cap (0 to 3) |
+| `MAX_TICKETS_PER_RUN` | No | `3` | Ticket cap (1 to 5) |
 | `RUN_TOKEN_BUDGET` | No | `200000` | Tokens per run (up to 500,000) |
-| `ADMIN_PASSCODE` | No | | When set, live sending in the app needs it. It also unlocks live sending after prompts are edited, and the assistant's Slack and JIRA tools (section 17) |
+| `ADMIN_PASSCODE` | No | | Unlocks the settings pages (section 17.1). When set, live sending in the app also needs it. Without it the settings are read-only |
 
-**Run settings.** `RunSettings` in `state.py` holds every per-run option: the model and prompt for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the config for each new session and travels with the run, and the agents read from it, never from the config directly. The settings page (section 17.1) only has to produce a valid `RunSettings`.
+**Run settings.** `RunSettings` in `state.py` holds every per-run option: the model and prompt for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the effective config (the deployment's values plus any Admin Console changes) for each run and travels with the run, and the agents read from it, never from the config directly.
 
 ---
 
@@ -446,7 +450,7 @@ c10-g08/
 └── README.md
 ```
 
-Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant.py` and `incident_suite/prompts/assistant.md` (shipped with extra 2) (section 17).
+Extras add `incident_suite/agents/assistant.py` and `incident_suite/prompts/assistant.md` (shipped with extra 2) (section 17).
 
 **Why it looks like this**
 
@@ -530,7 +534,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4, all of 5 (paste, postmortem, seen before, timeline) and the fallback version of 6 (replay slider) in review |
+| Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout and the Admin Console in review. Next: the TriageGraph name, then several samples at once if time allows |
 
 **Sunday 11 Oct (IST)**
 
@@ -553,47 +557,37 @@ We build these after the core works, from the top down. Each one ships as its ow
 
 | Order | Extra | Time |
 |---|---|---|
-| 1 | Agent settings page | 1 to 1.5 h (slim version about 45 min) |
+| 1 | Admin Console (replaced the agent settings page) | 1 to 1.5 h |
 | 2 | Assistant: latest Slack and JIRA updates | 1 to 1.5 h, including the assistant itself |
 | 3 | Assistant: draft a runbook when none matches | about 1 h |
 | 4 | Assistant: chat about the current run | about 30 min once the assistant exists |
 | 5 | Small extras: paste logs, postmortem download, "seen before" fix, error timeline | 15 to 45 min each |
 | 6 | Run replay with an animated diagram, only if time allows | about 2 h |
 
-### 17.1 Agent settings page
+### 17.1 Admin Console
 
-A second page, `pages/agent_settings.py`, with one card per agent and a global card.
+Two pages in the left bar's menu, Agent Settings and App Settings, change settings for every visitor of the running app, without a redeploy. It replaced the first version of extra 1, a per-session settings page with editable prompts, which we dropped after the UI review.
 
-| Card | Settings |
-|---|---|
-| Every agent | Model (from the allow-list, with prices) and system prompt (starts from the file in `prompts/`, with "Reset to default") |
-| Log Reader | Context lines around each error |
-| Remediation | Runbook matches (top-k) and the confidence threshold for the retry |
-| JIRA | Ticket cap and the severity that opens a ticket |
-| Global | Token budget, approval on or off, redaction types, dry run or live |
-| Integrations | Slack, JIRA and LangSmith shown as connected or not. Never the keys |
+Each page has cards, and each card has its own Save button, so one bad value never blocks the rest.
 
-- **Changes are kept for your session only,** in `st.session_state`. Nothing is written to disk, so one visitor can't change prompts for everyone. You can export and import settings as JSON (validated like everything else) and reset them to the defaults.
-- **Safety:** models only come from the allow-list, and the limits are enforced by `RunSettings`, not just by the widgets. If any prompt differs from the default, the run switches to dry run unless the admin passcode is entered (`ui.decide_live`), and the results say so.
-- **How it's built:** `pages/agent_settings.py` stores a `RunSettings` in `st.session_state.run_settings`, and `app.py` uses it for every run. The admin passcode, once entered in the main page's sidebar, stays unlocked for the session (`admin_ok`) until you press Lock. The live toggle is greyed out unless the deployment has `LIVE_INTEGRATIONS=true`.
-- **Slim version,** if time is short: models and prompts only, without export and import.
-
-**Admin card** (on the same page, part of extra 1)
-
-An admin can change some deployment settings from the app, for every visitor, without a redeploy.
-
-| Can change | Can't change, on purpose |
-|---|---|
-| Live integrations on or off, approval on or off | Any key or token |
-| Upload limit (1 to 5 MB), tickets per run (0 to 3), token budget per run | `JIRA_BASE_URL` and `JIRA_EMAIL`: the JIRA token is sent there, so someone with the passcode could redirect it to their own server |
-| JIRA project key and issue type | `SLACK_CHANNEL_ID`, models and the embedding model |
+| Page | Card | Settings |
+|---|---|---|
+| Agent Settings | Models | OpenRouter key and the token budget per run |
+| | Log Reader, Remediation, Cookbook | Provider and model (from the allow-list, with the price under it). Log Reader also has context lines; Remediation has runbook matches (top-k) and the retry confidence. Each setting has a one-line explanation |
+| | Embedding | The embedding model, with its price |
+| App Settings | General | Live integrations, approval, upload limit (1 to 5 MB), tickets per run (1 to 5) |
+| | Slack | Bot token and channel ID |
+| | JIRA | Site, email, project key and API token. The issue type is fixed to Task |
+| | LangSmith | Tracing on or off, project and API key |
 
 **The rule:**
-- **Defaults** always come from `.env`, the environment or Streamlit secrets, and the card starts from them.
-- **Saving** needs `ADMIN_PASSCODE`. Without one in the deployment's settings, the card is switched off.
-- **A saved change** applies to every visitor of the running app until it sleeps, restarts or is redeployed. Then the defaults come back. It lives in the server's memory (`AdminOverrides` in `config.py`). Nothing is written to disk, because Streamlit Community Cloud has no lasting storage and we have no database.
-- **Limits:** the changes are checked with the same bounds as the env values. The upload limit can never go above 5 MB.
-- **Visibility:** the main page's sidebar says when an admin change is in effect. **Back to defaults** drops all changes at once.
+- **Defaults** always come from `.env`, the environment or Streamlit secrets, and the settings pages start from them.
+- **Opening** a settings page from the menu asks for `ADMIN_PASSCODE` in a small dialog, once per session (`admin_ok`), until you press Lock. The passcode itself only ever comes from the deployment's settings. Without one there, the pages open read-only for everyone.
+- **A saved change** applies to every visitor until the app sleeps, restarts or is redeployed. Then the defaults come back. It lives in the server's memory (`AdminOverrides` in `config.py`). Nothing is written to disk, because Streamlit Community Cloud has no lasting storage and we have no database.
+- **Checks:** a change is checked with exactly the same rules as the env values (`AppConfig`), so models only come from the allow-list and the upload limit can never go above 5 MB. A value equal to the default isn't stored.
+- **Keys are never shown.** Key boxes say only "set" or "not set". Left blank, the current key stays. After a save the box is cleared, so a typed key doesn't linger in the session.
+- **Where a key is sent changes only with the key.** Changing the JIRA site or email needs the JIRA token too, and changing the Slack channel needs the Slack token too. Otherwise someone with the passcode could send our token, or our messages, somewhere else.
+- **Visibility:** each settings page lists the settings that differ from the defaults. **Back to defaults** drops all changes at once.
 - **Demo moment:** switch the Remediation model, run the same sample again, and compare the cost and the output.
 
 ### 17.2 Assistant: latest Slack and JIRA updates
@@ -740,6 +734,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 6 ships only as its planned fallback, a step slider, because the full player needs new files (recorded runs as JSON) and changes to every agent |
 | 11 Oct | UI review after testing: a new run clears the old results at once; the assistant, chat and runbook drafting show progress; the severity legend is a one-line row above the results; redaction types have plain names. Next: a layout PR (top health bar, sticky footer, assistant in a right-hand column) and an Admin Console in the sidebar (settings for everyone, behind the passcode) |
 | 11 Oct | Layout: health bar in the header strip, fixed footer, assistant in a right-hand column. Sticky positioning didn't work for the top bar, so it's fixed in the header strip, and the column itself is sticky. The admin passcode only appears when live mode is on |
+| 11 Oct | The Admin Console replaces the agent settings page and the Admin card: two pages, Agent Settings and App Settings, reached from a menu in the left bar, with a Save per card, for everyone behind the passcode. The left bar is only a menu, the middle shows the page, and the assistant stays on the right. The passcode is asked in a dialog when a settings page is opened. Keys can now be changed too, with one rule: where a key is sent changes only together with that key. Prompt editing and JSON export are dropped. New settings: `COOKBOOK_MODEL`, `CONTEXT_LINES`, `RUNBOOK_TOP_K`, `RETRY_CONFIDENCE`. Tickets per run is now 1 to 5 (default 3). `pages/` is removed |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
