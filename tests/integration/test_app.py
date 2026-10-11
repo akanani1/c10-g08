@@ -150,9 +150,38 @@ def test_bad_upload_is_refused(monkeypatch: pytest.MonkeyPatch, keyed: AppConfig
     tiny = keyed.model_copy(update={"max_upload_mb": 1})
     monkeypatch.setattr("incident_suite.config.load_config", lambda: tiny)
     app = _app()
-    app.selectbox[0].set_value("large_50k_mixed.parquet")
+    app.multiselect[0].set_value(["large_50k_mixed.parquet"])
     app = _click(app.run(), "Analyse")
     assert "over the 1 MB upload limit" in app.error[0].value
+
+
+def test_several_samples_are_one_run_each(
+    monkeypatch: pytest.MonkeyPatch, keyed: AppConfig, make_llm: MakeLLM
+) -> None:
+    two_runs, _ = make_llm(ANSWERS * 2)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: two_runs)
+    tiny = keyed.model_copy(update={"max_upload_mb": 1})
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: tiny)
+    app = _app()
+    app.multiselect[0].set_value(
+        ["payment_db_conn_refused.log", "large_50k_mixed.parquet", "worker_crashloop.log"]
+    )
+    app = _click(app.run(), "Analyse")
+
+    assert not app.exception
+    assert "over the 1 MB upload limit" in app.error[0].value  # kept above the other runs
+    (picker,) = app.get("button_group")
+    assert app.session_state["run_name"] == "worker_crashloop.log"  # the last run shows first
+    assert sorted(app.session_state["runs"]) == [
+        "payment_db_conn_refused.log",
+        "worker_crashloop.log",
+    ]
+    first = app.session_state["runs"]["payment_db_conn_refused.log"]["run_id"]
+    picker.set_value("payment_db_conn_refused.log")  # type: ignore[union-attr]
+    app = app.run()
+    assert app.session_state["run_name"] == "payment_db_conn_refused.log"
+    assert app.session_state["run_id"] == first
+    assert app.metric[0].value == "CRITICAL"
 
 
 def test_live_sending_needs_the_passcode(

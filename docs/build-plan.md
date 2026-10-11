@@ -296,7 +296,7 @@ Before the Log Reader sees anything, every line and every field is checked for s
 
 ## 9. The app
 
-The page has an upload box and a sample picker. While a run is going, the graph lights up: green for done, orange for working, grey for waiting, dashed for skipped. Each finished step is listed under it. The results screen has these parts:
+The page has an upload box, a paste box and a sample picker. Up to three samples can be picked at once: each one is its own run (so each counts towards the run limits), and a switch above the results moves between them, each with its own approval, chat and assistant answer. While a run is going, the graph lights up: green for done, orange for working, grey for waiting, dashed for skipped. Each finished step is listed under it. The results screen has these parts:
 
 | Part | What it shows | Where it comes from |
 |---|---|---|
@@ -534,7 +534,7 @@ Extras add `incident_suite/agents/assistant.py` and `incident_suite/prompts/assi
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout and the Admin Console in review. TriageGraph name in review. Next: several samples at once if time allows |
+| Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout and the Admin Console in review. TriageGraph name and several samples at once in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -736,6 +736,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Layout: health bar in the header strip, fixed footer, assistant in a right-hand column. Sticky positioning didn't work for the top bar, so it's fixed in the header strip, and the column itself is sticky. The admin passcode only appears when live mode is on |
 | 11 Oct | The Admin Console replaces the agent settings page and the Admin card: two pages, Agent Settings and App Settings, reached from a menu in the left bar, with a Save per card, for everyone behind the passcode. The left bar is only a menu, the middle shows the page, and the assistant stays on the right. The passcode is asked in a dialog when a settings page is opened. Keys can now be changed too, with one rule: where a key is sent changes only together with that key. Prompt editing and JSON export are dropped. New settings: `COOKBOOK_MODEL`, `CONTEXT_LINES`, `RUNBOOK_TOP_K`, `RETRY_CONFIDENCE`. Tickets per run is now 1 to 5 (default 3). `pages/` is removed |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
+| 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

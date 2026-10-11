@@ -106,6 +106,11 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
 # detects JSON or CSV from the content, so the .log name only decides the allowed type.
 PASTED_NAME = "pasted.log"
 PASTE_MAX_CHARS = 1_000_000
+# Each sample is its own run, so a few at once stays inside the 5 runs per 10 minutes limit.
+MAX_SAMPLES = 3
+# What one run keeps in the session. Several runs are kept under "runs", and the one on screen
+# is copied to the top level, so the rest of the page reads a single run as before.
+RUN_KEYS = ("context", "run_id", "result", "run_note", "assistant", "chat")
 
 
 # ------------------------------------------------------------------ cached resources
@@ -466,13 +471,20 @@ def _footer(config: AppConfig) -> None:
         st.markdown(ui.footer_text(config, __version__))
 
 
-def _pick_log() -> tuple[bytes, str] | None:
-    """The chosen sample, upload or pasted text, as bytes and a file name."""
-    source = st.radio("Log", ["Sample log", "Upload your own", "Paste text"], horizontal=True)
-    if source == "Sample log":
+def _pick_logs() -> list[tuple[bytes, str]]:
+    """The chosen samples, upload or pasted text, each as bytes and a file name."""
+    source = st.radio("Log", ["Sample logs", "Upload your own", "Paste text"], horizontal=True)
+    if source == "Sample logs":
         samples = _samples()
-        name = st.selectbox("Sample", list(samples), format_func=lambda f: f"{f}: {samples[f]}")
-        return ((SAMPLES / name).read_bytes(), name) if name else None
+        names = st.multiselect(
+            f"Samples (up to {MAX_SAMPLES}; each one is its own run)",
+            list(samples),
+            default=list(samples)[:1],
+            max_selections=MAX_SAMPLES,
+        )
+        for name in names:
+            st.caption(ui.md(f"{name}: {samples[name]}"))
+        return [((SAMPLES / name).read_bytes(), name) for name in names]
     if source == "Paste text":
         text = st.text_area(
             "Paste log lines (JSON lines and CSV work too)",
@@ -480,11 +492,11 @@ def _pick_log() -> tuple[bytes, str] | None:
             max_chars=PASTE_MAX_CHARS,
             placeholder="2026-10-11T03:12:09Z ERROR payment-api Connection refused to db:5432",
         )
-        return (text.encode("utf-8"), PASTED_NAME) if text.strip() else None
+        return [(text.encode("utf-8"), PASTED_NAME)] if text.strip() else []
     upload = st.file_uploader(
         "Ops log: text, JSON lines, JSON, CSV, TSV or Parquet, optionally gzipped",
     )
-    return (upload.getvalue(), upload.name) if upload is not None else None
+    return [(upload.getvalue(), upload.name)] if upload is not None else []
 
 
 # ------------------------------------------------------------------ running
@@ -501,17 +513,23 @@ def _progress(steps: list[RunStep], chart: Any, log: Any) -> Any:
     return on_step
 
 
+def _failed(filename: str, message: str) -> None:
+    """Show why a log didn't run, and keep it to show again above the other runs' results."""
+    st.error(message)
+    _session("run_errors", []).append(f"{ui.md(display_name(filename))}: {message}")
+
+
 def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
-    """Check, parse and run a log, then keep everything the results screen needs."""
+    """Check, parse and run one log, then keep everything the results screen needs."""
     try:
         check_upload(filename, len(data), config.max_upload_mb)
         _session("limiter", RunLimiter()).check()
         _shared_limiter().check()
     except (RateLimitError, UploadError) as exc:
-        st.error(ui.md(str(exc)))
+        _failed(filename, ui.md(str(exc)))
         return
     if not config.llm_configured:
-        st.error("This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
+        _failed(filename, "This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
     chosen = RunSettings.from_config(config)
     live, note = ui.decide_live(chosen, live, st.session_state.get("admin_ok", False))
@@ -520,10 +538,12 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
         retriever = _session_retriever(config)
     except ReadError as exc:
-        st.error(ui.md(str(exc)))
+        _failed(filename, ui.md(str(exc)))
         return
     except openai.OpenAIError as exc:
-        st.error(f"Couldn't index the runbooks ({type(exc).__name__}). Try again in a minute.")
+        _failed(
+            filename, f"Couldn't index the runbooks ({type(exc).__name__}). Try again in a minute."
+        )
         return
     tracker, messenger = connect_services(config, settings)
     trace_id = uuid4() if enable_tracing(config) else None
@@ -545,10 +565,34 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         chart.graphviz_chart(ui.pipeline_dot(steps, running=True))
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
+    _stash()
     st.session_state.update(
         context=context, run_id=run_id, result=result, run_note=note, assistant=None, chat=[]
     )
-    st.rerun()
+    st.session_state.run_name = parsed.name
+    _stash()
+
+
+def _stash() -> None:
+    """Keep the run on screen under "runs", with any approval, chat or assistant answer."""
+    state = st.session_state
+    if "run_name" in state and "result" in state:
+        _session("runs", {})[state.run_name] = {key: state.get(key) for key in RUN_KEYS}
+
+
+def _switch() -> None:
+    """Show another of this session's runs."""
+    _stash()
+    name = st.session_state.run_pick
+    st.session_state.update(st.session_state.runs[name], run_name=name)
+
+
+def _run_picker() -> None:
+    """With several runs, a switch between them above the results."""
+    runs: dict[str, Any] = st.session_state.get("runs", {})
+    if len(runs) > 1:
+        st.session_state.run_pick = st.session_state.run_name
+        st.segmented_control("Runs", list(runs), key="run_pick", on_change=_switch, required=True)
 
 
 def _answer(approved: bool) -> None:
@@ -967,16 +1011,22 @@ def _analyze(config: AppConfig, live: bool) -> None:
             "Live mode is on, but your runs stay dry until you unlock Settings with the admin "
             "passcode."
         )
-    picked = _pick_log()
-    clicked = st.button("Analyse", type="primary", disabled=picked is None)
+    picked = _pick_logs()
+    clicked = st.button("Analyse", type="primary", disabled=not picked)
     area = st.empty()  # one slot: a new run replaces the old results straight away
-    if clicked and picked is not None:
-        for key in ("result", "context", "assistant", "chat", "run_note"):
+    if clicked and picked:
+        for key in (*RUN_KEYS, "runs", "run_name", "run_errors"):
             st.session_state.pop(key, None)
         with area.container():
-            _start(config, live, *picked)
+            for data, filename in picked:
+                _start(config, live, data, filename)
+        if "result" in st.session_state:
+            st.rerun()
     elif "result" in st.session_state:
         with area.container():
+            for error in st.session_state.get("run_errors", []):
+                st.error(error)
+            _run_picker()
             _results(st.session_state.result, st.session_state.context)
 
 
