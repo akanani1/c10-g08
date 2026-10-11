@@ -203,7 +203,13 @@ def _cards(config: AppConfig) -> None:
                 key="token_budget",
             )
             st.toggle("Ask for approval before sending", key="require_approval")
-            st.multiselect("Redact", list(RedactionType), key="redaction")
+            st.multiselect(
+                "Redact before any agent sees the log",
+                list(RedactionType),
+                format_func=lambda kind: ui.REDACTION_LABELS[kind],
+                key="redaction",
+                help="Each match becomes [REDACTED:<type>] everywhere: log, prompts, Slack, JIRA.",
+            )
             st.toggle(
                 "Send for real (live mode)",
                 key="live",

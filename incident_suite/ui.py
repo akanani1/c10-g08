@@ -26,6 +26,7 @@ from incident_suite.state import (
     LogLevel,
     LogLine,
     Pattern,
+    RedactionType,
     Remediation,
     RunResult,
     RunSettings,
@@ -596,3 +597,27 @@ def replay_frame(steps: Sequence[RunStep], position: int) -> tuple[str, str]:
         f"{step.seconds:.1f} s. {step.detail}"
     )
     return pipeline_dot(steps[: position - 1], current=step.node), caption
+
+
+# ------------------------------------------------------------------ legend and redaction labels
+
+REDACTION_LABELS = {
+    RedactionType.EMAIL: "Email addresses",
+    RedactionType.BEARER_TOKEN: "Bearer tokens (Authorization: Bearer ...)",
+    RedactionType.JWT: "JWT login tokens (eyJ...)",
+    RedactionType.AWS_ACCESS_KEY: "AWS access keys (AKIA...)",
+    RedactionType.PRIVATE_KEY: "Private key blocks (-----BEGIN ... KEY-----)",
+    RedactionType.CREDENTIAL_PAIR: "Values after password=, secret=, token=, api_key= and similar",
+}
+
+
+def legend_markdown() -> str:
+    """The severity legend on one line: each badge and what it triggers."""
+    return "  ".join(
+        f"{severity_badge(severity)} {row['What happens'].lower()}"
+        for severity, row in zip(
+            (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW),
+            SEVERITY_LEGEND,
+            strict=True,
+        )
+    )

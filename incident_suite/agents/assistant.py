@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import re
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, TypedDict
 
@@ -142,6 +142,12 @@ class AssistantInput:
     llm: StructuredLLM
     redactor: Redactor
     token_budget: int
+    progress: Callable[[str], None] | None = None
+
+    def say(self, message: str) -> None:
+        """Tell the person what's happening, if anyone is listening."""
+        if self.progress is not None:
+            self.progress(message)
 
 
 class _State(TypedDict, total=False):
@@ -204,6 +210,7 @@ def _graph(data: AssistantInput) -> Any:
             return {}
         blocks, sources, problems = list(state["blocks"]), list(state["sources"]), []
         for label, channel, ts in _threads_to_read(data):
+            data.say(f"Reading the Slack thread ({label})")
             try:
                 messages = reader.replies(channel, ts)
             except ReaderError as exc:
@@ -219,6 +226,7 @@ def _graph(data: AssistantInput) -> Any:
             return {}
         blocks, sources, problems = list(state["blocks"]), list(state["sources"]), []
         for key in (t.key for t in data.result.tickets if t.sent and t.key):
+            data.say(f"Reading {key} in JIRA")
             try:
                 update = reader.updates(key)
             except ReaderError as exc:
@@ -233,6 +241,7 @@ def _graph(data: AssistantInput) -> Any:
         if not state["blocks"]:
             reason = "; ".join(state["problems"]) or "Nothing to read for this run."
             return {"answer": None, "error": reason, "usage": meter.usage}
+        data.say("Summarising what changed")
         user = (
             f'<run id="{data.result.run_id}" log="{_escape(data.result.log_name)}">\n'
             + "\n\n".join(state["blocks"])

@@ -7,6 +7,7 @@ survives the reruns Streamlit does on every click, and Approve resumes the same 
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -153,8 +154,6 @@ def _sidebar(config: AppConfig) -> bool:
             st.warning("Live mode: approved runs post to Slack and JIRA.")
         else:
             st.info("Dry run: nothing is sent. You see exactly what would go out.")
-        with st.expander("Severity legend"):
-            st.dataframe(ui.SEVERITY_LEGEND, hide_index=True)
         if admin_overrides().differences(load_config()):
             st.caption("An admin changed some settings until the app restarts.")
         if _settings(config) != RunSettings.from_config(config):
@@ -278,6 +277,7 @@ def _summary(result: RunResult) -> None:
             file_name=f"postmortem-{result.run_id}.md",
             mime="text/markdown",
         )
+    st.markdown(ui.legend_markdown())
     for error in result.errors:
         st.warning(ui.md(error))
 
@@ -399,9 +399,10 @@ def _draft_box(key: str, issue_id: str) -> None:
     draft = drafts.get(key)
     if draft is None:
         st.caption("No runbook matched this issue well.")
-        st.button(
-            "Draft a runbook (AI)", key=f"draft-{key}", on_click=_make_draft, args=(key, issue_id)
-        )
+        if st.button("Draft a runbook (AI)", key=f"draft-{key}"):
+            with st.spinner("Drafting a runbook from the evidence..."):
+                _make_draft(key, issue_id)
+            st.rerun()
         return
     if draft.error:
         st.warning(ui.md(draft.error))
@@ -481,6 +482,9 @@ def _tabs(result: RunResult, context: RunContext) -> None:
         if parsed.redactions:
             counts = ", ".join(f"{kind}: {n}" for kind, n in parsed.redactions.items())
             st.write(f"Redacted before any agent saw the log: {counts}")
+            st.caption(
+                "; ".join(f"{kind}: {ui.REDACTION_LABELS[kind]}" for kind in parsed.redactions)
+            )
         if parsed.column_mapping:
             st.write("Column mapping", parsed.column_mapping)
         if len(parsed.lines) > ui.MAX_TABLE_ROWS:
@@ -535,7 +539,7 @@ def _results(result: RunResult, context: RunContext) -> None:
 # ------------------------------------------------------------------ assistant
 
 
-def _ask_assistant(config: AppConfig) -> None:
+def _ask_assistant(config: AppConfig, progress: Callable[[str], None]) -> None:
     """Read this run's Slack threads and tickets, and keep the answer and its cost."""
     state = st.session_state
     result: RunResult = state.result
@@ -550,6 +554,7 @@ def _ask_assistant(config: AppConfig) -> None:
                 llm=OpenRouterLLM(config),
                 redactor=Redactor(settings.redaction),
                 token_budget=settings.token_budget,
+                progress=progress,
             )
         )
     finally:
@@ -598,7 +603,8 @@ def _chat() -> None:
             "Ask about this run", max_chars=MAX_QUESTION_CHARS, placeholder="Why is ISS-1 critical?"
         )
         if st.form_submit_button("Ask") and question.strip():
-            _ask_about_run(question.strip())
+            with st.spinner("Looking through this run..."):
+                _ask_about_run(question.strip())
             st.rerun()
 
 
@@ -615,7 +621,10 @@ def _assistant(config: AppConfig) -> None:
         if not st.session_state.get("admin_ok"):
             st.caption("Enter the admin passcode above to ask about Slack and JIRA.")
             return
-        st.button("What's happened since?", on_click=_ask_assistant, args=(config,))
+        if st.button("What's happened since?"):
+            with st.status("Checking Slack and JIRA...", expanded=True) as status:
+                _ask_assistant(config, lambda message: status.write(ui.md(message)))
+                status.update(label="Checked Slack and JIRA", state="complete", expanded=False)
         answer: AssistantResult | None = st.session_state.get("assistant")
         if answer is None:
             return
@@ -644,11 +653,16 @@ def main() -> None:
         "checklist, and prepare the Slack post and JIRA tickets for your approval."
     )
     picked = _pick_log()
+    area = st.empty()  # one slot: a new run replaces the old results straight away
     if st.button("Analyse", type="primary", disabled=picked is None) and picked is not None:
-        _start(config, live, *picked)
-    if "result" in st.session_state:
+        for key in ("result", "context", "assistant", "chat", "run_note"):
+            st.session_state.pop(key, None)
+        with area.container():
+            _start(config, live, *picked)
+    elif "result" in st.session_state:
         _assistant(config)
-        _results(st.session_state.result, st.session_state.context)
+        with area.container():
+            _results(st.session_state.result, st.session_state.context)
 
 
 main()

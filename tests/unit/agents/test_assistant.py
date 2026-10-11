@@ -355,3 +355,16 @@ def test_every_tool() -> None:
         }
     )
     assert run_tool(ChatStep(tool="tickets"), failed, {}).endswith("not sent, error: 503")
+
+
+def test_progress_messages(make_llm: MakeLLM) -> None:
+    llm, _ = make_llm([ANSWER])
+    heard: list[str] = []
+    latest_updates(_input(llm, progress=heard.append))
+    assert heard == [
+        "Reading the Slack thread (this run)",
+        "Reading the Slack thread (first seen in SCRUM-1)",
+        "Reading SCRUM-5 in JIRA",
+        "Reading SCRUM-1 in JIRA",
+        "Summarising what changed",
+    ]
