@@ -30,7 +30,6 @@ from incident_suite.state import (
     RedactionType,
     Remediation,
     RunResult,
-    RunSettings,
     RunStep,
     Severity,
     StepStatus,
@@ -377,22 +376,6 @@ def model_label(model: str) -> str:
         f"{model} (${price.input_per_million:.2f} in / "
         f"${price.output_per_million:.2f} out per M tokens)"
     )
-
-
-def decide_live(settings: RunSettings, live_allowed: bool, admin_ok: bool) -> tuple[bool, str]:
-    """Whether this run may send for real, and a note saying why not when it can't.
-
-    Edited prompts can change what gets sent, so they force a dry run unless the admin
-    passcode was entered (plan section 17.1).
-    """
-    if not settings.live or not live_allowed:
-        return False, ""
-    if settings.prompts_edited and not admin_ok:
-        return (
-            False,
-            "Prompts were edited, so this run is a dry run. The admin passcode unlocks it.",
-        )
-    return True, ""
 
 
 def needs_runbook(fix: Remediation | None) -> bool:

@@ -4,7 +4,7 @@ Version 12, 11 Oct 2026.
 
 **Deadline:** 7 PM IST, Sunday 11 Oct 2026. We submit by 6:30 PM. Feature freeze is at 3 PM and we record the video at 4 PM.
 
-**Status:** everything is merged: H1 to H8 (the whole core), extras 1 to 6, the UI review fixes, the new layout, the Admin Console, the TriageGraph name and several samples at once. What's left is the release work in section 16. Section 16 has the full timeline.
+**Status:** everything is merged and deployed: H1 to H8 (the whole core), extras 1 to 6, the UI review fixes, the layout, the settings pages, the TriageGraph name and icon, several samples at once, earlier incidents and the responsive layout. What's left is the release work in section 16.
 
 This is the single, current version of the plan. When something changes, we edit the section it belongs to and add a line to the decisions log (section 21). Older versions are in the Git history.
 
@@ -37,7 +37,7 @@ A Streamlit app. You upload an ops log, or pick one of our samples, and a set of
 
 **Core scope** (must ship): the six agents above, secret redaction, every log format in section 7, the approval step before anything is sent, JIRA as memory between runs, the results screen, the eval and the deploy.
 
-**Extras** (section 17): an agent settings page, an assistant in the sidebar, and a few smaller features. We build them in a fixed order after the core, and whatever isn't done by the 3 PM freeze is dropped.
+**Extras** (section 17): settings pages for an admin, an assistant beside the results, and a few smaller features. We build them in a fixed order after the core, and whatever isn't done by the 3 PM freeze is dropped.
 
 ---
 
@@ -317,7 +317,7 @@ The page has an upload box, a paste box and a sample picker. Up to three samples
 - `app.py` builds the page. Small functions that prepare things for display (escaping, badges, confidence reasons, the graph picture, the tables) live in `incident_suite/ui.py`, so they can be unit-tested. Log text goes through `ui.md()` before it reaches `st.markdown`: markdown, HTML and links are escaped, and URLs are defanged. Tables and code blocks show text as it is.
 - **A paused run survives reruns.** The compiled graph and the run's context are kept in `st.session_state`, so Approve resumes the same run. The checkpointer only turns our own state models back into objects (an allow-list in `graph.py`).
 - **Abuse limits:** each visitor can start 5 runs per 10 minutes, and all visitors together 60 an hour, so opening new sessions doesn't get around it (`RunLimiter` in `security.py`).
-- **Live sending needs the passcode.** When `LIVE_INTEGRATIONS=true` and `ADMIN_PASSCODE` is set, the sidebar asks for the passcode. Without it the visitor gets a dry run, and their run never contacts Slack or JIRA.
+- **Live sending needs the passcode.** When `LIVE_INTEGRATIONS=true` and `ADMIN_PASSCODE` is set, a run sends for real only after **Unlock** on a settings page. Without it the visitor gets a dry run, and their run never contacts Slack or JIRA.
 - **Without a key** the page still loads, and Analyse explains that `OPENROUTER_API_KEY` is needed.
 - **Layout:**
   - A health bar pinned in the header strip shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
@@ -391,7 +391,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `RUN_TOKEN_BUDGET` | No | `200000` | Tokens per run (up to 500,000) |
 | `ADMIN_PASSCODE` | No | | Unlocks the settings pages (section 17.1). When set, live sending in the app also needs it. Without it the settings are read-only |
 
-**Run settings.** `RunSettings` in `state.py` holds every per-run option: the model and prompt for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the effective config (the deployment's values plus any Admin Console changes) for each run and travels with the run, and the agents read from it, never from the config directly.
+**Run settings.** `RunSettings` in `state.py` holds every per-run option: the model for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the effective config (the deployment's values plus any Admin Console changes) for each run and travels with the run, and the agents read from it, never from the config directly.
 
 ---
 
@@ -443,6 +443,7 @@ c10-g08/
 ├── .streamlit/config.toml        theme and upload cap
 ├── .github/                      ci.yml, dependabot.yml, SECURITY.md
 ├── .gitattributes                LF line endings, binary sample files
+├── .devcontainer/                GitHub Codespaces: Python 3.12, installs requirements.txt, starts the app
 ├── .gitignore
 ├── .pre-commit-config.yaml       Ruff, mypy, gitleaks, whitespace fixers
 ├── .env.example                  every variable, with placeholders
@@ -534,7 +535,7 @@ Extras add `incident_suite/agents/assistant.py` and `incident_suite/prompts/assi
 | H3 | Log Reader, runbook search, Remediation, Cookbook, JIRA and Notification plans; sample logs and runbooks | Done |
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
-| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
+| H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Deployed on Streamlit Community Cloud; reboot the app after each merge |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
 | Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout, Admin Console, TriageGraph name and several samples at once merged |
 
@@ -601,11 +602,11 @@ This first assistant feature answers "what's happened since?" for this run's inc
 
 - **Slack:** it reads replies in the app's own thread for this run. When a ticket was seen before, it also reads the original incident's thread. To find that thread, we store the Slack channel and `ts` on the ticket (as a JIRA issue property, `incident_suite.slack`) when we first post. Replying in the original thread from the Notification agent is not built; the run still posts its own summary.
 - **JIRA:** it reads status, assignee and the latest comments, only for this run's tickets labelled `incident-suite`. The query is fixed in code, so the model can't write its own JQL.
-- **Limits:** it only works in live mode with the admin passcode entered. Everything it reads is redacted and treated as data. It can't browse Slack or JIRA, or answer open questions like "what's in Slack".
+- **Limits:** it only works after a live run, and each question counts towards the run limits. Everything it reads is redacted and treated as data. It can't browse Slack or JIRA, or answer open questions like "what's in Slack".
 - **Needs:** the `channels:history` scope on the Slack app (done on 10 Oct).
 - **How it's built:** `agents/assistant.py` is a three-step LangGraph: read the Slack threads, read the tickets, summarise with `openai/gpt-5-nano`. If nothing could be read, it says why and makes no model call. The readers are protocols that the Slack client (`conversations.replies`) and the JIRA client (issue property, then status, assignee and the last 3 comments, refused for tickets without the `incident-suite` label) implement. The prompt is `prompts/assistant.md`.
-- **On screen:** the **Assistant** column's **Since the run** card appears after a run. The **What's happened since?** button only shows once the run posted to Slack or JIRA and the admin passcode is entered. Its cost goes into the run's Cost tab as "Assistant".
-- **Earlier incidents, without a run:** in a new session or after the app restarts there's no run to ask about, so the column offers **Earlier incidents** instead. **Load the latest incidents** lists our 5 newest tickets labelled `incident-suite` in the project (a fixed JQL query in `JiraClient.recent`). Pick one and **What's happened since?** runs the same three steps on that ticket and the Slack thread stored on it. It needs JIRA connected and the admin passcode. Its cost is shown under the answer, since there's no run to add it to. Older tickets made before the Slack thread was stored just get the JIRA side.
+- **On screen:** the **Assistant** column's **Since the run** card appears after a run. The **What's happened since?** button only shows once the run posted to Slack or JIRA. Its cost goes into the run's Cost tab as "Assistant".
+- **Earlier incidents, without a run:** in a new session or after the app restarts there's no run to ask about, so the column offers **Earlier incidents** instead. **Load the latest incidents** lists our 5 newest tickets labelled `incident-suite` in the project (a fixed JQL query in `JiraClient.recent`). Pick one and **What's happened since?** runs the same three steps on that ticket and the Slack thread stored on it. It needs JIRA connected; anyone can use it, and each question counts towards the run limits. Its cost is shown under the answer, since there's no run to add it to. Older tickets made before the Slack thread was stored just get the JIRA side.
 
 ### 17.3 Assistant: draft a runbook when none matches
 
@@ -620,7 +621,7 @@ This first assistant feature answers "what's happened since?" for this run's inc
 
 ### 17.4 Assistant: chat about the current run
 
-A chat box in the sidebar that answers questions about this run only. It uses tools that read the run's issues, evidence lines, fixes, checklist, tickets and costs, and it cites line numbers in its answers. There's a cap on tool calls per question, and log text stays inside tags as data.
+A chat box in the Assistant column (the Assistant page on narrow screens) that answers questions about this run only. It uses tools that read the run's issues, evidence lines, fixes, checklist, tickets and costs, and it cites line numbers in its answers. There's a cap on tool calls per question, and log text stays inside tags as data.
 
 - **How it's built:** `ask_about_run` in `agents/assistant.py` is a one-node LangGraph loop on the cheap model. Each turn, the model returns either one tool call (`issues`, `evidence`, `fix`, `checklist`, `tickets` or `costs`, with an issue ID where needed) or its answer. Tool results go back inside `<tool_result>` tags.
 - **Limits:** at most 4 tool calls, then it must answer, with a plain fallback if it still doesn't. Questions are cut at 500 characters. The last 3 questions and answers go along for follow-ups. It uses the run's token budget, and its cost shows in the Cost tab as "Assistant".
@@ -745,12 +746,13 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Responsive pass. Under 1200px the assistant becomes its own menu item and page instead of a squeezed column (Ashvin's call). The rest is CSS on the page's own width (860px), because the left bar takes 300px. Result numbers are a little smaller everywhere so all five fit. Measured before and after at 390, 768, 1024 and 1366px |
 | 11 Oct | Settings cards are one list instead of two columns: between 1200 and 1300px the second column ran under the assistant. The health bar's switch moves to the screen width (1300px), so it stays in the header strip whenever it fits. While the passcode is in, the settings menu items show an open-lock icon |
 | 11 Oct | Settings pages open for everyone, read-only, with **Unlock** on the page (same passcode dialog), so judges can see what's configurable. Keys and personal or site details are masked for visitors: first and last 4 characters, labelled "(masked)" |
+| 11 Oct | Final cleanup: the unused prompt-override code is removed (prompt editing left the UI with the Admin Console), plus an unused protocol. `.devcontainer/` (added for Codespaces) is kept but listed here, on Python 3.12, without the extra unpinned Streamlit install; its CORS and XSRF flags are Streamlit's own Codespaces template and only affect the private dev preview. Stale lines from the old sidebar layout are fixed. Both assistant cards (Since the run, Earlier incidents) are open to everyone, counted against the run limits, at Ashvin's call. The left-bar title leaves room for the collapse button |
 | 11 Oct | The app gets an icon: three agent nodes joined into a graph, the incident they point to in orange (option A of three, chosen for the name and because it still reads at 16 px). One new file, `assets/triagegraph.svg`, agreed with Ashvin; used for the browser tab, beside the title in the left bar, and at the top of the README |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 | 11 Oct | Everything up to #36 is merged. Final docs pass: the QA checklist gets the layout, settings-page and several-samples checks, and the video script switches live mode on and off from App Settings, off camera |
 
-**Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
+**Still open:** the eval run and README results (Gulam), the live-demo and video links in the README, and deleting the merged branches on GitHub (this session can't).
 
 ---
 

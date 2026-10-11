@@ -111,6 +111,8 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
 }
 [data-testid="stSidebarUserContent"] { padding-top: 1.1rem; }
 [data-testid="stSidebarUserContent"] h2 { padding-top: 0; }
+.st-key-brand { padding-right: 2.75rem; }  /* room for the collapse button */
+.st-key-brand h2 { font-size: 1.35rem; white-space: nowrap; }
 .st-key-menu button {
   justify-content: flex-start; padding: 0.4rem 0.9rem; min-height: 2.5rem; border: 0;
 }
@@ -153,7 +155,7 @@ PASTE_MAX_CHARS = 1_000_000
 MAX_SAMPLES = 3
 # What one run keeps in the session. Several runs are kept under "runs", and the one on screen
 # is copied to the top level, so the rest of the page reads a single run as before.
-RUN_KEYS = ("context", "run_id", "result", "run_note", "assistant", "chat")
+RUN_KEYS = ("context", "run_id", "result", "assistant", "chat")
 
 
 # ------------------------------------------------------------------ cached resources
@@ -614,7 +616,6 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         _failed(filename, "This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
     chosen = RunSettings.from_config(config)
-    live, note = ui.decide_live(chosen, live, st.session_state.get("admin_ok", False))
     settings = chosen.model_copy(update={"live": live})
     try:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
@@ -648,9 +649,7 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     _stash()
-    st.session_state.update(
-        context=context, run_id=run_id, result=result, run_note=note, assistant=None, chat=[]
-    )
+    st.session_state.update(context=context, run_id=run_id, result=result, assistant=None, chat=[])
     st.session_state.run_name = parsed.name
     _stash()
 
@@ -948,8 +947,6 @@ def _replay(result: RunResult) -> None:
 
 def _results(result: RunResult, context: RunContext) -> None:
     _summary(result)
-    if note := st.session_state.get("run_note"):
-        st.info(note)
     st.graphviz_chart(ui.pipeline_dot(result.steps))
     if result.approval is ApprovalStatus.PENDING:
         _approval(result)
@@ -1059,10 +1056,7 @@ def _assistant(config: AppConfig) -> None:
         if not (result.slack.sent or any(t.sent for t in result.tickets)):
             st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
             return
-        if not st.session_state.get("admin_ok"):
-            st.caption("Unlock in Agent or App Settings to ask about Slack and JIRA.")
-            return
-        if st.button("What's happened since?"):
+        if st.button("What's happened since?") and _within_limits():
             with st.status("Checking Slack and JIRA...", expanded=True) as status:
                 _ask_assistant(config, lambda message: status.write(ui.md(message)))
                 status.update(label="Checked Slack and JIRA", state="complete", expanded=False)
@@ -1125,14 +1119,22 @@ def _ask_about_incident(config: AppConfig, key: str, progress: Callable[[str], N
     st.session_state.incident_answer = (key, answer)
 
 
+def _within_limits() -> bool:
+    """Assistant questions spend the model budget, so they count towards the run limits too."""
+    try:
+        _session("limiter", RunLimiter()).check()
+        _shared_limiter().check()
+    except RateLimitError as exc:
+        st.warning(ui.md(str(exc)))
+        return False
+    return True
+
+
 def _earlier_incidents(config: AppConfig) -> None:
     """Without a run: pick one of our latest JIRA tickets and ask what has happened since."""
     st.markdown("**:material/history: Earlier incidents**")
     if not config.jira_configured:
         st.caption("Connect JIRA to ask about earlier incidents.")
-        return
-    if not st.session_state.get("admin_ok"):
-        st.caption("This reads your team's JIRA and Slack: unlock in Agent or App Settings.")
         return
     if st.button("Load the latest incidents", icon=":material/refresh:", key="load_incidents"):
         with st.spinner("Reading JIRA..."):
@@ -1148,7 +1150,7 @@ def _earlier_incidents(config: AppConfig) -> None:
         return
     labels = {t.key: f"{t.key} · {t.status} · {t.created} · {t.summary}" for t in incidents}
     key = st.selectbox("Incident", list(labels), format_func=labels.__getitem__)
-    if st.button("What's happened since?", key="ask_incident"):
+    if st.button("What's happened since?", key="ask_incident") and _within_limits():
         with st.status(f"Checking {key}...", expanded=True) as status:
             _ask_about_incident(config, key, lambda message: status.write(ui.md(message)))
             status.update(label=f"Checked {key}", state="complete", expanded=False)

@@ -206,7 +206,7 @@ def classify(
         _render_pattern(pid, pattern, by_number)
         for pid, pattern in zip(pids, grouped.patterns, strict=True)
     ]
-    system = settings.log_reader.system_prompt or load_prompt("log_reader")
+    system = load_prompt("log_reader")
     found: list[_Merged] = []
     errors: list[str] = []
     chunks = _chunks(blocks)

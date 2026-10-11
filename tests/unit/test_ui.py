@@ -23,7 +23,6 @@ from incident_suite.state import (
     Remediation,
     RunbookSource,
     RunResult,
-    RunSettings,
     RunStep,
     Severity,
     SlackOutcome,
@@ -257,20 +256,6 @@ def test_model_and_provider_labels() -> None:
         "Google": ["google/a"],
         "OpenAI": ["openai/a", "openai/b"],
     }
-
-
-def test_decide_live(settings: RunSettings) -> None:
-    live = settings.model_copy(update={"live": True})
-    edited = live.model_copy(
-        update={"cookbook": live.cookbook.model_copy(update={"system_prompt": "Be brief."})}
-    )
-    assert ui.decide_live(settings, live_allowed=True, admin_ok=True) == (False, "")
-    assert ui.decide_live(live, live_allowed=False, admin_ok=True) == (False, "")
-    assert ui.decide_live(live, live_allowed=True, admin_ok=False) == (True, "")
-    allowed, note = ui.decide_live(edited, live_allowed=True, admin_ok=False)
-    assert not allowed
-    assert note.startswith("Prompts were edited")
-    assert ui.decide_live(edited, live_allowed=True, admin_ok=True) == (True, "")
 
 
 def test_needs_runbook() -> None:

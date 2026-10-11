@@ -114,7 +114,7 @@ def remediate(
 ) -> RemediationResult:
     """Find a fix for one issue, citing the runbook sections it came from."""
     hits = retriever.search(search_query(issue, evidence), settings.remediation.top_k)
-    system = settings.remediation.system_prompt or load_prompt("remediation")
+    system = load_prompt("remediation")
     started = time.perf_counter()
     try:
         reply = llm(
