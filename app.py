@@ -105,6 +105,7 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
   position: sticky; top: 4rem; align-self: flex-start;
 }
 .block-container { padding-top: 3.5rem; padding-bottom: 4.5rem; }
+header[data-testid="stHeader"] { background: #0e1117; }  /* solid, so the page scrolls under it */
 .block-container h1 { padding-top: 0; }
 [data-testid="stSidebarHeader"] {
   position: absolute; top: 0; right: 0; height: auto; padding: 1.1rem 1rem 0 0; z-index: 2;
