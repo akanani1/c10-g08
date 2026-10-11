@@ -123,6 +123,11 @@ def _context(lines: Sequence[LogLine], patterns: Sequence[Pattern], window: int)
     return [lines[index] for index in sorted(wanted)[:MAX_CONTEXT_LINES]]
 
 
+def is_change(message: str) -> bool:
+    """A deploy, release, config change, restart or scale event."""
+    return bool(_CHANGE.search(message))
+
+
 def group_lines(lines: Sequence[LogLine], context_lines: int = 3) -> GroupedLog:
     """Group WARN+ lines into patterns, worst and most frequent first, with context."""
     groups: dict[tuple[str, LogLevel, str, str], _Group] = {}

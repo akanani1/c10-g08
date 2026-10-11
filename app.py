@@ -6,10 +6,12 @@ survives the reruns Streamlit does on every click, and Approve resumes the same 
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterable
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -723,7 +725,12 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     _stash()
     st.session_state.update(
-        context=context, run_id=run_id, result=result, run_note=note, assistant=None, chat=[]
+        context=_slimmed(context, result),
+        run_id=run_id,
+        result=result,
+        run_note=note,
+        assistant=None,
+        chat=[],
     )
     st.session_state.run_name = parsed.name
     _stash()
@@ -760,6 +767,23 @@ def _answer(approved: bool) -> None:
         except Exception:  # show a clear message, never a raw traceback
             _LOG.exception("resuming run %s failed", state.run_id)
             state.run_errors = [RUN_FAILED]
+            return
+    state.context = _slimmed(state.context, state.result)
+
+
+def _slimmed(context: RunContext, result: RunResult) -> RunContext:
+    """Once a run is done, keep only the lines the results screen needs (memory: plan 11).
+
+    A paused run keeps the whole log until it is approved or rejected.
+    """
+    if result.approval is ApprovalStatus.PENDING:
+        return context
+    lines = ui.slim_lines(context.parsed.lines)
+    if len(lines) == len(context.parsed.lines):
+        return context
+    slim = replace(context, parsed=context.parsed.model_copy(update={"lines": lines}))
+    gc.collect()
+    return slim
 
 
 # ------------------------------------------------------------------ results
@@ -995,8 +1019,8 @@ def _tabs(result: RunResult, context: RunContext) -> None:
             )
         if parsed.column_mapping:
             st.write("Column mapping", parsed.column_mapping)
-        if len(parsed.lines) > ui.MAX_TABLE_ROWS:
-            st.caption(f"Showing the first {ui.MAX_TABLE_ROWS:,} of {len(parsed.lines):,}.")
+        if result.line_count > ui.MAX_TABLE_ROWS:
+            st.caption(f"Showing the first {ui.MAX_TABLE_ROWS:,} of {result.line_count:,}.")
         st.dataframe(ui.line_rows(parsed.lines), hide_index=True)
     with tabs[4]:
         st.dataframe(ui.pattern_rows(result.patterns), hide_index=True)

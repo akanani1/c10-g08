@@ -21,7 +21,7 @@ from incident_suite.agents.jira_agent import TicketDraft
 from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
 from incident_suite.config import CHAT_MODELS, EMBEDDING_MODELS, AppConfig
 from incident_suite.integrations.payloads import defang, jira_summary
-from incident_suite.parsing.grouping import group_lines
+from incident_suite.parsing.grouping import group_lines, is_change
 from incident_suite.security import RUNS_PER_WINDOW, SHARED_RUNS_PER_HOUR, WINDOW_SECONDS
 from incident_suite.state import (
     AgentUsage,
@@ -434,6 +434,26 @@ def _when(line: LogLine | None) -> str:
     if line is None or line.timestamp is None:
         return "time unknown"
     return f"{line.timestamp:%Y-%m-%d %H:%M:%S}"
+
+
+SLIM_ABOVE = 10_000  # lines; smaller logs are kept whole
+_KEPT_AFTER_RUN = frozenset({LogLevel.WARN, LogLevel.ERROR, LogLevel.FATAL})
+
+
+def slim_lines(lines: Sequence[LogLine]) -> list[LogLine]:
+    """What the results screen still needs from a big log once its run is done.
+
+    The first ``MAX_TABLE_ROWS`` lines for the table, every warning and error (evidence,
+    timeline, chat) and every change event (timeline). A 50,000-line log keeps about 6,000,
+    so a finished run doesn't hold the whole log in memory for the rest of the session.
+    """
+    if len(lines) <= SLIM_ABOVE:
+        return list(lines)
+    return [
+        line
+        for index, line in enumerate(lines)
+        if index < MAX_TABLE_ROWS or line.level in _KEPT_AFTER_RUN or is_change(line.message)
+    ]
 
 
 def postmortem_markdown(result: RunResult, lines: Sequence[LogLine]) -> str:
