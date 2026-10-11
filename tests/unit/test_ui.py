@@ -234,12 +234,14 @@ def test_tables() -> None:
 # ------------------------------------------------------------------ settings page
 
 
-def test_secret_hint_never_shows_a_usable_key() -> None:
+def test_mask_never_shows_a_usable_value() -> None:
     assert ui.secret_hint(None) == "not set"
-    assert ui.secret_hint(SecretStr("short-token")) == "set"
     key = "sk-o" + "x" * 20 + "9f3a"  # built, so it never looks like a real key
-    assert ui.secret_hint(SecretStr(key)) == "sk-o…9f3a"
-    assert key[4:-4] not in ui.secret_hint(SecretStr(key))
+    assert ui.secret_hint(SecretStr(key)) == "sk-o••••9f3a"
+    assert ui.mask("raphael@example.com") == "raph••••.com"
+    assert ui.mask("https://c10g8.atlassian.net") == "c10g••••.net"
+    assert ui.mask("C0ABCD123") == "C0••••23"
+    assert ui.mask("token") == "••••"
 
 
 def test_model_and_provider_labels() -> None:

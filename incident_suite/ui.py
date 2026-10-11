@@ -344,18 +344,25 @@ def models_by_provider(models: Iterable[str]) -> dict[str, list[str]]:
     return grouped
 
 
-SECRET_HINT_CHARS = 4
-_SHORTEST_HINTED = 16  # shorter keys would give too much away, so they only say "set"
+MASK = "••••"
+_SCHEME = re.compile(r"^https?://")
+
+
+def mask(value: str) -> str:
+    """Enough of a value to recognise it, never enough to use it.
+
+    16 characters or more keep 4 at each end (``sk-o••••9f3a``, ``raph••••.com``); 8 to 15
+    keep 2 (``C0••••7X``); shorter ones show only ``••••``. A site loses its ``https://``
+    first, so the part left is the part that names it.
+    """
+    value = _SCHEME.sub("", value.strip())
+    keep = 4 if len(value) >= 16 else 2 if len(value) >= 8 else 0
+    return f"{value[:keep]}{MASK}{value[-keep:]}" if keep else MASK
 
 
 def secret_hint(secret: SecretStr | None) -> str:
-    """Enough of a key to recognise it, never enough to use it: ``sk-o…a1b2``."""
-    if secret is None:
-        return "not set"
-    value = secret.get_secret_value()
-    if len(value) < _SHORTEST_HINTED:
-        return "set"
-    return f"{value[:SECRET_HINT_CHARS]}…{value[-SECRET_HINT_CHARS:]}"
+    """A key, masked: it never reaches the page."""
+    return "not set" if secret is None else mask(secret.get_secret_value())
 
 
 def embedding_label(model: str) -> str:

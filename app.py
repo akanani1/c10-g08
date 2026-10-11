@@ -207,16 +207,19 @@ def _session(key: str, default: Any) -> Any:
 
 def _lock() -> None:
     st.session_state.admin_ok = False
-    st.session_state.page = "analyze"
 
 
 def _stop_unlocking() -> None:
     st.session_state.pop("unlocking", None)
 
 
+def _start_unlocking() -> None:
+    st.session_state.unlocking = True
+
+
 @st.dialog("Admin passcode", icon=":material/lock:", on_dismiss=_stop_unlocking)
-def _unlock(page: str, passcode: SecretStr) -> None:
-    """Asked once per session, when a settings page is opened from the menu."""
+def _unlock(passcode: SecretStr) -> None:
+    """Asked once per session, from the Unlock button on a settings page."""
     st.caption("Settings change the app for every visitor, so they need the admin passcode.")
     with st.form("unlock_form", border=False):  # a form, so Enter submits
         entered = st.text_input("Passcode", type="password", key="passcode")
@@ -226,20 +229,23 @@ def _unlock(page: str, passcode: SecretStr) -> None:
     if submitted:
         if passcode_ok(entered, passcode):
             st.session_state.admin_ok = True
-            st.session_state.page = page
             _stop_unlocking()
             st.rerun()
         st.error("That passcode isn't right.")
 
 
 def _lock_state(base: AppConfig) -> bool:
-    """Whether a settings page is read-only, with a Lock button when it isn't."""
+    """Whether a settings page is read-only, with Unlock or Lock to switch."""
     if base.admin_passcode is None:
         st.caption("Set ADMIN_PASSCODE in the deployment's settings to change anything here.")
         return True
     if st.session_state.get("admin_ok"):
         st.button("Lock", icon=":material/lock:", on_click=_lock, key="lock")
         return False
+    st.caption("Read-only. Unlock with the admin passcode to change settings.")
+    st.button("Unlock", icon=":material/lock_open:", on_click=_start_unlocking, key="unlock_page")
+    if st.session_state.get("unlocking"):
+        _unlock(base.admin_passcode)
     return True
 
 
@@ -292,6 +298,14 @@ def _note(card: str) -> None:
             st.error(ui.md(problem))
 
 
+def _field(label: str, value: str | None, locked: bool) -> str:
+    """A setting that names a person or a site: masked for visitors, in full once unlocked."""
+    if locked and value:
+        st.text_input(f"{label} (masked)", ui.mask(value), disabled=True)
+        return value
+    return st.text_input(label, value or "", disabled=locked)
+
+
 def _secret(label: str, current: SecretStr | None, key: str, locked: bool) -> SecretStr:
     """A key box that never sends the key to the browser, only a hint of it.
 
@@ -304,7 +318,7 @@ def _secret(label: str, current: SecretStr | None, key: str, locked: bool) -> Se
         key=f"{key}_{st.session_state.get('secret_round', 0)}",
         disabled=locked,
         placeholder=f"{hint}; type to replace" if current else "not set",
-        help="Only the first and last 4 characters are shown, so the key never reaches the page.",
+        help="Keys are always masked: the full key never reaches the page.",
     )
     return SecretStr(typed)
 
@@ -410,13 +424,13 @@ def _app_settings(config: AppConfig, locked: bool) -> None:
     with st.container(border=True):
         st.markdown("**:material/forum: Slack**")
         token = _secret("Bot token (xoxb-...)", config.slack_bot_token, "slack_token", locked)
-        channel = st.text_input("Channel ID", config.slack_channel_id or "", disabled=locked)
+        channel = _field("Channel ID", config.slack_channel_id, locked)
         slack = {"slack_bot_token": token, "slack_channel_id": channel.strip() or None}
         _actions("slack", slack, locked)
     with st.container(border=True):
         st.markdown("**:material/confirmation_number: JIRA**")
-        url = st.text_input("Base URL", config.jira_base_url or "", disabled=locked)
-        email = st.text_input("Email", config.jira_email or "", disabled=locked)
+        url = _field("Base URL", config.jira_base_url, locked)
+        email = _field("Email", config.jira_email, locked)
         project = st.text_input("Project key", config.jira_project_key or "", disabled=locked)
         token = _secret("API token", config.jira_api_token, "jira_token", locked)
         st.text_input("Issue type", config.jira_issue_type, disabled=True, help="Fixed for now.")
@@ -485,17 +499,10 @@ def _menu() -> str:
                     else None,
                 )
             ]
-    passcode = load_config().admin_passcode
-    needs_passcode = passcode is not None and not st.session_state.get("admin_ok")
     if chosen and chosen[0] != current:
         _stop_unlocking()
-        if chosen[0] in SETTINGS_PAGES and needs_passcode:
-            st.session_state.unlocking = chosen[0]  # the page opens only with the passcode
-        else:
-            st.session_state.page = chosen[0]
-            st.rerun()
-    if passcode is not None and needs_passcode and "unlocking" in st.session_state:
-        _unlock(st.session_state.unlocking, passcode)
+        st.session_state.page = chosen[0]
+        st.rerun()
     return current
 
 
@@ -1053,7 +1060,7 @@ def _assistant(config: AppConfig) -> None:
             st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
             return
         if not st.session_state.get("admin_ok"):
-            st.caption("Open a settings page with the admin passcode to ask about Slack and JIRA.")
+            st.caption("Unlock in Agent or App Settings to ask about Slack and JIRA.")
             return
         if st.button("What's happened since?"):
             with st.status("Checking Slack and JIRA...", expanded=True) as status:
@@ -1125,7 +1132,7 @@ def _earlier_incidents(config: AppConfig) -> None:
         st.caption("Connect JIRA to ask about earlier incidents.")
         return
     if not st.session_state.get("admin_ok"):
-        st.caption("Open a settings page with the admin passcode to read earlier incidents.")
+        st.caption("This reads your team's JIRA and Slack: unlock in Agent or App Settings.")
         return
     if st.button("Load the latest incidents", icon=":material/refresh:", key="load_incidents"):
         with st.spinner("Reading JIRA..."):
