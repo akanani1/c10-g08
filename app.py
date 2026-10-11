@@ -95,9 +95,13 @@ STYLE = """
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 div[data-testid="stColumn"]:has(.st-key-assistant) {
-  position: sticky; top: 6.5rem; align-self: flex-start;
+  position: sticky; top: 4rem; align-self: flex-start;
 }
-.block-container { padding-bottom: 4.5rem; }
+.block-container { padding-top: 3.5rem; padding-bottom: 4.5rem; }
+.block-container h1 { padding-top: 0; }
+[data-testid="stSidebarHeader"] { height: 3rem; padding-top: 0.75rem; padding-bottom: 0; }
+[data-testid="stSidebarUserContent"] { padding-top: 0; }
+[data-testid="stSidebarUserContent"] h2 { padding-top: 0; }
 .st-key-menu button { justify-content: flex-start; }
 .st-key-menu button > div { justify-content: flex-start; }
 </style>
