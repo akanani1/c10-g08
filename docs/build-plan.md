@@ -536,7 +536,7 @@ Extras add `incident_suite/agents/assistant.py` and `incident_suite/prompts/assi
 | H4 | The graph: retry loop, parallel step, approval pause; dry run from the command line | Done |
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Deployed on Streamlit Community Cloud; reboot the app after each merge |
-| H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
+| H8 | LangSmith, eval run, clean-code and security pass | Done. Eval run on 11 Oct: 96% of issues found, 91% right category, 78% right severity, all 7 needed tickets planned (README) |
 | Extras | Section 17, in order, until the freeze | 1 to 6 merged (6 as its fallback, the replay slider). UI fixes, layout, Admin Console, TriageGraph name and several samples at once merged |
 
 **Sunday 11 Oct (IST)**
@@ -755,7 +755,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 | 11 Oct | Everything up to #36 is merged. Final docs pass: the QA checklist gets the layout, settings-page and several-samples checks, and the video script switches live mode on and off from App Settings, off camera |
 
-**Still open:** the eval run and README results (Gulam), the live-demo and video links in the README, and deleting the merged branches on GitHub (this session can't).
+**Still open:** the video link in the README, the two eval metrics the run didn't print (fix key idea, Slack decision), and deleting the merged branches on GitHub (this session can't).
 
 ---
 
