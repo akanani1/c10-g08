@@ -90,7 +90,7 @@ STYLE = """
 }
 .st-key-topbar p { margin: 0; white-space: nowrap; }
 .st-key-footer {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 990; background: #0e1117;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 999992; background: #0e1117;
   border-top: 1px solid #262730; padding: 0 5rem; height: 2.2rem;
   display: flex; justify-content: center; overflow: hidden;
 }
@@ -114,6 +114,35 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
   justify-content: flex-start; padding: 0.4rem 0.9rem; min-height: 2.5rem; border: 0;
 }
 .st-key-menu button > div { justify-content: flex-start; }
+div[data-testid="stMetricValue"] { font-size: 1.6rem; }
+/* Narrow screens: the assistant leaves its column and becomes a menu item of its own. */
+.st-key-menu_assistant { display: none; }
+@media (max-width: 1199px) {
+  .st-key-menu_assistant { display: block; }
+  div[data-testid="stColumn"]:has(.st-key-assistant) { display: none; }
+  div[data-testid="stHorizontalBlock"]:has(> div[data-testid="stColumn"] .st-key-assistant)
+    > div[data-testid="stColumn"] { width: 100% !important; flex: 1 1 100% !important; }
+}
+/* The rest reacts to the room the page actually has (an open left bar takes some). */
+.block-container { container-type: inline-size; container-name: page; }
+@container page (max-width: 860px) {
+  .st-key-topbar {
+    position: static; transform: none; max-width: 100%; width: 100%; margin: 0.6rem 0 0.25rem;
+    z-index: auto;  /* a flex item keeps its z-index even when static: stay under the menu */
+  }
+  .st-key-topbar p { white-space: normal; line-height: 2; font-size: 0.85rem; }
+  .st-key-footer {
+    position: static; height: auto; padding: 1rem 0 0; border: 0; background: transparent;
+    z-index: auto;  /* like the health bar: stay under the open menu */
+  }
+  .st-key-footer p { white-space: normal; text-align: center; }
+  .block-container { padding-bottom: 2rem; }
+  .st-key-cards div[data-testid="stHorizontalBlock"]:has(> div[data-testid="stColumn"]) {
+    flex-direction: column;
+  }
+  .st-key-cards div[data-testid="stColumn"] { width: 100% !important; flex: 1 1 100% !important; }
+  div[data-testid="stMetricValue"] { font-size: 1.2rem; }
+}
 </style>
 """
 # Pasted text goes through the same checks, redaction and readers as an upload. The reader
@@ -428,7 +457,9 @@ PAGES = {
     "analyze": ("Analyze", ":material/monitoring:"),
     "agents": ("Agent Settings", ":material/smart_toy:"),
     "app": ("App Settings", ":material/settings:"),
+    "assistant": ("Assistant", ":material/forum:"),  # in the menu only on narrow screens
 }
+SETTINGS_PAGES = ("agents", "app")
 
 
 def _menu() -> str:
@@ -453,7 +484,7 @@ def _menu() -> str:
     needs_passcode = passcode is not None and not st.session_state.get("admin_ok")
     if chosen and chosen[0] != current:
         _stop_unlocking()
-        if chosen[0] != "analyze" and needs_passcode:
+        if chosen[0] in SETTINGS_PAGES and needs_passcode:
             st.session_state.unlocking = chosen[0]  # the page opens only with the passcode
         else:
             st.session_state.page = chosen[0]
@@ -473,10 +504,11 @@ def _settings_page(config: AppConfig, page: str) -> None:
     if toast:
         st.toast(str(toast), icon=":material/check:")
     locked = _lock_state(base)
-    if page == "agents":
-        _agent_settings(config, locked)
-    else:
-        _app_settings(config, locked)
+    with st.container(key="cards"):  # two columns of cards, one when space is short
+        if page == "agents":
+            _agent_settings(config, locked)
+        else:
+            _app_settings(config, locked)
     changed = admin_overrides().differences(base)
     if changed:
         st.caption(
@@ -1158,14 +1190,17 @@ def main() -> None:
     page = _menu()
     live = _live_allowed(config)
     _top_bar(config, live)
-    main_column, assistant_column = st.columns([3, 1.25], gap="large")
-    with main_column:
-        if page == "analyze":
-            _analyze(config, live)
-        else:
-            _settings_page(config, page)
-    with assistant_column, st.container(key="assistant"):
+    if page == "assistant":  # narrow screens: the assistant gets the whole middle
         _assistant(config)
+    else:
+        main_column, assistant_column = st.columns([3, 1.25], gap="large")
+        with main_column:
+            if page == "analyze":
+                _analyze(config, live)
+            else:
+                _settings_page(config, page)
+        with assistant_column, st.container(key="assistant"):
+            _assistant(config)
     _footer(config)
 
 
