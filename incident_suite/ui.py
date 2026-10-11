@@ -12,6 +12,8 @@ from collections.abc import Iterable, Sequence
 from datetime import UTC, timedelta
 from typing import Any
 
+from pydantic import SecretStr
+
 from incident_suite.agents.jira_agent import TicketDraft
 from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
 from incident_suite.config import CHAT_MODELS, EMBEDDING_MODELS, AppConfig
@@ -340,6 +342,20 @@ def models_by_provider(models: Iterable[str]) -> dict[str, list[str]]:
     for model in sorted(models):
         grouped.setdefault(provider_of(model), []).append(model)
     return grouped
+
+
+SECRET_HINT_CHARS = 4
+_SHORTEST_HINTED = 16  # shorter keys would give too much away, so they only say "set"
+
+
+def secret_hint(secret: SecretStr | None) -> str:
+    """Enough of a key to recognise it, never enough to use it: ``sk-o…a1b2``."""
+    if secret is None:
+        return "not set"
+    value = secret.get_secret_value()
+    if len(value) < _SHORTEST_HINTED:
+        return "set"
+    return f"{value[:SECRET_HINT_CHARS]}…{value[-SECRET_HINT_CHARS:]}"
 
 
 def embedding_label(model: str) -> str:

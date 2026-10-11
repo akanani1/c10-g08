@@ -135,7 +135,7 @@ When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The
 
 The left bar is a menu with three pages: **Analyze**, **Agent Settings** and **App Settings**. The assistant stays on the right of every page. **Agent Settings** picks each agent's provider and model (with its price), the OpenRouter key, the token budget, context lines, runbook matches and the retry confidence. **App Settings** covers live mode, approval, the upload limit (up to 5 MB), tickets per run (1 to 5), and the Slack, JIRA and LangSmith settings. Each card has its own Save button.
 
-Opening either settings page asks for `ADMIN_PASSCODE` once per session; without one in your settings, the pages are read-only. The values start from your `.env` or Streamlit secrets, and a saved change applies to every visitor until the app sleeps, restarts or is redeployed. Keys are never shown. Changing where a key is sent (the JIRA site or email, the Slack channel) needs that key too.
+Opening either settings page asks for `ADMIN_PASSCODE` once per session; without one in your settings, the pages are read-only. The values start from your `.env` or Streamlit secrets, and a saved change applies to every visitor until the app sleeps, restarts or is redeployed. Keys are never shown, only a hint like `sk-o…a1b2` so you can tell which one is in use. Changing where a key is sent (the JIRA site or email, the Slack channel) needs that key too.
 
 To run one full analysis from the command line, as a dry run with real models:
 
