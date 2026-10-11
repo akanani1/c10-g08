@@ -445,6 +445,7 @@ def _tabs(result: RunResult, context: RunContext) -> None:
             "Patterns",
             "Runbooks",
             "Run log",
+            "Replay",
             "Cost",
         ]
     )
@@ -493,9 +494,22 @@ def _tabs(result: RunResult, context: RunContext) -> None:
         st.dataframe(ui.pipeline_strip(result.steps), hide_index=True)
         st.dataframe(ui.run_log_rows(result.steps), hide_index=True)
     with tabs[7]:
+        _replay(result)
+    with tabs[8]:
         st.dataframe(ui.usage_rows(result.usage), hide_index=True)
         if result.trace_url:
             st.link_button("Open the trace", result.trace_url)
+
+
+def _replay(result: RunResult) -> None:
+    """Step through a finished run: the graph lights up one step at a time (plan 17.6)."""
+    if len(result.steps) < 2:
+        st.caption("Nothing to replay yet.")
+        return
+    position = st.slider("Step", 1, len(result.steps), 1, key=f"replay-{result.run_id}")
+    dot, caption = ui.replay_frame(result.steps, position)
+    st.graphviz_chart(dot)
+    st.caption(ui.md(caption))
 
 
 def _results(result: RunResult, context: RunContext) -> None:

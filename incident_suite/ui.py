@@ -180,10 +180,15 @@ def working_nodes(steps: Sequence[RunStep], running: bool) -> set[str]:
     }
 
 
-def pipeline_dot(steps: Sequence[RunStep], running: bool = False) -> str:
-    """The graph in Graphviz DOT, each node coloured by its status, for ``st.graphviz_chart``."""
+def pipeline_dot(
+    steps: Sequence[RunStep], running: bool = False, current: str | None = None
+) -> str:
+    """The graph in Graphviz DOT, each node coloured by its status, for ``st.graphviz_chart``.
+
+    ``current`` lights up one node as working, for the replay.
+    """
     status = node_status(steps)
-    working = working_nodes(steps, running)
+    working = {current} if current is not None else working_nodes(steps, running)
     lines = [
         "digraph pipeline {",
         '  rankdir=LR; bgcolor="transparent";',
@@ -571,3 +576,23 @@ def timeline_spec(lines: Sequence[LogLine]) -> tuple[dict[str, Any], int] | None
         ],
     }
     return spec, bucket
+
+
+# ------------------------------------------------------------------ replay
+
+
+def replay_frame(steps: Sequence[RunStep], position: int) -> tuple[str, str]:
+    """The graph and a caption for step ``position`` (1-based) of a finished run.
+
+    Earlier steps show their final status, the current one is lit up, later ones are waiting.
+    The "more context" retry shows as the Log Reader lighting up again after Remediation.
+    """
+    position = max(1, min(position, len(steps)))
+    step = steps[position - 1]
+    label = LABELS.get(step.node, step.node)
+    retry = " (the retry: more context)" if step.node == "log_reader" and position > 1 else ""
+    caption = (
+        f"Step {position} of {len(steps)}: {label}{retry}, {step.status}, "
+        f"{step.seconds:.1f} s. {step.detail}"
+    )
+    return pipeline_dot(steps[: position - 1], current=step.node), caption
