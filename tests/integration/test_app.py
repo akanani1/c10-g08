@@ -692,6 +692,19 @@ def test_replay_tab() -> None:
 
 
 @pytest.mark.usefixtures("keyed")
+def test_a_failed_run_shows_a_clear_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(*_args: Any) -> Any:
+        msg = "half-reloaded code"
+        raise TypeError(msg)
+
+    monkeypatch.setattr("incident_suite.graph.start_run", broken)
+    app = _click(_app(), "Analyse")
+    assert not app.exception  # no raw traceback
+    assert "Something went wrong during this run" in app.error[0].value
+    assert "half-reloaded" not in str(app)
+
+
+@pytest.mark.usefixtures("keyed")
 def test_a_new_run_clears_the_old_one(monkeypatch: pytest.MonkeyPatch) -> None:
     llm = _ByType(ANSWERS)
     monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)

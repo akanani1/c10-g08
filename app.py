@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -169,6 +170,11 @@ div[data-testid="stMetricValue"] { font-size: 1.6rem; }
 # detects JSON or CSV from the content, so the .log name only decides the allowed type.
 PASTED_NAME = "pasted.log"
 PASTE_MAX_CHARS = 1_000_000
+_LOG = logging.getLogger("triagegraph")
+RUN_FAILED = (
+    "Something went wrong during this run, so nothing was sent. If the app was updated a "
+    "moment ago, reload the page and try again. Otherwise try another log or come back soon."
+)
 # Each sample is its own run, so a few at once stays inside the 5 runs per 10 minutes limit.
 MAX_SAMPLES = 3
 # What one run keeps in the session. Several runs are kept under "runs", and the one on screen
@@ -664,7 +670,13 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     with st.status(f"Analysing {ui.md(parsed.name)}...", expanded=True) as status:
         chart = st.empty()
         chart.graphviz_chart(ui.pipeline_dot(steps, running=True))
-        result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
+        try:
+            result = start_run(graph, context, run_id, _progress(steps, chart, st.container()))
+        except Exception:  # show a clear message, never a raw traceback
+            _LOG.exception("run %s failed", run_id)
+            status.update(label=f"Couldn't analyse {ui.md(parsed.name)}", state="error")
+            _failed(filename, RUN_FAILED)
+            return
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     _stash()
     st.session_state.update(context=context, run_id=run_id, result=result, assistant=None, chat=[])
@@ -698,7 +710,11 @@ def _answer(approved: bool) -> None:
     """Resume the paused run with the person's decision."""
     state = st.session_state
     with st.spinner("Sending..." if approved else "Recording the rejection..."):
-        state.result = resume_run(state.graph, state.context, state.run_id, approved)
+        try:
+            state.result = resume_run(state.graph, state.context, state.run_id, approved)
+        except Exception:  # show a clear message, never a raw traceback
+            _LOG.exception("resuming run %s failed", state.run_id)
+            state.run_errors = [RUN_FAILED]
 
 
 # ------------------------------------------------------------------ results

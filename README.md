@@ -284,6 +284,8 @@ The app runs on Streamlit Community Cloud.
 
 Free apps go to sleep when nobody has used them for a while, so the first visit after that takes a minute.
 
+After each change to `main`, reboot the app (Manage app → ⋮ → Reboot). The app doesn't hot-reload its own code (`fileWatcherType = "none"`), because a half-reloaded app can crash mid-run; a reboot loads everything fresh.
+
 ## Project layout
 
 ```

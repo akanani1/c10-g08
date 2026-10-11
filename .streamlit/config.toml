@@ -2,6 +2,9 @@
 # Upload cap in MB. incident_suite also enforces MAX_UPLOAD_MB and post-read caps.
 maxUploadSize = 5
 runOnSave = false
+# Never hot-reload our modules in a running app: half-reloaded code crashed a live run
+# (old objects checked against new models). New code takes effect on a reboot.
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
