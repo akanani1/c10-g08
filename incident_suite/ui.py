@@ -17,12 +17,15 @@ from incident_suite.agents.jira_agent import TicketDraft
 from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
 from incident_suite.config import CHAT_MODELS
 from incident_suite.integrations.payloads import defang, jira_summary
+from incident_suite.parsing.grouping import group_lines
 from incident_suite.state import (
     AgentUsage,
     Issue,
+    LogFormat,
     LogLine,
     Pattern,
     Remediation,
+    RunResult,
     RunSettings,
     RunStep,
     Severity,
@@ -34,6 +37,14 @@ from incident_suite.state import (
 Row = dict[str, Any]
 
 MAX_TABLE_ROWS = 5_000
+# Text formats count lines; structured formats (CSV, JSON, Parquet) count rows.
+TEXT_FORMATS = {
+    LogFormat.PLAIN,
+    LogFormat.NGINX_ACCESS,
+    LogFormat.NGINX_ERROR,
+    LogFormat.SYSLOG,
+    LogFormat.KUBERNETES,
+}
 _MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+\-.!|<>~$:=])")
 
 SEVERITY_COLOURS = {
@@ -356,3 +367,81 @@ def needs_runbook(fix: Remediation | None) -> bool:
     if fix is None or not fix.sources:
         return True
     return max(source.score for source in fix.sources) < MIN_RUNBOOK_SCORE
+
+
+# ------------------------------------------------------------------ postmortem
+
+
+def _when(line: LogLine | None) -> str:
+    if line is None or line.timestamp is None:
+        return "time unknown"
+    return f"{line.timestamp:%Y-%m-%d %H:%M:%S}"
+
+
+def postmortem_markdown(result: RunResult, lines: Sequence[LogLine]) -> str:
+    """A postmortem draft from the run's own results: no model call, nothing made up.
+
+    Log text is defanged, so URLs from the log don't become links when the file is viewed.
+    """
+    by_number = {line.line_no: line for line in lines}
+    structured = result.log_format not in TEXT_FORMATS
+    fixes = {fix.issue_id: fix for fix in result.remediations}
+    tickets = {t.issue_id: t for t in result.tickets}
+    worst = result.top_severity.upper() if result.top_severity else "NONE"
+    out = [
+        f"# Postmortem draft: {defang(result.log_name)}",
+        "",
+        "> Draft built by Incident Suite from one log. Root causes are hypotheses. "
+        "Review it before you share it.",
+        "",
+        "## Summary",
+        "",
+        f"- Run: {result.run_id} ({'dry run' if result.dry_run else 'live'})",
+        f"- Worst severity: {worst}, {len(result.issues)} issue(s)",
+        f"- Log: {result.line_count:,} lines, {len(result.patterns)} patterns, "
+        f"fingerprint {result.log_fingerprint}",
+    ]
+    out += [
+        f"- {t.key or t.related_key}: {t.action}{' (sent)' if t.sent else ''}"
+        for t in result.tickets
+        if t.key or t.related_key
+    ]
+    if result.slack.permalink:
+        out.append(f"- Slack: {result.slack.permalink}")
+    out += ["", "## Timeline", ""]
+    events = [(line, f"Change: {defang(line.message)}") for line in group_lines(lines).change_lines]
+    for issue in result.issues:
+        seen = [by_number[n] for n in issue.evidence_lines if n in by_number]
+        if seen:
+            events.append((seen[0], f"{issue.id} first seen: {defang(issue.title)}"))
+            events.append((seen[-1], f"{issue.id} last seen (L{seen[-1].line_no})"))
+    events.sort(key=lambda event: event[0].line_no)
+    out += [f"- {_when(line)} (L{line.line_no}): {text}" for line, text in events]
+    if not events:
+        out.append("- No timestamps or change events in the log.")
+    out += ["", "## Issues, root causes and fixes", ""]
+    for issue in sorted(result.issues, key=lambda i: -i.severity.rank):
+        fix = fixes.get(issue.id)
+        ticket = tickets.get(issue.id)
+        out += [
+            f"### {issue.id} [{issue.severity.upper()}] {defang(issue.title)}",
+            "",
+            f"- Service: {defang(issue.affected_service or 'unknown')}, category {issue.category}",
+            f"- Evidence: {evidence_label(issue.evidence_lines, structured)}",
+        ]
+        if ticket is not None and (ticket.key or ticket.related_key):
+            out.append(f"- JIRA: {ticket.key or ticket.related_key} ({ticket.action})")
+        if fix is None:
+            out += ["- No fix was suggested.", ""]
+            continue
+        out += [f"- Likely root cause (hypothesis): {defang(fix.root_cause)}", "", "Fix:"]
+        out += [f"{n}. {defang(step)}" for n, step in enumerate(fix.steps, start=1)]
+        sources = ", ".join(s.runbook for s in fix.sources) or "no runbook matched"
+        out += ["", f"Runbooks: {sources}. Confidence {fix.confidence:.0%}.", ""]
+    out += ["## Follow-ups", ""]
+    follow_ups = [*result.checklist.this_week, *result.checklist.prevent]
+    out += [f"- [ ] {defang(item.text)} ({', '.join(item.issue_ids)})" for item in follow_ups]
+    if not follow_ups:
+        out.append("- None suggested.")
+    out += ["", f"Cost of this analysis: {money(result.total_cost_usd)}.", ""]
+    return "\n".join(out)

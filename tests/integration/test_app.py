@@ -480,3 +480,10 @@ def test_pasted_text_goes_through_the_same_path() -> None:
     assert context.parsed.redactions  # redacted like an upload
     assert not any("hunter2" in line.raw for line in context.parsed.lines)
     assert app.metric[0].value == "CRITICAL"
+
+
+@pytest.mark.usefixtures("keyed")
+def test_postmortem_download_after_a_run() -> None:
+    app = _click(_app(), "Analyse")
+    (button,) = [b for b in app.get("download_button") if "postmortem" in b.proto.label]
+    assert button.proto.label == "Download postmortem draft (.md)"

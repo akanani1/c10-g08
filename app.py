@@ -50,7 +50,6 @@ from incident_suite.security import (
 from incident_suite.state import (
     ApprovalStatus,
     Issue,
-    LogFormat,
     RunResult,
     RunSettings,
     RunStep,
@@ -62,13 +61,6 @@ SAMPLES = Path(__file__).resolve().parent / "sample_logs"
 # detects JSON or CSV from the content, so the .log name only decides the allowed type.
 PASTED_NAME = "pasted.log"
 PASTE_MAX_CHARS = 1_000_000
-TEXT_FORMATS = {
-    LogFormat.PLAIN,
-    LogFormat.NGINX_ACCESS,
-    LogFormat.NGINX_ERROR,
-    LogFormat.SYSLOG,
-    LogFormat.KUBERNETES,
-}
 
 
 # ------------------------------------------------------------------ cached resources
@@ -279,6 +271,13 @@ def _summary(result: RunResult) -> None:
         f"Run {result.run_id} | log {ui.md(result.log_name)} | fingerprint "
         f"{result.log_fingerprint} | {'dry run' if result.dry_run else 'live'}"
     )
+    if result.issues:
+        st.download_button(
+            "Download postmortem draft (.md)",
+            ui.postmortem_markdown(result, st.session_state.context.parsed.lines),
+            file_name=f"postmortem-{result.run_id}.md",
+            mime="text/markdown",
+        )
     for error in result.errors:
         st.warning(ui.md(error))
 
@@ -319,7 +318,7 @@ def _card(issue: Issue, result: RunResult, evidence: dict[int, str]) -> None:
     fixes = {fix.issue_id: fix for fix in result.remediations}
     tickets = {ticket.issue_id: ticket for ticket in result.tickets}
     fix = fixes.get(issue.id)
-    structured = result.log_format not in TEXT_FORMATS
+    structured = result.log_format not in ui.TEXT_FORMATS
     with st.container(border=True):
         st.markdown(f"{ui.severity_badge(issue.severity)} **{ui.md(issue.title)}**")
         st.caption(
