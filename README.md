@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/triagegraph.svg" width="96" alt="TriageGraph icon: three connected nodes, one highlighted in orange"></p>
+
 # TriageGraph: multi-agent log analysis for DevOps teams
 
 Upload an ops log. A small team of AI agents reads it, works out what went wrong, suggests a fix for each problem, writes you a checklist, posts the result to Slack and opens JIRA tickets for anything critical.
@@ -286,6 +288,7 @@ Free apps go to sleep when nobody has used them for a while, so the first visit 
 
 ```
 app.py                  Streamlit page
+assets/triagegraph.svg  the app icon (browser tab, left bar, this README)
 incident_suite/
   config.py             settings, model allow-list and prices
   state.py              data models shared by the agents, and per-run settings

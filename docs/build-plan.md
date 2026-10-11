@@ -325,7 +325,7 @@ The page has an upload box, a paste box and a sample picker. Up to three samples
   - The assistant sits in a right-hand column that stays in view while you scroll: chat history at the top, the question box below it, then "Since the run".
   - The left bar is only the app's name and a menu: Analyze, Agent Settings and App Settings. The middle shows the chosen page, and the assistant stays on the right on every page.
   - The bars use a small static CSS block (`STYLE` in `app.py`), which never contains log or user text.
-  - **Narrow screens:** on screens under 1200px the assistant leaves its column and becomes a fourth menu item, **Assistant**, which opens it as a page in the middle; the menu item is hidden on wider screens. The rest reacts to the room the page actually has (a CSS container query, so an open left bar counts): below 860px of page width the health bar moves into the page and wraps, the settings cards go to one column, the result numbers get smaller, and the footer becomes the last line of the page. Checked at 390, 768, 1024 and 1366px wide.
+  - **Narrow screens:** on screens under 1200px the assistant leaves its column and becomes a fourth menu item, **Assistant**, which opens it as a page in the middle; the menu item is hidden on wider screens. Under 1300px the health bar moves from the header strip into the page and wraps. The rest reacts to the room the page actually has (a CSS container query, so an open left bar counts): below 860px of page width the result numbers get smaller and the footer becomes the last line of the page. Settings cards are always one list, top to bottom. Checked at 390, 768, 1024 and 1366px wide.
 
 ---
 
@@ -402,6 +402,7 @@ Files that don't exist yet are marked *(planned)*. We don't add a file that isn'
 ```
 c10-g08/
 ├── app.py                        Streamlit page only, no business logic
+├── assets/triagegraph.svg        the app icon: browser tab, left bar, README
 ├── incident_suite/
 │   ├── __init__.py               version
 │   ├── config.py                 settings from .env, environment and Streamlit secrets; model allow-list and prices
@@ -741,6 +742,8 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | The assistant can be asked about earlier incidents without a run: it lists our latest `incident-suite` tickets from JIRA and reads the picked one and its stored Slack thread. Read-only, behind the passcode, on the cheap model. Asked for after testing showed the assistant was empty in a new session |
 | 11 Oct | Each settings card gets **Restore defaults** beside Save, for that card only. The left bar's title sits on the same line as the collapse button |
 | 11 Oct | Responsive pass. Under 1200px the assistant becomes its own menu item and page instead of a squeezed column (Ashvin's call). The rest is CSS on the page's own width (860px), because the left bar takes 300px. Result numbers are a little smaller everywhere so all five fit. Measured before and after at 390, 768, 1024 and 1366px |
+| 11 Oct | Settings cards are one list instead of two columns: between 1200 and 1300px the second column ran under the assistant. The health bar's switch moves to the screen width (1300px), so it stays in the header strip whenever it fits. While the passcode is in, the settings menu items show an open-lock icon |
+| 11 Oct | The app gets an icon: three agent nodes joined into a graph, the incident they point to in orange (option A of three, chosen for the name and because it still reads at 16 px). One new file, `assets/triagegraph.svg`, agreed with Ashvin; used for the browser tab, beside the title in the left bar, and at the top of the README |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 | 11 Oct | Everything up to #36 is merged. Final docs pass: the QA checklist gets the layout, settings-page and several-samples checks, and the video script switches live mode on and off from App Settings, off camera |
