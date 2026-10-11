@@ -18,6 +18,10 @@ MAX_DISPLAY_NAME = 120
 RUNS_PER_WINDOW = 5
 WINDOW_SECONDS = 600
 SHARED_RUNS_PER_HOUR = 60  # across every visitor, to protect the model credit
+# Live runs by visitors (not unlocked) post to the team's real Slack and JIRA, so they get
+# their own, smaller limits.
+VISITOR_LIVE_RUNS_PER_HOUR = 10
+VISITOR_TICKETS_PER_RUN = 1
 _UNSAFE_NAME_CHARS = re.compile(r"[^\w.\- ()\[\]]")
 
 

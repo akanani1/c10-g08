@@ -317,7 +317,7 @@ The page has an upload box, a paste box and a sample picker. Up to three samples
 - `app.py` builds the page. Small functions that prepare things for display (escaping, badges, confidence reasons, the graph picture, the tables) live in `incident_suite/ui.py`, so they can be unit-tested. Log text goes through `ui.md()` before it reaches `st.markdown`: markdown, HTML and links are escaped, and URLs are defanged. Tables and code blocks show text as it is.
 - **A paused run survives reruns.** The compiled graph and the run's context are kept in `st.session_state`, so Approve resumes the same run. The checkpointer only turns our own state models back into objects (an allow-list in `graph.py`).
 - **Abuse limits:** each visitor can start 5 runs per 10 minutes, and all visitors together 60 an hour, so opening new sessions doesn't get around it (`RunLimiter` in `security.py`).
-- **Live sending needs the passcode.** When `LIVE_INTEGRATIONS=true` and `ADMIN_PASSCODE` is set, a run sends for real only after **Unlock** on a settings page. Without it the visitor gets a dry run, and their run never contacts Slack or JIRA.
+- **Run mode.** `LIVE_INTEGRATIONS` (or **Run mode** in App Settings) is Live or Dry run for everyone. In Live, every run waits for **Approve and send**. Visitors (not unlocked) run live only with the sample logs, 1 ticket per run and 10 live runs an hour between them; their uploads and pasted logs run dry (`_visitor_guard` in `app.py`). Unlocked sessions have no such guards. Dry run means dry for everyone, admin included.
 - **Without a key** the page still loads, and Analyse explains that `OPENROUTER_API_KEY` is needed.
 - **Layout:**
   - A health bar pinned in the header strip shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
@@ -337,7 +337,7 @@ The page has an upload box, a paste box and a sample picker. Up to three samples
 - **Approval:** a person approves before anything is written to Slack or JIRA (section 4).
 - **Uploads:** allowed types, size and row caps, a safe display name, and nothing is saved under the user's file name (section 7.4).
 - **Abuse limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run (200,000 by default), at most 3 tickets per run by default (an admin can raise it to 5), and one retry per issue.
-- **Live integrations** are off on the public app. We only switch them on for the recorded demo, and then `ADMIN_PASSCODE` keeps every other visitor on a dry run.
+- **Live integrations** are on for the hackathon (Ashvin's call, so judges can run the whole flow). Visitors (not unlocked) run live only with the sample logs, 1 ticket per run and 10 live runs an hour between them; their uploads and pasted logs run dry, and approval is still required. Set Run mode to Dry run to stop all sending.
 - **Escaping:** everything sent to Slack or JIRA is escaped, and links are never built from log content.
 - **Least privilege:** the Slack bot only has `chat:write`. The JIRA account only needs the SCRUM project. The OpenRouter key has a credit limit and is revoked after the hackathon.
 - **Dependencies** are pinned. pip-audit and Bandit run in CI, and Dependabot opens update PRs every week.
@@ -377,7 +377,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `CONTEXT_LINES` | No | `3` | Log lines kept around each error (0 to 20) |
 | `RUNBOOK_TOP_K` | No | `3` | Runbooks shown to Remediation (1 to 10) |
 | `RETRY_CONFIDENCE` | No | `0.5` | Below this confidence, Remediation tries once more (0 to 1) |
-| `LIVE_INTEGRATIONS` | No | `false` | Only send to Slack and JIRA when this is `true` |
+| `LIVE_INTEGRATIONS` | No | `false` | Run mode: `true` = Live for everyone (visitors guarded), `false` = Dry run for everyone. Our deployment sets `true` |
 | `REQUIRE_APPROVAL` | No | `true` | Pause for Approve / Reject before sending |
 | `SLACK_BOT_TOKEN` | For live Slack | | Bot token (`xoxb-...`) |
 | `SLACK_CHANNEL_ID` | For live Slack | | ID of `#incident-alerts` |
@@ -389,7 +389,7 @@ Locally these go in `.env`. On Streamlit Cloud they go in the app's Secrets, in 
 | `MAX_UPLOAD_MB` | No | `5` | Upload cap (1 to 5, Streamlit's own limit) |
 | `MAX_TICKETS_PER_RUN` | No | `3` | Ticket cap (1 to 5) |
 | `RUN_TOKEN_BUDGET` | No | `200000` | Tokens per run (up to 500,000) |
-| `ADMIN_PASSCODE` | No | | Unlocks the settings pages (section 17.1). When set, live sending in the app also needs it. Without it the settings are read-only |
+| `ADMIN_PASSCODE` | No | | Unlocks the settings pages (section 17.1) and lifts the visitor guards on live runs. Without it the settings are read-only |
 
 **Run settings.** `RunSettings` in `state.py` holds every per-run option: the model for each agent, context lines, runbook matches and the retry threshold, the ticket cap and severity, the token budget, approval, redaction types and live mode. It's built from the effective config (the deployment's values plus any Admin Console changes) for each run and travels with the run, and the agents read from it, never from the config directly.
 
@@ -578,7 +578,7 @@ Each page has cards, and each card has its own Save button, so one bad value nev
 | Agent Settings | Models | OpenRouter key and the token budget per run |
 | | Log Reader, Remediation, Cookbook | Provider and model (from the allow-list, with the price under it). Log Reader also has context lines; Remediation has runbook matches (top-k) and the retry confidence. Each setting has a one-line explanation |
 | | Embedding | The embedding model, with its price |
-| App Settings | General | Live integrations, approval, upload limit (1 to 5 MB), tickets per run (1 to 5) |
+| App Settings | General | Run mode (Live / Dry run), approval, upload limit (1 to 5 MB), tickets per run (1 to 5) |
 | | Slack | Bot token and channel ID |
 | | JIRA | Site, email, project key and API token. The issue type is fixed to Task |
 | | LangSmith | Tracing on or off, project and API key |
@@ -696,7 +696,7 @@ We record at 1080p and upload it unlisted.
 | A dependency won't install on Streamlit Cloud | Checked with the bare deploy in H1, including `pyarrow` |
 | OpenRouter is slow, rate-limited or down during the demo | Use a paid model, keep a backup take, and show a clear error in the app |
 | A paused run is lost when Streamlit reruns | The graph and checkpointer live in `st.session_state`, and a test covers resuming |
-| Redaction misses a secret format | Listed as a limitation. Live integrations stay off on the public app |
+| Redaction misses a secret format | Listed as a limitation. Visitors run live only with our own sample logs, so outside text never reaches Slack or JIRA |
 | Slack rate limit (about 1 message per second per channel) | One summary and one thread reply per run, and we respect `Retry-After` |
 | JIRA automation limit on the free plan | Event rules only, with no scheduled rules or test bursts |
 | Public visitors spamming our Slack and JIRA | Live integrations stay off on the public app, and the admin passcode guards the assistant's Slack and JIRA tools |
@@ -749,6 +749,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Final cleanup: the unused prompt-override code is removed (prompt editing left the UI with the Admin Console), plus an unused protocol. `.devcontainer/` (added for Codespaces) is kept but listed here, on Python 3.12, without the extra unpinned Streamlit install; its CORS and XSRF flags are Streamlit's own Codespaces template and only affect the private dev preview. Stale lines from the old sidebar layout are fixed. Both assistant cards (Since the run, Earlier incidents) are open to everyone, counted against the run limits, at Ashvin's call. The left-bar title leaves room for the collapse button |
 | 11 Oct | The chat about a run becomes a real chat: Streamlit's chat box (Enter sends), your messages on the right and the assistant's on the left with name and local time, and an instant echo while the model thinks. The time falls back to the browser's UTC offset when the server doesn't know the browser's zone name |
 | 11 Oct | QA on the live app found a crash (a Pydantic `ValidationError` in grouping). Cause: Streamlit Cloud updated the files under a running app, and Streamlit reloaded some modules but not others, so objects made by the old code failed the new models. Fix: `fileWatcherType = "none"`, so new code only takes effect on a reboot, and a failed run now shows a clear message instead of a traceback. After every merge: reboot the app |
+| 11 Oct | Run mode Live for everyone, so judges can run the whole flow (Ashvin's call). Guards for visitors: sample logs only, 1 ticket per run, 10 live runs an hour shared; uploads and pasted logs run dry. Approval still required. Dry run in App Settings stops sending for everyone, admin included. The code default stays `false` so a fresh clone without keys is safe; our deployment sets `true` |
 | 11 Oct | The app gets an icon: three agent nodes joined into a graph, the incident they point to in orange (option A of three, chosen for the name and because it still reads at 16 px). One new file, `assets/triagegraph.svg`, agreed with Ashvin; used for the browser tab, beside the title in the left bar, and at the top of the README |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
