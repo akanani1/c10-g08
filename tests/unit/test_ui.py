@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import SecretStr
 
 from incident_suite import ui
 from incident_suite.config import AppConfig
@@ -231,6 +232,14 @@ def test_tables() -> None:
 
 
 # ------------------------------------------------------------------ settings page
+
+
+def test_secret_hint_never_shows_a_usable_key() -> None:
+    assert ui.secret_hint(None) == "not set"
+    assert ui.secret_hint(SecretStr("short-token")) == "set"
+    key = "sk-o" + "x" * 20 + "9f3a"  # built, so it never looks like a real key
+    assert ui.secret_hint(SecretStr(key)) == "sk-o…9f3a"
+    assert key[4:-4] not in ui.secret_hint(SecretStr(key))
 
 
 def test_model_and_provider_labels() -> None:

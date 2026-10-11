@@ -230,7 +230,7 @@ def _open(app: AppTest, page: str) -> AppTest:
 def _unlock(app: AppTest, page: str, passcode: str) -> AppTest:
     """Pick a settings page and answer the passcode dialog."""
     app = _open(app, page)
-    app.text_input(key="passcode").input(passcode).run()
+    app.text_input(key="passcode").input(passcode)  # in a form: sent with the button
     return app.button(key="unlock").click().run()
 
 

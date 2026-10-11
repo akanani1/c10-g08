@@ -86,10 +86,11 @@ STYLE = """
 .st-key-topbar p { margin: 0; white-space: nowrap; }
 .st-key-footer {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 990; background: #0e1117;
-  border-top: 1px solid #262730; padding: 0.45rem 1.5rem; min-height: 2.1rem;
-  display: flex; justify-content: center; overflow: visible;
+  border-top: 1px solid #262730; padding: 0 5rem; height: 2.2rem;
+  display: flex; justify-content: center; overflow: hidden;
 }
 .st-key-footer > div { width: 100%; }
+.st-key-footer [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
 .st-key-footer p {
   font-size: 0.78rem; color: #898781; margin: 0; line-height: 1.2; text-align: right;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -102,7 +103,9 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
 [data-testid="stSidebarHeader"] { height: 3rem; padding-top: 0.75rem; padding-bottom: 0; }
 [data-testid="stSidebarUserContent"] { padding-top: 0; }
 [data-testid="stSidebarUserContent"] h2 { padding-top: 0; }
-.st-key-menu button { justify-content: flex-start; }
+.st-key-menu button {
+  justify-content: flex-start; padding: 0.4rem 0.9rem; min-height: 2.5rem; border: 0;
+}
 .st-key-menu button > div { justify-content: flex-start; }
 </style>
 """
@@ -179,8 +182,12 @@ def _stop_unlocking() -> None:
 def _unlock(page: str, passcode: SecretStr) -> None:
     """Asked once per session, when a settings page is opened from the menu."""
     st.caption("Settings change the app for every visitor, so they need the admin passcode.")
-    entered = st.text_input("Passcode", type="password", key="passcode")
-    if st.button("Unlock", icon=":material/lock_open:", type="primary", key="unlock"):
+    with st.form("unlock_form", border=False):  # a form, so Enter submits
+        entered = st.text_input("Passcode", type="password", key="passcode")
+        submitted = st.form_submit_button(
+            "Unlock", icon=":material/lock_open:", type="primary", key="unlock"
+        )
+    if submitted:
         if passcode_ok(entered, passcode):
             st.session_state.admin_ok = True
             st.session_state.page = page
@@ -222,13 +229,18 @@ def _note(card: str) -> None:
 
 
 def _secret(label: str, current: SecretStr | None, key: str, locked: bool) -> SecretStr:
-    """A key box that never shows the key. Left blank, the current key stays."""
+    """A key box that never sends the key to the browser, only a hint of it.
+
+    Left blank, the current key stays.
+    """
+    hint = ui.secret_hint(current)
     typed = st.text_input(
         label,
         type="password",
         key=f"{key}_{st.session_state.get('secret_round', 0)}",
         disabled=locked,
-        placeholder="set (hidden); type to replace" if current else "not set",
+        placeholder=f"{hint}; type to replace" if current else "not set",
+        help="Only the first and last 4 characters are shown, so the key never reaches the page.",
     )
     return SecretStr(typed)
 
