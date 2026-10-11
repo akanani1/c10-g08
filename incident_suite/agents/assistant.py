@@ -24,6 +24,10 @@ A small, read-only LangGraph agent with three steps:
 - **summarise** asks the cheap model for a short summary. Everything it reads is redacted and
   wrapped in tags, as data and never as instructions.
 
+Without a run (a new session, or after the app restarts), the same graph reads one earlier
+incident the person picks from the latest TriageGraph tickets in JIRA: that ticket, and the
+Slack thread stored on it.
+
 The readers are protocols; the Slack and JIRA clients implement them, and tests use fakes.
 """
 
@@ -112,6 +116,24 @@ class TicketReader(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class RecentTicket:
+    """One of our earlier incidents in JIRA, for the picker."""
+
+    key: str
+    summary: str
+    status: str
+    created: str
+
+
+class IncidentLister(Protocol):
+    """Lists our latest tickets, so the assistant can be asked about one without a run."""
+
+    def recent(self, limit: int = ...) -> list[RecentTicket]:
+        """The newest tickets labelled ``incident-suite``, newest first."""
+        ...
+
+
 class AssistantAnswer(BaseModel):
     """What the model returns."""
 
@@ -136,13 +158,14 @@ class AssistantResult:
 class AssistantInput:
     """Everything one question needs. Kept out of the graph state, like the run's context."""
 
-    result: RunResult
+    result: RunResult | None
     threads: ThreadReader | None
     tickets: TicketReader | None
     llm: StructuredLLM
     redactor: Redactor
     token_budget: int
     progress: Callable[[str], None] | None = None
+    keys: tuple[str, ...] = ()  # earlier incidents to read, when there's no run
 
     def say(self, message: str) -> None:
         """Tell the person what's happening, if anyone is listening."""
@@ -186,21 +209,31 @@ def _ticket_block(update: TicketUpdate, redactor: Redactor) -> str:
 
 
 def _threads_to_read(data: AssistantInput) -> list[tuple[str, str, str]]:
-    """``(label, channel, ts)`` for this run's thread and each seen-before ticket's thread."""
+    """``(label, channel, ts)`` for this run's thread and each seen-before ticket's thread.
+
+    Without a run, the thread stored on each picked ticket.
+    """
     result = data.result
     threads = []
-    if result.slack.channel and result.slack.ts:
-        threads.append(("this run", result.slack.channel, result.slack.ts))
+    seen_before = list(data.keys)
+    if result is not None:
+        if result.slack.channel and result.slack.ts:
+            threads.append(("this run", result.slack.channel, result.slack.ts))
+        seen_before += [t.key for t in result.tickets if t.action is TicketAction.COMMENT and t.key]
     if data.tickets is not None:
-        for ticket in result.tickets:
-            if ticket.action is TicketAction.COMMENT and ticket.key:
-                try:
-                    stored = data.tickets.slack_thread(ticket.key)
-                except ReaderError:
-                    continue
-                if stored is not None and stored[1] not in {t[2] for t in threads}:
-                    threads.append((f"first seen in {ticket.key}", *stored))
+        for key in seen_before:
+            try:
+                stored = data.tickets.slack_thread(key)
+            except ReaderError:
+                continue
+            if stored is not None and stored[1] not in {t[2] for t in threads}:
+                threads.append((f"first seen in {key}", *stored))
     return threads
+
+
+def _tickets_to_read(data: AssistantInput) -> list[str]:
+    run_keys = [t.key for t in data.result.tickets if t.sent and t.key] if data.result else []
+    return [*run_keys, *(k for k in data.keys if k not in run_keys)]
 
 
 def _graph(data: AssistantInput) -> Any:
@@ -225,7 +258,7 @@ def _graph(data: AssistantInput) -> Any:
         if reader is None:
             return {}
         blocks, sources, problems = list(state["blocks"]), list(state["sources"]), []
-        for key in (t.key for t in data.result.tickets if t.sent and t.key):
+        for key in _tickets_to_read(data):
             data.say(f"Reading {key} in JIRA")
             try:
                 update = reader.updates(key)
@@ -242,11 +275,11 @@ def _graph(data: AssistantInput) -> Any:
             reason = "; ".join(state["problems"]) or "Nothing to read for this run."
             return {"answer": None, "error": reason, "usage": meter.usage}
         data.say("Summarising what changed")
-        user = (
-            f'<run id="{data.result.run_id}" log="{_escape(data.result.log_name)}">\n'
-            + "\n\n".join(state["blocks"])
-            + "\n</run>"
-        )
+        if data.result is not None:
+            opening = f'<run id="{data.result.run_id}" log="{_escape(data.result.log_name)}">'
+        else:
+            opening = f'<run id="none" earlier_incident="{" ".join(data.keys)}">'
+        user = opening + "\n" + "\n\n".join(state["blocks"]) + "\n</run>"
         started = time.perf_counter()
         try:
             reply = data.llm(MODEL, load_prompt("assistant"), TASK_UPDATES + user, AssistantAnswer)
@@ -268,8 +301,8 @@ def _graph(data: AssistantInput) -> Any:
 
 
 def latest_updates(data: AssistantInput) -> AssistantResult:
-    """Read this run's Slack threads and tickets, and summarise what changed."""
-    spent = sum(u.input_tokens + u.output_tokens for u in data.result.usage)
+    """Read this run's (or the picked incident's) Slack threads and tickets, and summarise."""
+    spent = sum(u.input_tokens + u.output_tokens for u in data.result.usage) if data.result else 0
     if spent >= data.token_budget:
         return AssistantResult(error="This run has used its token budget.")
     if data.threads is None and data.tickets is None:

@@ -592,7 +592,7 @@ Each page has cards, and each card has its own Save button, so one bad value nev
 
 ### 17.2 Assistant: latest Slack and JIRA updates
 
-The assistant is a small, read-only LangGraph agent in the sidebar. It uses the cheap model, counts towards the run's token budget, and shows up in the cost row. Its tools can read data but never write anything.
+The assistant is a small, read-only LangGraph agent in the right-hand column. It uses the cheap model, counts towards the run's token budget, and shows up in the cost row. Its tools can read data but never write anything.
 
 This first assistant feature answers "what's happened since?" for this run's incident:
 
@@ -601,7 +601,8 @@ This first assistant feature answers "what's happened since?" for this run's inc
 - **Limits:** it only works in live mode with the admin passcode entered. Everything it reads is redacted and treated as data. It can't browse Slack or JIRA, or answer open questions like "what's in Slack".
 - **Needs:** the `channels:history` scope on the Slack app (done on 10 Oct).
 - **How it's built:** `agents/assistant.py` is a three-step LangGraph: read the Slack threads, read the tickets, summarise with `openai/gpt-5-nano`. If nothing could be read, it says why and makes no model call. The readers are protocols that the Slack client (`conversations.replies`) and the JIRA client (issue property, then status, assignee and the last 3 comments, refused for tickets without the `incident-suite` label) implement. The prompt is `prompts/assistant.md`.
-- **On screen:** the sidebar's **Assistant** section appears after a run. The **What's happened since?** button only shows once the run posted to Slack or JIRA and the admin passcode is entered. Its cost goes into the run's Cost tab as "Assistant".
+- **On screen:** the **Assistant** column's **Since the run** card appears after a run. The **What's happened since?** button only shows once the run posted to Slack or JIRA and the admin passcode is entered. Its cost goes into the run's Cost tab as "Assistant".
+- **Earlier incidents, without a run:** in a new session or after the app restarts there's no run to ask about, so the column offers **Earlier incidents** instead. **Load the latest incidents** lists our 5 newest tickets labelled `incident-suite` in the project (a fixed JQL query in `JiraClient.recent`). Pick one and **What's happened since?** runs the same three steps on that ticket and the Slack thread stored on it. It needs JIRA connected and the admin passcode. Its cost is shown under the answer, since there's no run to add it to. Older tickets made before the Slack thread was stored just get the JIRA side.
 
 ### 17.3 Assistant: draft a runbook when none matches
 
@@ -736,6 +737,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Layout: health bar in the header strip, fixed footer, assistant in a right-hand column. Sticky positioning didn't work for the top bar, so it's fixed in the header strip, and the column itself is sticky. The admin passcode only appears when live mode is on |
 | 11 Oct | The Admin Console replaces the agent settings page and the Admin card: two pages, Agent Settings and App Settings, reached from a menu in the left bar, with a Save per card, for everyone behind the passcode. The left bar is only a menu, the middle shows the page, and the assistant stays on the right. The passcode is asked in a dialog when a settings page is opened. Keys can now be changed too, with one rule: where a key is sent changes only together with that key. Prompt editing and JSON export are dropped. New settings: `COOKBOOK_MODEL`, `CONTEXT_LINES`, `RUNBOOK_TOP_K`, `RETRY_CONFIDENCE`. Tickets per run is now 1 to 5 (default 3). `pages/` is removed |
 | 11 Oct | Polish after testing: less space at the top, the footer centred in its bar and lined up with the content, the menu icons aligned, Enter submits the passcode, and key boxes show a hint (first and last 4 characters) instead of just "set" |
+| 11 Oct | The assistant can be asked about earlier incidents without a run: it lists our latest `incident-suite` tickets from JIRA and reads the picked one and its stored Slack thread. Read-only, behind the passcode, on the cheap model. Asked for after testing showed the assistant was empty in a new session |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 | 11 Oct | Everything up to #36 is merged. Final docs pass: the QA checklist gets the layout, settings-page and several-samples checks, and the video script switches live mode on and off from App Settings, off camera |

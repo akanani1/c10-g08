@@ -366,6 +366,74 @@ def test_assistant_needs_the_passcode(
     assert not [b for b in app.button if b.label == "What's happened since?"]
 
 
+def test_ask_about_an_earlier_incident_without_a_run(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_llm: MakeLLM,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    summary = AssistantAnswer(summary="Resolved by Priya.", updates=["OPS-7: Done"])
+    llm, calls = make_llm([summary])
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+    connected = keyed.model_copy(
+        update={
+            "jira_base_url": "https://team.atlassian.net",
+            "jira_email": "bot@example.com",
+            "jira_api_token": SecretStr("token"),
+            "jira_project_key": "OPS",
+            "admin_passcode": SecretStr("open-sesame"),
+        }
+    )
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: connected)
+    tracker, jira_calls = make_tracker()
+    messenger, _ = make_messenger()
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
+    )
+
+    locked = _app()
+    assert any("read earlier incidents" in c.value for c in locked.caption)
+
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["admin_ok"] = True
+    app = _click(app.run(), "Load the latest incidents")
+    assert ("recent", "5") in jira_calls
+    picker = next(s for s in app.selectbox if s.label == "Incident")
+    assert picker.options[0].startswith("OPS-7 · Done · 2026-10-10")
+    app = _click(app, "What's happened since?")
+
+    assert not app.exception
+    assert "Resolved by Priya\\." in _text(app)
+    assert ("updates", "OPS-7") in jira_calls
+    assert 'earlier_incident="OPS-7"' in calls[-1][2]
+    assert "Looking at C123/1700000000\\.000100" not in _text(app)  # data for the model only
+    assert any(c.value.startswith("Cost") for c in app.caption)
+
+
+def test_earlier_incidents_when_jira_fails_or_is_missing(
+    monkeypatch: pytest.MonkeyPatch, keyed: AppConfig, make_tracker: MakeTracker
+) -> None:
+    jira = {
+        "jira_base_url": "https://team.atlassian.net",
+        "jira_email": "bot@example.com",
+        "jira_api_token": SecretStr("token"),
+        "jira_project_key": "OPS",
+    }
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: keyed)
+    assert any("Connect JIRA" in c.value for c in _app().caption)
+
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: keyed.model_copy(update=jira))
+    tracker, _ = make_tracker(fail="recent")
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, None)
+    )
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["admin_ok"] = True
+    app = _click(app.run(), "Load the latest incidents")
+    assert "JIRA returned 401" in app.warning[0].value
+
+
 # ------------------------------------------------------------------ runbook drafts
 
 
