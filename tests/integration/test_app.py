@@ -538,3 +538,16 @@ def test_replay_tab() -> None:
     steps = app.session_state["result"].steps
     app = slider.set_value(len(steps)).run()
     assert any(c.value.startswith(f"Step {len(steps)} of {len(steps)}") for c in app.caption)
+
+
+@pytest.mark.usefixtures("keyed")
+def test_a_new_run_clears_the_old_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    llm = _ByType(ANSWERS)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+    app = _click(_app(), "Analyse")
+    first = app.session_state["run_id"]
+    app.session_state["chat"] = [("old question", "old answer")]
+    app = _click(app, "Analyse")
+    assert app.session_state["run_id"] != first
+    assert app.session_state["chat"] == []
+    assert "old question" not in " ".join(m.value for m in app.sidebar.markdown)

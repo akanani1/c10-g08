@@ -20,6 +20,7 @@ from incident_suite.state import (
     LogLevel,
     LogLine,
     Pattern,
+    RedactionType,
     Remediation,
     RunbookSource,
     RunResult,
@@ -462,3 +463,12 @@ def test_replay_frames() -> None:
 
     assert ui.replay_frame(steps, 99)[1].startswith("Step 5 of 5: Cookbook")
     assert ui.replay_frame(steps, 0)[1].startswith("Step 1 of 5")
+
+
+def test_legend_and_redaction_labels() -> None:
+    legend = ui.legend_markdown()
+    assert legend.startswith(
+        ":red-badge[CRITICAL] jira ticket (up to 3 per run) and a slack summary"
+    )
+    assert ":gray-badge[LOW] nothing is sent. results stay in the app" in legend
+    assert set(ui.REDACTION_LABELS) == set(RedactionType)

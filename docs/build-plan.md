@@ -310,7 +310,7 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 | Runbook sources | The runbooks cited, with match scores | Remediation |
 | Run log | Time, step, agent, action, status | The step records |
 | Cost row | Tokens, cost and time per agent, and the trace link | Telemetry |
-| Severity legend | Low, medium, high, critical, and what each one triggers | The rules in section 6.2 |
+| Severity legend | Low, medium, high, critical, and what each one triggers, as one row of badges above the results | The rules in section 6.2 |
 
 - **Confidence reasons come from real signals only:** how many evidence lines support the issue, how well the best runbook matched, and whether JIRA has seen this signature before.
 - **No made-up numbers.** Everything on the page comes from the current run. There are no fleet KPIs or trend charts, because we store no history of runs.
@@ -733,6 +733,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 4: the chat is a small tool loop that works through our structured-output client (the model picks one tool or answers), so the same fakes test it. It's open after any run, because it reads only that run |
 | 11 Oct | Extra 5 goes up as one PR per small extra, so each is easy to review. Pasted text is treated exactly like an uploaded `.log` file |
 | 11 Oct | Extra 6 ships only as its planned fallback, a step slider, because the full player needs new files (recorded runs as JSON) and changes to every agent |
+| 11 Oct | UI review after testing: a new run clears the old results at once; the assistant, chat and runbook drafting show progress; the severity legend is a one-line row above the results; redaction types have plain names. Next: a layout PR (top health bar, sticky footer, assistant in a right-hand column) and an Admin Console in the sidebar (settings for everyone, behind the passcode) |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
