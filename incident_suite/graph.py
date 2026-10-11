@@ -418,7 +418,7 @@ def _config(run_id: str, trace_id: UUID | None = None) -> RunnableConfig:
     """Checkpoint thread, plus a name and tags so the run is easy to find in LangSmith."""
     config = RunnableConfig(
         configurable={"thread_id": run_id},
-        run_name=f"incident-suite {run_id}",
+        run_name=f"TriageGraph {run_id}",
         tags=["incident-suite"],
         metadata={"run_id": run_id},
     )

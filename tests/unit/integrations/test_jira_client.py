@@ -327,7 +327,7 @@ def test_updates_unassigned_and_not_ours(make_client: MakeClient) -> None:
     )
     update = client.updates("SCRUM-1")
     assert (update.assignee, update.comments) == ("unassigned", ())
-    with pytest.raises(ReaderError, match="isn't an Incident Suite ticket"):
+    with pytest.raises(ReaderError, match="isn't a TriageGraph ticket"):
         client.updates("FIN-9")
     with pytest.raises(ReaderError, match="JIRA returned 503"):
         client.updates("SCRUM-1")

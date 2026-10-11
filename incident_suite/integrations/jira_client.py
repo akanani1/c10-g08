@@ -235,7 +235,7 @@ class JiraClient:
             raise ReaderError(str(exc)) from exc
         fields = body.get("fields") or {}
         if LABEL not in (fields.get("labels") or []):
-            msg = f"{key} isn't an Incident Suite ticket"
+            msg = f"{key} isn't a TriageGraph ticket"
             raise ReaderError(msg)
         comments = (fields.get("comment") or {}).get("comments") or []
         return TicketUpdate(

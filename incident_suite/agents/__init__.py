@@ -28,7 +28,7 @@ MAX_RETRIES = 2
 # OpenRouter uses these to attribute traffic to an app; they carry no secrets.
 OPENROUTER_HEADERS = {
     "HTTP-Referer": "https://github.com/akanani1/c10-g08",
-    "X-Title": "Incident Suite",
+    "X-Title": "TriageGraph",
 }
 
 

@@ -462,7 +462,7 @@ def test_health_bar_and_footer(config: AppConfig) -> None:
     assert "Live: approved runs" in ui.health_markdown(config, live=True)
     assert "sk-or" not in bar  # never the key
     assert ui.footer_text(config, "0.1.0") == (
-        "Incident Suite 0.1.0 · uploads up to 5 MB · 5 runs per 10 min per visitor, "
+        "TriageGraph 0.1.0 · uploads up to 5 MB · 5 runs per 10 min per visitor, "
         "60 per hour in total · 200,000 tokens per run · secrets are redacted before any AI "
         "sees the log"
     )

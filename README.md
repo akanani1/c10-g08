@@ -1,4 +1,4 @@
-# Incident Suite: multi-agent log analysis for DevOps teams
+# TriageGraph: multi-agent log analysis for DevOps teams
 
 Upload an ops log. A small team of AI agents reads it, works out what went wrong, suggests a fix for each problem, writes you a checklist, posts the result to Slack and opens JIRA tickets for anything critical.
 
@@ -17,7 +17,7 @@ Built for the Outskill hackathon by team c10-g08.
 
 When something breaks at 3 AM, the on-call engineer gets thousands of log lines and a pager going off. Most of the time goes on reading: which errors matter, which are noise, what changed just before, and whether this has happened before. Then comes the paperwork: post an update, open a ticket, write down what to check.
 
-Incident Suite does that first pass. It doesn't replace the engineer. It hands them a sorted list of problems, a suggested fix for each one with a reason and a source, and a Slack post and JIRA ticket ready to go.
+TriageGraph does that first pass. It doesn't replace the engineer. It hands them a sorted list of problems, a suggested fix for each one with a reason and a source, and a Slack post and JIRA ticket ready to go.
 
 ## What it does
 
@@ -180,7 +180,7 @@ Models must be on the allow-list in `incident_suite/config.py`, which also holds
 **Slack**
 1. Create an app at https://api.slack.com/apps. Under OAuth & Permissions, add the bot scope `chat:write` (and `channels:history` if you want the assistant to read replies), then install the app to your workspace.
 2. Copy the bot token (`xoxb-...`) into `SLACK_BOT_TOKEN`.
-3. Invite the bot to your channel (`/invite @Incident Suite`) and put the channel ID in `SLACK_CHANNEL_ID`.
+3. Invite the bot to your channel (`/invite @TriageGraph`) and put the channel ID in `SLACK_CHANNEL_ID`.
 
 **JIRA**
 1. Create an API token at https://id.atlassian.com/manage-profile/security/api-tokens.

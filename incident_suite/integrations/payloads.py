@@ -226,7 +226,7 @@ def jira_description(draft: TicketDraft, regression_of: str | None) -> Json:
             _heading("Runbook sources"),
             _list("bulletList", sources) if sources else _paragraph("No runbook matched."),
         ]
-    content += [_heading("Run"), _paragraph(f"Opened by Incident Suite, run {draft.run_id}.")]
+    content += [_heading("Run"), _paragraph(f"Opened by TriageGraph, run {draft.run_id}.")]
     return _doc(content)
 
 

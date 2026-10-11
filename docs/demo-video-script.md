@@ -1,4 +1,4 @@
-# Incident Suite demo video script
+# TriageGraph demo video script
 
 **Owner:** Safwan  
 **Target duration:** 2:30–2:55  
@@ -31,7 +31,7 @@ messages, or unrelated browser tabs.
 
 | Time | Picture / action | Voice-over | Production notes |
 |---|---|---|---|
-| 0:00–0:15 | Full-screen scrolling log text, then cut to the Incident Suite title | “It is 3 AM, the pager goes off, and there are fifty thousand lines of logs. Incident Suite gives the first pass to a team of AI agents that finds the problems, suggests fixes, and tells the team what to do next.” | Start on the problem. No logo intro. Keep text readable. |
+| 0:00–0:15 | Full-screen scrolling log text, then cut to the TriageGraph title | “It is 3 AM, the pager goes off, and there are fifty thousand lines of logs. TriageGraph gives the first pass to a team of AI agents that finds the problems, suggests fixes, and tells the team what to do next.” | Start on the problem. No logo intro. Keep text readable. |
 | 0:15–0:35 | README architecture diagram; highlight Upload, Log Reader, Remediation, Cookbook, JIRA, and Slack | “A LangGraph orchestrator coordinates five agents. The Log Reader parses and classifies, Remediation finds a runbook-backed fix, the Cookbook writes the checklist, and JIRA and Slack prepare the response.” | Use the final Mermaid diagram. Keep the cursor deliberate. |
 | 0:35–0:48 | App home screen; show dry-run mode and select critical sample #1 (`payment_db_conn_refused.log`) | “We will use a payment database incident. The public demo is dry run by default, so we can inspect every action before anything is sent.” | Show the integration status without exposing values. |
 | 0:48–1:10 | Start the run; graph nodes light up; parsed table and redaction count appear | “Secrets are redacted before the Log Reader sees the data. The parser keeps the evidence lines, groups repeated errors into patterns, and gives each issue a category and severity.” | Pause on `[REDACTED:<type>]`, counts, and two evidence rows. |
@@ -43,7 +43,7 @@ messages, or unrelated browser tabs.
 | 2:08–2:22 | Run the same log again; show existing ticket comment and updated count | “Run the same incident again and there is no duplicate ticket. The open ticket gets a comment and the Slack summary reports that the issue was seen again.” | Use the real ticket key and count from the run. |
 | 2:22–2:38 | Select the 50,000-line sample; show result metrics | “The same pipeline also handles the large sample: [line count] lines become [pattern count] patterns in [time], using [token count] tokens at a cost of [cost].” | Read measured values from the final app; never invent them. |
 | 2:38–2:50 | README evaluation table, green CI badge, repository and live-demo links | “We tested the labelled samples, the parser, redaction, upload limits, and the integration path. The code is public, tested, and live. The links are below.” | Show actual evaluation results and URLs. |
-| 2:50–2:55 | End card with repository and live-demo URLs | “Incident Suite turns noisy incident logs into an approved, traceable response.” | Hold the end card for at least three seconds. |
+| 2:50–2:55 | End card with repository and live-demo URLs | “TriageGraph turns noisy incident logs into an approved, traceable response.” | Hold the end card for at least three seconds. |
 
 ### Voice-over fallback for unavailable features
 
