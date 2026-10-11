@@ -462,3 +462,15 @@ def test_health_bar_and_footer(config: AppConfig) -> None:
         "60 per hour in total · 200,000 tokens per run · secrets are redacted before any AI "
         "sees the log"
     )
+
+
+def test_chat_labels_and_pairs() -> None:
+    at = datetime(2026, 10, 11, 9, 2, tzinfo=UTC)
+    you = ui.ChatMessage("you", "Why?", at)
+    bot = ui.ChatMessage("assistant", "Because (L68).", at)
+    assert ui.chat_label(you, "Asia/Kolkata") == "You · 14:32"
+    assert ui.chat_label(bot, None) == "TriageGraph · 09:02 UTC"
+    assert ui.chat_label(bot, "Not/AZone") == "TriageGraph · 09:02 UTC"
+    assert ui.chat_label(bot, "Not/AZone", -330) == "TriageGraph · 14:32"  # browser's offset
+    unanswered = ui.ChatMessage("assistant", "", at)
+    assert ui.chat_pairs([you, bot, you, unanswered]) == [("Why?", "Because (L68).")]

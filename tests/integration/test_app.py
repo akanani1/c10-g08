@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ from langchain_core.embeddings import Embeddings
 from pydantic import SecretStr
 from streamlit.testing.v1 import AppTest
 
+from incident_suite import ui
 from incident_suite.agents import LLMError, LLMReply, StructuredLLM
 from incident_suite.agents.assistant import AssistantAnswer, ChatStep, RunbookFields
 from incident_suite.agents.cookbook import CookbookAnswer, ItemDraft
@@ -593,17 +595,21 @@ def test_chat_about_a_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
 
     app = _click(_app(), "Analyse")
-    (box,) = [t for t in app.text_input if t.label == "Ask about this run"]
-    box.input("Why did payments fail?")
-    app = _click(app, "Ask")
+    app = app.chat_input(key="chat_input").set_value("Why did payments fail?").run()
 
     assert not app.exception
+    chat = app.session_state["chat"]
+    assert [(m.role, m.text) for m in chat] == [
+        ("you", "Why did payments fail?"),
+        ("assistant", "The DB refused connections after the deploy (L68)."),
+    ]
     panel = _text(app)
     assert "Why did payments fail?" in panel
     assert "L68" in panel
-    assert app.session_state["chat"] == [
-        ("Why did payments fail?", "The DB refused connections after the deploy (L68).")
-    ]
+    labels = [c.value for c in app.caption if " · " in c.value]
+    assert labels[0].startswith("You · ")
+    assert labels[1].startswith("TriageGraph · ")
+    assert app.session_state["chat_pending"] is None
     assert "ChatStep" in llm.asked
 
 
@@ -691,7 +697,7 @@ def test_a_new_run_clears_the_old_one(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
     app = _click(_app(), "Analyse")
     first = app.session_state["run_id"]
-    app.session_state["chat"] = [("old question", "old answer")]
+    app.session_state["chat"] = [ui.ChatMessage("you", "old question", datetime.now(UTC))]
     app = _click(app, "Analyse")
     assert app.session_state["run_id"] != first
     assert app.session_state["chat"] == []

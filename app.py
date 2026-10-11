@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -118,6 +119,22 @@ header[data-testid="stHeader"] { background: #0e1117; }  /* solid, so the page s
   justify-content: flex-start; padding: 0.4rem 0.9rem; min-height: 2.5rem; border: 0;
 }
 .st-key-menu button > div { justify-content: flex-start; }
+/* Chat: yours on the right, the assistant's on the left. */
+div[class*="st-key-msgyou_"], div[class*="st-key-msgbot_"] {
+  gap: 0.15rem; padding: 0.5rem 0.75rem; max-width: 85%;
+}
+div[class*="st-key-msgyou_"] {
+  margin-left: auto; background: rgba(249, 115, 22, 0.16); border-radius: 14px 14px 4px 14px;
+}
+div[class*="st-key-msgyou_"] [data-testid="stCaptionContainer"] { text-align: right; }
+div[class*="st-key-msgbot_"] {
+  margin-right: auto; background: #1c222c; border-radius: 14px 14px 14px 4px;
+}
+div[class*="st-key-msgyou_"] p, div[class*="st-key-msgbot_"] p { margin-bottom: 0; }
+div[class*="st-key-msgyou_"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-msgbot_"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-msgyou_"] [data-testid="stCaptionContainer"],
+div[class*="st-key-msgbot_"] [data-testid="stCaptionContainer"] { margin-bottom: 0; }
 div[data-testid="stMetricValue"] { font-size: 1.6rem; }
 /* Narrow screens: the assistant leaves its column and becomes a menu item of its own. */
 .st-key-menu_assistant { display: none; }
@@ -997,19 +1014,19 @@ def _ask_assistant(config: AppConfig, progress: Callable[[str], None]) -> None:
 
 
 def _ask_about_run(question: str) -> None:
-    """Answer a question about the current run and keep it in the chat history."""
+    """Answer a question about the current run and add the answer to the chat."""
     state = st.session_state
     result: RunResult = state.result
     context: RunContext = state.context
     reply = ask_about_run(
         question,
-        [(q, a) for q, a in state.chat if a],
+        ui.chat_pairs(state.chat[:-1]),  # the question itself is already the last message
         result,
         {line.line_no: line.raw for line in context.parsed.lines},
         OpenRouterLLM(effective_config()),
         context.settings.token_budget,
     )
-    state.chat.append((question, reply.answer or ""))
+    state.chat.append(ui.ChatMessage("assistant", reply.answer or "", datetime.now(UTC)))
     if reply.error:
         state.chat_error = reply.error
     if reply.usage is not None:
@@ -1018,27 +1035,44 @@ def _ask_about_run(question: str) -> None:
         )
 
 
+def _bubble(message: ui.ChatMessage, index: int, zone: str | None, offset: int | None) -> None:
+    """One message: yours on the right, the assistant's on the left, each with name and time."""
+    side = "msgyou" if message.role == "you" else "msgbot"
+    with st.container(key=f"{side}_{index}"):
+        st.caption(ui.md(ui.chat_label(message, zone, offset)))
+        st.markdown(ui.md(message.text) if message.text else "_No answer._")
+
+
 def _chat() -> None:
-    """Sidebar chat about this run only (plan 17.4)."""
-    chat: list[tuple[str, str]] = _session("chat", [])
+    """Chat about this run only (plan 17.4). Your question shows at once; the answer follows."""
+    state = st.session_state
+    chat: list[ui.ChatMessage] = _session("chat", [])
+    pending: str | None = state.get("chat_pending")
+    zone, offset = st.context.timezone, st.context.timezone_offset
     with st.container(height=CHAT_HEIGHT, border=False):
         if not chat:
             st.caption("Ask anything about this run: an issue, its evidence, the fix, the cost.")
-        for question, answer in chat:
-            with st.chat_message("user"):
-                st.markdown(ui.md(question))
-            with st.chat_message("assistant"):
-                st.markdown(ui.md(answer) if answer else "_No answer._")
-    if error := st.session_state.pop("chat_error", None):
+        for index, message in enumerate(chat):
+            _bubble(message, index, zone, offset)
+        if pending:
+            with st.container(key=f"msgbot_{len(chat)}"):
+                st.caption("TriageGraph is thinking…")
+    if error := state.pop("chat_error", None):
         st.warning(ui.md(error))
-    with st.form("chat_form", clear_on_submit=True, border=False):
-        question = st.text_input(
-            "Ask about this run", max_chars=MAX_QUESTION_CHARS, placeholder="Why is ISS-1 critical?"
-        )
-        if st.form_submit_button("Ask") and question.strip():
-            with st.spinner("Looking through this run..."):
-                _ask_about_run(question.strip())
-            st.rerun()
+    question = st.chat_input(
+        "Ask about this run",
+        key="chat_input",
+        max_chars=MAX_QUESTION_CHARS,
+        disabled=bool(pending),
+    )
+    if question and question.strip():
+        chat.append(ui.ChatMessage("you", question.strip(), datetime.now(UTC)))
+        state.chat_pending = question.strip()
+        st.rerun()  # show the question straight away, then answer it
+    if pending:
+        _ask_about_run(pending)
+        state.chat_pending = None
+        st.rerun()
 
 
 def _assistant(config: AppConfig) -> None:
@@ -1181,7 +1215,7 @@ def _analyze(config: AppConfig, live: bool) -> None:
     clicked = st.button("Analyse", type="primary", disabled=not picked)
     area = st.empty()  # one slot: a new run replaces the old results straight away
     if clicked and picked:
-        for key in (*RUN_KEYS, "runs", "run_name", "run_errors"):
+        for key in (*RUN_KEYS, "runs", "run_name", "run_errors", "chat_pending"):
             st.session_state.pop(key, None)
         area.empty()  # drop the old results at once, not when the new run finishes
         with area.container():

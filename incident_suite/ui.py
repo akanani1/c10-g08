@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Sequence
-from datetime import UTC, timedelta
-from typing import Any
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
+from itertools import pairwise
+from typing import Any, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import SecretStr
 
@@ -362,6 +365,45 @@ def mask(value: str) -> str:
 def secret_hint(secret: SecretStr | None) -> str:
     """A key, masked: it never reaches the page."""
     return "not set" if secret is None else mask(secret.get_secret_value())
+
+
+@dataclass(frozen=True)
+class ChatMessage:
+    """One message in the chat about a run: from the person or from the assistant."""
+
+    role: Literal["you", "assistant"]
+    text: str
+    at: datetime
+
+
+def chat_label(message: ChatMessage, zone: str | None, offset_minutes: int | None = None) -> str:
+    """``You · 14:32`` or ``TriageGraph · 14:32``, in the viewer's own time when we know it.
+
+    ``zone`` is the browser's timezone name. Some names (``Asia/Calcutta``) are old aliases a
+    server may not have, so the browser's UTC offset (JavaScript's sign: minutes *behind* UTC,
+    -330 for India) is the fallback, then UTC.
+    """
+    name = "You" if message.role == "you" else "TriageGraph"
+    tz: tzinfo | None = None
+    if zone:
+        try:
+            tz = ZoneInfo(zone)
+        except (ZoneInfoNotFoundError, ValueError):
+            tz = None
+    if tz is None and offset_minutes is not None:
+        tz = timezone(timedelta(minutes=-offset_minutes))
+    if tz is None:
+        return f"{name} · {message.at.astimezone(UTC).strftime('%H:%M UTC')}"
+    return f"{name} · {message.at.astimezone(tz).strftime('%H:%M')}"
+
+
+def chat_pairs(chat: Sequence[ChatMessage]) -> list[tuple[str, str]]:
+    """Earlier questions and their answers, for the model's short memory."""
+    return [
+        (asked.text, answered.text)
+        for asked, answered in pairwise(chat)
+        if asked.role == "you" and answered.role == "assistant" and answered.text
+    ]
 
 
 def embedding_label(model: str) -> str:
