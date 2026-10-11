@@ -12,8 +12,9 @@ Calls, all under ``/rest/api/3``:
 - ``PUT issue/{key}/properties/incident_suite.slack``: the Slack channel and ``ts`` that first
   reported a new ticket, so the assistant can find that thread on a later run.
 
-The assistant (plan section 17.2) also reads, never writes: the stored thread, and a ticket's
-status, assignee and latest comments, only for tickets labelled ``incident-suite``.
+The assistant (plan section 17.2) also reads, never writes: the stored thread, a ticket's
+status, assignee and latest comments, and the list of our latest tickets, only for tickets
+labelled ``incident-suite``.
 
 Every failure becomes a :class:`TrackerError` with a message that's safe to show. The token
 never appears in one.
@@ -27,7 +28,7 @@ from typing import Any
 
 import httpx
 
-from incident_suite.agents.assistant import ReaderError, TicketUpdate
+from incident_suite.agents.assistant import ReaderError, RecentTicket, TicketUpdate
 from incident_suite.agents.jira_agent import ExistingTicket, TicketDraft, TrackerError
 from incident_suite.config import AppConfig
 from incident_suite.integrations import TIMEOUT, Sleep, send_with_retry
@@ -43,6 +44,7 @@ REGRESSION_LABEL = "regression"
 LINK_TYPE = "Relates"
 SLACK_PROPERTY = "incident_suite.slack"
 MAX_COMMENTS = 3
+MAX_RECENT = 10
 _KEY = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 _PROJECT = re.compile(r"^[A-Z][A-Z0-9_]+$")
 _HASH = re.compile(r"^[0-9a-f]{8,16}$")
@@ -222,6 +224,34 @@ class JiraClient:
         if not _CHANNEL.fullmatch(channel) or not _TS.fullmatch(ts):
             return None
         return channel, ts
+
+    def recent(self, limit: int = 5) -> list[RecentTicket]:
+        """Our newest tickets in the project, newest first. The query is fixed in code."""
+        jql = f'project = "{self._project}" AND labels = "{LABEL}" ORDER BY created DESC'
+        params = {
+            "jql": jql,
+            "fields": "summary,status,created",
+            "maxResults": max(1, min(limit, MAX_RECENT)),
+        }
+        try:
+            body = self._call("GET", "search/jql", params=params)
+        except TrackerError as exc:
+            raise ReaderError(str(exc)) from exc
+        tickets = []
+        for issue in body.get("issues") or []:
+            key = str(issue.get("key", ""))
+            if not _KEY.fullmatch(key):
+                continue
+            fields = issue.get("fields") or {}
+            tickets.append(
+                RecentTicket(
+                    key=key,
+                    summary=str(fields.get("summary", ""))[:120],
+                    status=str((fields.get("status") or {}).get("name", "unknown")),
+                    created=str(fields.get("created", ""))[:10],
+                )
+            )
+        return tickets
 
     def updates(self, key: str) -> TicketUpdate:
         """Status, assignee and the latest comments of one of our own tickets."""

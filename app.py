@@ -25,6 +25,8 @@ from incident_suite.agents.assistant import (
     AssistantInput,
     AssistantResult,
     DraftResult,
+    ReaderError,
+    RecentTicket,
     ask_about_run,
     draft_runbook,
     latest_updates,
@@ -50,6 +52,8 @@ from incident_suite.graph import (
     resume_run,
     start_run,
 )
+from incident_suite.integrations.jira_client import JiraClient
+from incident_suite.integrations.slack_client import SlackClient
 from incident_suite.parsing.readers import ReadError, parse_upload
 from incident_suite.parsing.redact import Redactor
 from incident_suite.rag.retriever import RunbookRetriever
@@ -982,6 +986,8 @@ def _assistant(config: AppConfig) -> None:
     st.subheader(":material/forum: Assistant")
     if "result" not in st.session_state:
         st.caption("Run an analysis, then ask about it here.")
+        with st.container(border=True):
+            _earlier_incidents(config)
         return
     result: RunResult = st.session_state.result
     with st.container(border=True):
@@ -999,17 +1005,96 @@ def _assistant(config: AppConfig) -> None:
                 _ask_assistant(config, lambda message: status.write(ui.md(message)))
                 status.update(label="Checked Slack and JIRA", state="complete", expanded=False)
         answer: AssistantResult | None = st.session_state.get("assistant")
-        if answer is None:
-            return
-        if answer.error:
-            st.warning(ui.md(answer.error))
-        if answer.answer is not None:
-            st.markdown(ui.md(answer.answer.summary))
-            st.markdown("\n".join(f"- {ui.md(line)}" for line in answer.answer.updates))
-            if answer.answer.next_step:
-                st.markdown(f"**Next:** {ui.md(answer.answer.next_step)}")
-        if answer.sources:
-            st.caption("Read: " + ui.md("; ".join(answer.sources)))
+        if answer is not None:
+            _show_answer(answer)
+
+
+def _show_answer(answer: AssistantResult) -> None:
+    """The assistant's summary of Slack and JIRA, and what it read."""
+    if answer.error:
+        st.warning(ui.md(answer.error))
+    if answer.answer is not None:
+        st.markdown(ui.md(answer.answer.summary))
+        st.markdown("\n".join(f"- {ui.md(line)}" for line in answer.answer.updates))
+        if answer.answer.next_step:
+            st.markdown(f"**Next:** {ui.md(answer.answer.next_step)}")
+    if answer.sources:
+        st.caption("Read: " + ui.md("; ".join(answer.sources)))
+
+
+def _readers(config: AppConfig) -> tuple[JiraClient | None, SlackClient | None]:
+    """Read-only JIRA and Slack clients for the assistant, whatever the run's mode."""
+    settings = RunSettings.from_config(config).model_copy(update={"live": True})
+    return connect_services(config, settings)
+
+
+def _load_incidents(config: AppConfig) -> None:
+    tracker, messenger = _readers(config)
+    try:
+        st.session_state.incidents = tracker.recent() if tracker is not None else []
+    except ReaderError as exc:
+        st.session_state.incidents = str(exc)
+    finally:
+        for client in (tracker, messenger):
+            if client is not None:
+                client.close()
+
+
+def _ask_about_incident(config: AppConfig, key: str, progress: Callable[[str], None]) -> None:
+    """What has happened to one earlier incident: its ticket and its Slack thread."""
+    tracker, messenger = _readers(config)
+    try:
+        answer = latest_updates(
+            AssistantInput(
+                result=None,
+                keys=(key,),
+                threads=messenger,
+                tickets=tracker,
+                llm=OpenRouterLLM(config),
+                redactor=Redactor(),
+                token_budget=config.run_token_budget,
+                progress=progress,
+            )
+        )
+    finally:
+        for client in (tracker, messenger):
+            if client is not None:
+                client.close()
+    st.session_state.incident_answer = (key, answer)
+
+
+def _earlier_incidents(config: AppConfig) -> None:
+    """Without a run: pick one of our latest JIRA tickets and ask what has happened since."""
+    st.markdown("**:material/history: Earlier incidents**")
+    if not config.jira_configured:
+        st.caption("Connect JIRA to ask about earlier incidents.")
+        return
+    if not st.session_state.get("admin_ok"):
+        st.caption("Open a settings page with the admin passcode to read earlier incidents.")
+        return
+    if st.button("Load the latest incidents", icon=":material/refresh:", key="load_incidents"):
+        with st.spinner("Reading JIRA..."):
+            _load_incidents(config)
+    incidents: list[RecentTicket] | str | None = st.session_state.get("incidents")
+    if incidents is None:
+        return
+    if isinstance(incidents, str):
+        st.warning(ui.md(incidents))
+        return
+    if not incidents:
+        st.caption("No TriageGraph tickets yet.")
+        return
+    labels = {t.key: f"{t.key} · {t.status} · {t.created} · {t.summary}" for t in incidents}
+    key = st.selectbox("Incident", list(labels), format_func=labels.__getitem__)
+    if st.button("What's happened since?", key="ask_incident"):
+        with st.status(f"Checking {key}...", expanded=True) as status:
+            _ask_about_incident(config, key, lambda message: status.write(ui.md(message)))
+            status.update(label=f"Checked {key}", state="complete", expanded=False)
+    asked = st.session_state.get("incident_answer")
+    if asked is not None and asked[0] == key:
+        _show_answer(asked[1])
+        if asked[1].usage is not None:
+            st.caption(ui.md(f"Cost: ${asked[1].usage.cost_usd:.4f}"))
 
 
 # ------------------------------------------------------------------ page

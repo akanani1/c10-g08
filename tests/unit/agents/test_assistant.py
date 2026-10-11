@@ -137,6 +137,23 @@ def test_reads_this_run_the_first_thread_and_the_tickets(make_llm: MakeLLM) -> N
     assert "Pool raised to 50" in user
 
 
+def test_an_earlier_incident_without_a_run(make_llm: MakeLLM) -> None:
+    llm, calls = make_llm([ANSWER])
+    slack = _Slack()
+    result = latest_updates(
+        _input(llm, result=None, keys=("SCRUM-9",), threads=slack, token_budget=1)
+    )
+
+    assert result.answer == ANSWER  # no run, so nothing has been spent yet
+    assert slack.read == ["C1/1.0"]  # the thread stored on the picked ticket
+    assert result.sources == [
+        "Slack thread (first seen in SCRUM-9), 2 replies",
+        "SCRUM-9: In Progress",
+    ]
+    user = calls[0][2]
+    assert user.startswith('<task>updates</task>\n<run id="none" earlier_incident="SCRUM-9">')
+
+
 def test_the_same_thread_is_read_once(make_llm: MakeLLM) -> None:
     llm, _ = make_llm([ANSWER])
     slack = _Slack()

@@ -12,7 +12,7 @@ from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, SecretStr
 
 from incident_suite.agents import LLMError, LLMReply, SchemaT, StructuredLLM
-from incident_suite.agents.assistant import ThreadMessage, TicketUpdate
+from incident_suite.agents.assistant import ReaderError, RecentTicket, ThreadMessage, TicketUpdate
 from incident_suite.agents.jira_agent import (
     ExistingTicket,
     TicketDraft,
@@ -99,8 +99,18 @@ class _FakeTracker:
         self.calls.append(("updates", key))
         return TicketUpdate(key=key, status="In Progress", assignee="Priya", comments=("On it",))
 
-    def slack_thread(self, key: str) -> tuple[str, str] | None:  # noqa: ARG002
-        return None
+    def slack_thread(self, key: str) -> tuple[str, str] | None:
+        return ("C123", "1700000000.000100") if key == "OPS-7" else None
+
+    def recent(self, limit: int = 5) -> list[RecentTicket]:
+        self.calls.append(("recent", str(limit)))
+        if self.fail == "recent":
+            msg = "JIRA returned 401"
+            raise ReaderError(msg)
+        return [
+            RecentTicket("OPS-7", "[CRITICAL] payment-api: pool exhausted", "Done", "2026-10-10"),
+            RecentTicket("OPS-5", "[CRITICAL] orders: OOM killed", "In Progress", "2026-10-09"),
+        ]
 
     def close(self) -> None:
         """Nothing to close."""

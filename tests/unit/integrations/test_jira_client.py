@@ -10,7 +10,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from incident_suite.agents.assistant import ReaderError, TicketUpdate
+from incident_suite.agents.assistant import ReaderError, RecentTicket, TicketUpdate
 from incident_suite.agents.jira_agent import ExistingTicket, TicketDraft, TrackerError
 from incident_suite.config import AppConfig
 from incident_suite.integrations.jira_client import JiraClient, adf_text
@@ -331,6 +331,39 @@ def test_updates_unassigned_and_not_ours(make_client: MakeClient) -> None:
         client.updates("FIN-9")
     with pytest.raises(ReaderError, match="JIRA returned 503"):
         client.updates("SCRUM-1")
+
+
+def test_recent_lists_only_our_latest_tickets(make_client: MakeClient) -> None:
+    issues = [
+        {
+            "key": "OPS-7",
+            "fields": {
+                "summary": "[CRITICAL] payment-api: DB pool exhausted",
+                "status": {"name": "Done"},
+                "created": "2026-10-11T03:12:09.000+0530",
+            },
+        },
+        {"key": "not a key", "fields": {}},
+        {"key": "OPS-6", "fields": {"summary": "x" * 300}},
+    ]
+    client, requests, _ = make_client(
+        httpx.Response(200, json={"issues": issues}), httpx.Response(401)
+    )
+    tickets = client.recent(limit=50)
+
+    assert tickets[0] == RecentTicket(
+        key="OPS-7",
+        summary="[CRITICAL] payment-api: DB pool exhausted",
+        status="Done",
+        created="2026-10-11",
+    )
+    assert [t.key for t in tickets] == ["OPS-7", "OPS-6"]  # a bad key is skipped
+    assert (len(tickets[1].summary), tickets[1].status) == (120, "unknown")
+    params = requests[0].url.params
+    assert params["jql"] == 'project = "OPS" AND labels = "incident-suite" ORDER BY created DESC'
+    assert params["maxResults"] == "10"  # capped
+    with pytest.raises(ReaderError, match="JIRA returned 401"):
+        client.recent()
 
 
 def test_adf_text() -> None:

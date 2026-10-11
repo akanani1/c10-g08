@@ -140,6 +140,7 @@ credential key/value, named secret columns, and a private-key block.
 | E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | |
 | E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | |
 | E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | |
+| E2E-14 | In a new session with JIRA connected, unlock with the passcode and press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | |
 
 ### 7.1 Settings pages
 
