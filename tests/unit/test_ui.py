@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
-import re
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import pytest
 
@@ -236,37 +233,19 @@ def test_tables() -> None:
 # ------------------------------------------------------------------ settings page
 
 
-def test_model_label_and_prompt_override() -> None:
+def test_model_and_provider_labels() -> None:
     assert ui.model_label("openai/gpt-5-mini") == (
         "openai/gpt-5-mini ($0.25 in / $2.00 out per M tokens)"
     )
-    assert ui.prompt_override("  Default prompt\n", "Default prompt") is None
-    assert ui.prompt_override("Be brief.", "Default prompt") == "Be brief."
-
-
-def test_settings_json_round_trip(settings: RunSettings) -> None:
-    edited = settings.model_copy(update={"token_budget": 50_000})
-    assert ui.settings_from_json(ui.settings_to_json(edited).encode()) == edited
-
-
-@pytest.mark.parametrize(
-    ("change", "where"),
-    [
-        ({"remediation": {"model": "evil/free-model", "top_k": 3}}, "remediation.model"),
-        ({"token_budget": 10_000_000}, "token_budget"),
-        ({"jira": {"max_tickets": 50}}, "jira.max_tickets"),
-    ],
-)
-def test_settings_import_is_checked(
-    settings: RunSettings, change: dict[str, Any], where: str
-) -> None:
-    raw = json.loads(ui.settings_to_json(settings))
-    for key, value in change.items():
-        raw[key] = raw[key] | value if isinstance(value, dict) else value
-    with pytest.raises(ValueError, match=f"isn't valid \\({re.escape(where)}"):
-        ui.settings_from_json(json.dumps(raw).encode())
-    with pytest.raises(ValueError, match="isn't valid"):
-        ui.settings_from_json(b"not json")
+    assert ui.embedding_label("openai/text-embedding-3-small") == (
+        "$0.02 per M tokens (input only)"
+    )
+    assert ui.provider_of("google/gemini-2.5-flash") == "Google"
+    assert ui.provider_of("acme/model") == "acme"
+    assert ui.models_by_provider(["openai/b", "google/a", "openai/a"]) == {
+        "Google": ["google/a"],
+        "OpenAI": ["openai/a", "openai/b"],
+    }
 
 
 def test_decide_live(settings: RunSettings) -> None:
@@ -469,7 +448,7 @@ def test_replay_frames() -> None:
 def test_legend_and_redaction_labels() -> None:
     legend = ui.legend_markdown()
     assert legend.startswith(
-        ":red-badge[CRITICAL] jira ticket (up to 3 per run) and a slack summary"
+        ":red-badge[CRITICAL] jira ticket (up to the cap per run) and a slack summary"
     )
     assert ":gray-badge[LOW] nothing is sent. results stay in the app" in legend
     assert set(ui.REDACTION_LABELS) == set(RedactionType)

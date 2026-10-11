@@ -13,6 +13,7 @@ from typing import Annotated, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from incident_suite.config import (
+    DEFAULT_TICKETS_PER_RUN,
     MAX_TICKETS_CEILING,
     RUN_TOKEN_BUDGET_CEILING,
     AppConfig,
@@ -163,7 +164,7 @@ class RemediationSettings(AgentSettings):
 class JiraSettings(StrictModel):
     """JIRA Ticket agent options."""
 
-    max_tickets: int = Field(default=MAX_TICKETS_CEILING, ge=0, le=MAX_TICKETS_CEILING)
+    max_tickets: int = Field(default=DEFAULT_TICKETS_PER_RUN, ge=0, le=MAX_TICKETS_CEILING)
     min_severity: Severity = Severity.CRITICAL
 
 
@@ -194,9 +195,15 @@ class RunSettings(StrictModel):
     def from_config(cls, config: AppConfig) -> Self:
         """Defaults for a new session, taken from the deployment config."""
         return cls(
-            log_reader=LogReaderSettings(model=config.classifier_model),
-            remediation=RemediationSettings(model=config.remediation_model),
-            cookbook=AgentSettings(model=config.classifier_model),
+            log_reader=LogReaderSettings(
+                model=config.classifier_model, context_lines=config.context_lines
+            ),
+            remediation=RemediationSettings(
+                model=config.remediation_model,
+                top_k=config.runbook_top_k,
+                confidence_threshold=config.retry_confidence,
+            ),
+            cookbook=AgentSettings(model=config.cookbook_model or config.classifier_model),
             jira=JiraSettings(max_tickets=config.max_tickets_per_run),
             embedding_model=config.embedding_model,
             token_budget=config.run_token_budget,

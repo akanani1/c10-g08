@@ -12,11 +12,9 @@ from collections.abc import Iterable, Sequence
 from datetime import UTC, timedelta
 from typing import Any
 
-from pydantic import ValidationError
-
 from incident_suite.agents.jira_agent import TicketDraft
 from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
-from incident_suite.config import CHAT_MODELS, AppConfig
+from incident_suite.config import CHAT_MODELS, EMBEDDING_MODELS, AppConfig
 from incident_suite.integrations.payloads import defang, jira_summary
 from incident_suite.parsing.grouping import group_lines
 from incident_suite.security import RUNS_PER_WINDOW, SHARED_RUNS_PER_HOUR, WINDOW_SECONDS
@@ -58,7 +56,10 @@ SEVERITY_COLOURS = {
     Severity.LOW: "gray",
 }
 SEVERITY_LEGEND: list[Row] = [
-    {"Severity": "Critical", "What happens": "JIRA ticket (up to 3 per run) and a Slack summary"},
+    {
+        "Severity": "Critical",
+        "What happens": "JIRA ticket (up to the cap per run) and a Slack summary",
+    },
     {"Severity": "High", "What happens": "Slack summary with the checklist in a thread"},
     {"Severity": "Medium", "What happens": "Slack summary with the checklist in a thread"},
     {"Severity": "Low", "What happens": "Nothing is sent. Results stay in the app"},
@@ -88,7 +89,7 @@ _TICKET_WORDS = {
     TicketAction.CREATE: "new ticket",
     TicketAction.COMMENT: "comment on the open ticket",
     TicketAction.REGRESSION: "new ticket, marked as a regression",
-    TicketAction.SKIPPED_OVER_CAP: "not ticketed (over the cap of 3)",
+    TicketAction.SKIPPED_OVER_CAP: "not ticketed (over the ticket cap)",
 }
 
 
@@ -324,6 +325,28 @@ def source_rows(fixes: Sequence[Remediation]) -> list[Row]:
 # ------------------------------------------------------------------ settings page
 
 
+PROVIDER_NAMES = {"openai": "OpenAI", "google": "Google"}
+
+
+def provider_of(model: str) -> str:
+    """The model maker's display name, from the ``maker/model`` ID."""
+    maker = model.split("/", 1)[0]
+    return PROVIDER_NAMES.get(maker, maker)
+
+
+def models_by_provider(models: Iterable[str]) -> dict[str, list[str]]:
+    """Allowed models grouped by maker, for the Provider and Model dropdowns."""
+    grouped: dict[str, list[str]] = {}
+    for model in sorted(models):
+        grouped.setdefault(provider_of(model), []).append(model)
+    return grouped
+
+
+def embedding_label(model: str) -> str:
+    """An embedding model's price: they only charge for input."""
+    return f"${EMBEDDING_MODELS[model].input_per_million:.2f} per M tokens (input only)"
+
+
 def model_label(model: str) -> str:
     """A model and its price, such as ``openai/gpt-5-mini ($0.25 in / $2.00 out per M)``."""
     price = CHAT_MODELS[model]
@@ -331,30 +354,6 @@ def model_label(model: str) -> str:
         f"{model} (${price.input_per_million:.2f} in / "
         f"${price.output_per_million:.2f} out per M tokens)"
     )
-
-
-def prompt_override(text: str, default: str) -> str | None:
-    """``None`` when the text is the default prompt (ignoring outer whitespace), else the text."""
-    return None if text.strip() == default.strip() else text
-
-
-def settings_to_json(settings: RunSettings) -> str:
-    """The session's settings as JSON for download."""
-    return settings.model_dump_json(indent=2)
-
-
-def settings_from_json(raw: bytes) -> RunSettings:
-    """Settings from an uploaded JSON file, checked like everything else.
-
-    Raises ``ValueError`` with a short message that names the first bad field.
-    """
-    try:
-        return RunSettings.model_validate_json(raw)
-    except ValidationError as exc:
-        first = exc.errors()[0]
-        where = ".".join(str(part) for part in first["loc"]) or "file"
-        msg = f"That settings file isn't valid ({where}: {first['msg']})."
-        raise ValueError(msg) from exc
 
 
 def decide_live(settings: RunSettings, live_allowed: bool, admin_ok: bool) -> tuple[bool, str]:
