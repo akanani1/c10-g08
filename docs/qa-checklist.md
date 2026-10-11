@@ -35,7 +35,7 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 | NOT LANDED | 0 |
 
 **Release decision:** `NO-GO` (Uncaught Pydantic ValidationError in log_reader crashes app during analysis)  
-**Blocking issue numbers:** #TBD (Pydantic ValidationError in GroupedLog validation during log_reader node)  
+**Blocking issue numbers:** none open. The Pydantic ValidationError in grouping was code half-reloaded during a deployment, fixed in #54; the later "no response from server" crash was memory, fixed in #57. E2E-09 needs a re-run after the final deploy  
 **Evidence links:** Streamlit Cloud traceback logs  
 
 > This run tested live deployment `20c2b13`.

@@ -6,11 +6,11 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Everything described here is built, tested and deployed. The public app runs live: approved runs of the sample logs post to our Slack and JIRA. The evaluation results and the video link are filled in last.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Everything described here is built, tested and deployed. The public app runs live: approved runs of the sample logs post to our Slack and JIRA. The evaluation results are below; the video link comes last.
 
 | | |
 |---|---|
-| Live demo | _coming soon_ |
+| Live demo | [triagegraph.streamlit.app](https://triagegraph.streamlit.app) |
 | Demo video | _coming soon_ |
 
 ---
@@ -246,19 +246,43 @@ python eval/run_eval.py --only payment_db_conn_refused.log    # just one
 
 It prints this table and one row per log, ready to paste here. An expected issue counts as found when a found issue shares an evidence line, or else has the same service, or else has the label's signature hint in its title.
 
-Results (filled in after the eval run):
+Results from the eval run on 11 Oct 2026 (all 17 samples, real models, dry runs):
 
 | Metric | Result |
 |---|---|
-| Issues found | _tbd_ |
-| Category accuracy | _tbd_ |
-| Severity accuracy | _tbd_ |
-| Fix mentions the key idea | _tbd_ |
-| Critical issues correctly ticketed | _tbd_ |
-| Tickets that shouldn't have been opened | _tbd_ |
-| Slack decision right | _tbd_ |
-| Average per run: tokens / cost / time | _tbd_ |
-| 50k-row log: patterns / tokens / cost / time | _tbd_ |
+| Issues found | 23 of 24 (96%) |
+| Category accuracy | 21 of 23 found (91%) |
+| Severity accuracy | 18 of 23 found (78%) |
+| Fix mentions the key idea | _not in this run's output_ |
+| Critical issues correctly ticketed | 7 of 7 logs |
+| Tickets that shouldn't have been opened | 2 of 10 logs (`gateway_tls_expired.jsonl`, `inventory_bad_config.txt`: rated one level too severe) |
+| Slack decision right | _not in this run's output_ |
+| Average per run: tokens / cost | 10,885 tokens / $0.0078 (all 17 runs: $0.13) |
+| 50k-row log: issues / tokens / cost | 6 of 6 found / 54,339 tokens / $0.0405 |
+
+What it tells us: it finds almost everything and picks the right category, and every log that needed a ticket got one. Severity is the weak spot: it sometimes rates an incident one level too high, which opened two tickets we didn't expect. The one miss is a third issue in `mixed_incident.json`, which holds three problems at once.
+
+| Log | Found | Category | Severity | Ticket (expected / planned) | Tokens | Cost |
+|---|---|---|---|---|---|---|
+| `payment_db_conn_refused.log` | 1/1 | 1 | 1 | yes / yes | 8,199 | $0.0054 |
+| `orders_oom_killed.log` | 1/1 | 1 | 1 | yes / yes | 8,640 | $0.0058 |
+| `api_disk_full.txt` | 1/1 | 1 | 1 | yes / yes | 7,546 | $0.0046 |
+| `gateway_tls_expired.jsonl` | 1/1 | 1 | 0 | no / yes | 7,921 | $0.0055 |
+| `auth_bruteforce.json` | 1/1 | 1 | 1 | no / no | 10,076 | $0.0057 |
+| `nginx_5xx_spike.log` | 1/1 | 1 | 1 | no / no | 8,618 | $0.0055 |
+| `search_upstream_timeouts.tsv` | 1/1 | 1 | 1 | no / no | 6,895 | $0.0059 |
+| `worker_crashloop.log` | 1/1 | 0 | 1 | yes / yes | 7,424 | $0.0052 |
+| `inventory_bad_config.txt` | 1/1 | 1 | 0 | no / yes | 7,237 | $0.0050 |
+| `api_rate_limited.csv` | 1/1 | 1 | 0 | no / no | 7,179 | $0.0054 |
+| `notify_dns_failures.log` | 1/1 | 1 | 1 | no / no | 6,455 | $0.0044 |
+| `kafka_consumer_lag.parquet` | 1/1 | 1 | 1 | no / no | 7,465 | $0.0057 |
+| `healthy_service.csv` | 0/0 | 0 | 0 | no / no | 1,909 | $0.0008 |
+| `mixed_incident.json` | 2/3 | 2 | 2 | yes / yes | 12,705 | $0.0099 |
+| `payment_db_conn_refused_repeat.log` | 1/1 | 1 | 1 | yes / yes | 7,717 | $0.0058 |
+| `edge_nginx_error.log.gz` | 2/2 | 1 | 1 | no / no | 14,712 | $0.0107 |
+| `large_50k_mixed.parquet` | 6/6 | 6 | 5 | yes / yes | 54,339 | $0.0405 |
+
+"Category" and "Severity" count the found issues that got them right.
 
 ## Security
 
