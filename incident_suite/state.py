@@ -21,8 +21,6 @@ from incident_suite.config import (
     check_embedding_model,
 )
 
-MAX_PROMPT_CHARS = 20_000
-
 
 class StrictModel(BaseModel):
     """Base for every state model: unknown fields are an error, not silently dropped."""
@@ -133,14 +131,12 @@ class StepStatus(StrEnum):
 # ------------------------------------------------------------------ run settings
 
 Confidence = Annotated[float, Field(ge=0.0, le=1.0)]
-PromptOverride = Annotated[str | None, Field(default=None, max_length=MAX_PROMPT_CHARS)]
 
 
 class AgentSettings(StrictModel):
-    """Model and optional prompt override for one LLM agent. ``None`` means the default prompt."""
+    """The model for one LLM agent. Its prompt is always the file in ``prompts/``."""
 
     model: str
-    system_prompt: PromptOverride = None
 
     @field_validator("model")
     @classmethod
@@ -209,14 +205,6 @@ class RunSettings(StrictModel):
             token_budget=config.run_token_budget,
             require_approval=config.require_approval,
             live=config.live_integrations,
-        )
-
-    @property
-    def prompts_edited(self) -> bool:
-        """True if any agent runs with a prompt other than its default file."""
-        return any(
-            agent.system_prompt is not None
-            for agent in (self.log_reader, self.remediation, self.cookbook)
         )
 
 

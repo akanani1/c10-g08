@@ -85,7 +85,7 @@ def synthesize(
     if not remediations:
         return CookbookResult(checklist=Checklist())
     fixes = {fix.issue_id: fix for fix in remediations}
-    system = settings.cookbook.system_prompt or load_prompt("cookbook")
+    system = load_prompt("cookbook")
     started = time.perf_counter()
     try:
         reply = llm(settings.cookbook.model, system, _user_message(issues, fixes), CookbookAnswer)

@@ -19,6 +19,7 @@ from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
 from incident_suite.config import AdminOverrides, AppConfig, admin_overrides, set_admin_overrides
+from incident_suite.security import RateLimitError
 from incident_suite.state import Category, NotificationPlan, Severity
 
 APP = Path(__file__).resolve().parents[2] / "app.py"
@@ -422,7 +423,7 @@ def test_assistant_reports_what_happened_since(
     assert "assistant" in [u.agent for u in usage]
 
 
-def test_assistant_needs_the_passcode(
+def test_assistant_is_open_to_everyone_within_the_limits(
     monkeypatch: pytest.MonkeyPatch,
     keyed: AppConfig,
     make_tracker: MakeTracker,
@@ -435,9 +436,15 @@ def test_assistant_needs_the_passcode(
     monkeypatch.setattr(
         "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
     )
-    app = _click(_app(), "Analyse")  # no ADMIN_PASSCODE: sends, but the assistant stays off
-    assert any("Unlock in Agent or App Settings" in c.value for c in app.caption)
-    assert not [b for b in app.button if b.label == "What's happened since?"]
+    app = _click(_app(), "Analyse")  # no passcode entered: the assistant still answers
+    assert [b for b in app.button if b.label == "What's happened since?"]
+
+    def full() -> None:
+        raise RateLimitError("Too many runs. Try again in a few minutes.")
+
+    monkeypatch.setattr("incident_suite.security.RunLimiter.check", lambda _self: full())
+    app = _click(app, "What's happened since?")
+    assert "Too many runs" in app.warning[0].value
 
 
 def test_ask_about_an_earlier_incident_without_a_run(
@@ -466,12 +473,7 @@ def test_ask_about_an_earlier_incident_without_a_run(
         "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
     )
 
-    locked = _app()
-    assert any("reads your team" in c.value for c in locked.caption)
-
-    app = AppTest.from_file(str(APP), default_timeout=30)
-    app.session_state["admin_ok"] = True
-    app = _click(app.run(), "Load the latest incidents")
+    app = _click(_app(), "Load the latest incidents")  # no passcode needed
     assert ("recent", "5") in jira_calls
     picker = next(s for s in app.selectbox if s.label == "Incident")
     assert picker.options[0].startswith("OPS-7 · Done · 2026-10-10")

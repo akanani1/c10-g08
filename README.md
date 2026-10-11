@@ -6,7 +6,7 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Parsing, the agents, the orchestrator, the Slack and JIRA clients, the app screens, tracing and the evaluation script are done. The evaluation results come next. Links, screenshots and results get filled in as each part lands.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Everything described here is built, tested and deployed. The public app runs in dry run, so nothing reaches Slack or JIRA. The evaluation results and the video link are filled in last.
 
 | | |
 |---|---|
@@ -123,7 +123,7 @@ streamlit run app.py
 
 The app opens at http://localhost:8501. The bar at the top shows what's connected and whether runs are live, and the footer shows the limits. Pick up to three sample logs, upload your own, or paste log lines, then press **Analyse**. Each sample is its own run, and a switch above the results moves between them. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
-After a live run has posted, the **Assistant** column on the right answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode (press **Unlock** on either settings page; it's asked once per session), and its cost shows in the Cost tab. Without a run, for example in a new session, the column offers **Earlier incidents**: it lists the latest TriageGraph tickets from JIRA, and you can ask what has happened to any of them.
+After a live run has posted, the **Assistant** column on the right answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, anyone can use it (each question counts towards the run limits), and its cost shows in the Cost tab. Without a run, for example in a new session, the column offers **Earlier incidents**: it lists the latest TriageGraph tickets from JIRA, and you can ask what has happened to any of them.
 
 The **Replay** tab steps through a finished run with a slider. The graph lights up one step at a time, including the retry when Remediation asked for more context.
 
@@ -309,6 +309,7 @@ docs/                   build plan, QA checklist, demo video script
 pyproject.toml          dependencies and tool settings
 requirements.txt        pinned versions, generated from pyproject.toml
 .github/                CI, Dependabot, security policy
+.devcontainer/          GitHub Codespaces setup
 .streamlit/             Streamlit settings
 .env.example            every setting, with placeholder values
 ```
@@ -347,6 +348,9 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 - It doesn't hear about changes in Slack or JIRA as they happen. It checks JIRA at the start of each run, and the Jira Automation rules handle updates in the other direction.
 - Fixes are only as good as the runbooks. When the match is weak it says so instead of guessing, but it can still be wrong. Treat the output as a first pass, not a verdict.
 - Redaction is pattern-based and can miss unusual secret formats.
+- The public app runs in dry run on purpose: it shows exactly what would go to Slack and JIRA, but sends nothing. Live sending needs the admin passcode.
+- Settings changed in the app last until the app sleeps, restarts or is redeployed. There's no database, so the deployment's own settings come back after that.
+- There's no run history in the app. Earlier incidents are read back from JIRA and Slack, not stored here.
 
 ## What's next
 

@@ -17,7 +17,6 @@ from incident_suite.agents.log_reader import (
 from incident_suite.parsing.grouping import group_lines
 from incident_suite.parsing.readers import parse_upload
 from incident_suite.state import (
-    AgentSettings,
     Category,
     GroupedLog,
     ParsedLog,
@@ -246,19 +245,6 @@ def test_token_budget_stops_further_chunks(
     result = classify(parsed, grouped, tight, llm, _meter(tight))
     assert len(calls) == 1
     assert result.errors == ["Token budget reached; 3 pattern groups were not classified."]
-
-
-def test_edited_prompt_is_used(
-    log: tuple[ParsedLog, GroupedLog], settings: RunSettings, make_llm: MakeLLM
-) -> None:
-    parsed, grouped = log
-    edited = settings.model_copy(
-        update={"log_reader": settings.log_reader.model_copy(update={"system_prompt": "Be terse."})}
-    )
-    assert isinstance(edited.log_reader, AgentSettings)
-    llm, calls = make_llm([ClassifierAnswer(issues=[])])
-    classify(parsed, grouped, edited, llm, _meter(edited))
-    assert calls[0][1] == "Be terse."
 
 
 def test_log_text_cannot_close_the_delimiter(settings: RunSettings, make_llm: MakeLLM) -> None:

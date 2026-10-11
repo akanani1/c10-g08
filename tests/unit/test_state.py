@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from incident_suite.config import AppConfig
 from incident_suite.state import (
-    AgentSettings,
     AgentUsage,
     Category,
     Issue,
@@ -67,20 +66,11 @@ def test_run_settings_from_config_defaults(config: AppConfig) -> None:
     assert settings.jira.max_tickets == 3
     assert settings.redaction == frozenset(RedactionType)
     assert settings.live is False
-    assert not settings.prompts_edited
 
 
 def test_run_settings_round_trip_through_json(config: AppConfig) -> None:
     settings = RunSettings.from_config(config)
     assert RunSettings.model_validate_json(settings.model_dump_json()) == settings
-
-
-def test_edited_prompt_is_detected(config: AppConfig) -> None:
-    settings = RunSettings.from_config(config)
-    edited = settings.model_copy(
-        update={"cookbook": AgentSettings(model=config.classifier_model, system_prompt="Be terse.")}
-    )
-    assert edited.prompts_edited
 
 
 @pytest.mark.parametrize(

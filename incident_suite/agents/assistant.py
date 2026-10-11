@@ -126,14 +126,6 @@ class RecentTicket:
     created: str
 
 
-class IncidentLister(Protocol):
-    """Lists our latest tickets, so the assistant can be asked about one without a run."""
-
-    def recent(self, limit: int = ...) -> list[RecentTicket]:
-        """The newest tickets labelled ``incident-suite``, newest first."""
-        ...
-
-
 class AssistantAnswer(BaseModel):
     """What the model returns."""
 
