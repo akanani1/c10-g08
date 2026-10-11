@@ -63,6 +63,8 @@ from incident_suite.rag.retriever import RunbookRetriever
 from incident_suite.rag.runbooks import Runbook, load_runbooks
 from incident_suite.security import (
     SHARED_RUNS_PER_HOUR,
+    VISITOR_LIVE_RUNS_PER_HOUR,
+    VISITOR_TICKETS_PER_RUN,
     RateLimitError,
     RunLimiter,
     UploadError,
@@ -179,7 +181,7 @@ RUN_FAILED = (
 MAX_SAMPLES = 3
 # What one run keeps in the session. Several runs are kept under "runs", and the one on screen
 # is copied to the top level, so the rest of the page reads a single run as before.
-RUN_KEYS = ("context", "run_id", "result", "assistant", "chat")
+RUN_KEYS = ("context", "run_id", "result", "run_note", "assistant", "chat")
 
 
 # ------------------------------------------------------------------ cached resources
@@ -425,7 +427,16 @@ def _agent_settings(config: AppConfig, locked: bool) -> None:
 def _app_settings(config: AppConfig, locked: bool) -> None:
     with st.container(border=True):
         st.markdown("**:material/tune: General**")
-        live = st.toggle("Send to Slack and JIRA", config.live_integrations, disabled=locked)
+        mode = st.segmented_control(
+            "Run mode",
+            ["Live", "Dry run"],
+            default="Live" if config.live_integrations else "Dry run",
+            disabled=locked,
+            key="run_mode",
+            help="Live: everyone's approved runs post to Slack and JIRA (visitors: sample logs "
+            "only, 1 ticket per run). Dry run: nothing is sent, for anyone.",
+        )
+        live = mode != "Dry run"
         approval = st.toggle("Human approval", config.require_approval, disabled=locked)
         upload = st.slider(
             "Max upload size (MB)", 1, UPLOAD_CEILING_MB, config.max_upload_mb, disabled=locked
@@ -561,10 +572,37 @@ def _settings_page(config: AppConfig, page: str) -> None:
 
 
 def _live_allowed(config: AppConfig) -> bool:
-    """Live sending, when it's on, needs the admin passcode if one is set."""
-    if not config.live_integrations:
-        return False
-    return config.admin_passcode is None or bool(st.session_state.get("admin_ok"))
+    """Run mode: Live for everyone, or Dry run for everyone. Visitors get guards in _start."""
+    return config.live_integrations
+
+
+def _unlocked() -> bool:
+    return bool(st.session_state.get("admin_ok"))
+
+
+def _is_sample(data: bytes, filename: str) -> bool:
+    """True only for one of our own sample logs, byte for byte."""
+    path = SAMPLES / filename
+    return filename in _samples() and path.is_file() and path.read_bytes() == data
+
+
+@st.cache_resource
+def _visitor_live_limiter() -> RunLimiter:
+    """Live runs by visitors across every session: they post to real Slack and JIRA."""
+    return RunLimiter(max_runs=VISITOR_LIVE_RUNS_PER_HOUR, window=3600)
+
+
+def _visitor_guard(live: bool, data: bytes, filename: str) -> tuple[bool, str]:
+    """Visitors run live only with the sample logs, within their own hourly limit."""
+    if not live or _unlocked():
+        return live, ""
+    if not _is_sample(data, filename):
+        return False, "Uploads and pasted logs run as a dry run for visitors. Samples run live."
+    try:
+        _visitor_live_limiter().check()
+    except RateLimitError:
+        return False, "The hourly limit for live runs by visitors is reached, so this run is dry."
+    return True, ""
 
 
 def _top_bar(config: AppConfig, live: bool) -> None:
@@ -639,8 +677,13 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
     if not config.llm_configured:
         _failed(filename, "This app needs OPENROUTER_API_KEY to analyse logs. See the README.")
         return
-    chosen = RunSettings.from_config(config)
-    settings = chosen.model_copy(update={"live": live})
+    live, note = _visitor_guard(live, data, filename)
+    settings = RunSettings.from_config(config).model_copy(update={"live": live})
+    if live and not _unlocked():
+        cap = min(settings.jira.max_tickets, VISITOR_TICKETS_PER_RUN)
+        settings = settings.model_copy(
+            update={"jira": settings.jira.model_copy(update={"max_tickets": cap})}
+        )
     try:
         parsed = parse_upload(data, display_name(filename), settings.redaction)
         retriever = _session_retriever(config)
@@ -679,7 +722,9 @@ def _start(config: AppConfig, live: bool, data: bytes, filename: str) -> None:
             return
         status.update(label=f"Finished {ui.md(parsed.name)}", state="complete", expanded=False)
     _stash()
-    st.session_state.update(context=context, run_id=run_id, result=result, assistant=None, chat=[])
+    st.session_state.update(
+        context=context, run_id=run_id, result=result, run_note=note, assistant=None, chat=[]
+    )
     st.session_state.run_name = parsed.name
     _stash()
 
@@ -981,6 +1026,8 @@ def _replay(result: RunResult) -> None:
 
 def _results(result: RunResult, context: RunContext) -> None:
     _summary(result)
+    if note := st.session_state.get("run_note"):
+        st.info(note)
     st.graphviz_chart(ui.pipeline_dot(result.steps))
     if result.approval is ApprovalStatus.PENDING:
         _approval(result)
@@ -1222,10 +1269,10 @@ def _analyze(config: AppConfig, live: bool) -> None:
         "Upload an ops log. Agents find the problems, suggest fixes with sources, write a "
         "checklist, and prepare the Slack post and JIRA tickets for your approval."
     )
-    if config.live_integrations and not live:
+    if live and not _unlocked():
         st.caption(
-            "Live mode is on, but your runs stay dry until you unlock Settings with the admin "
-            "passcode."
+            "Live: approved runs of the sample logs post to Slack and JIRA (1 ticket per run). "
+            "Uploads and pasted logs run dry."
         )
     picked = _pick_logs()
     clicked = st.button("Analyse", type="primary", disabled=not picked)

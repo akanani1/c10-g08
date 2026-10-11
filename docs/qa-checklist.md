@@ -59,7 +59,7 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 | SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | PASS on `20c2b13` |
 | SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | PASS on `20c2b13` |
 | SMK-03 | Inspect the health bar at the top | OpenRouter, Slack, JIRA and LangSmith show connected or not; no key or token is displayed | PASS on `20c2b13` |
-| SMK-04 | Inspect public mode | Public deployment reports `dry run` | PASS on `20c2b13` |
+| SMK-04 | Inspect public mode | Public deployment reports `Live` (Run mode), with the caption that visitors' uploads and pasted logs run dry | |
 | SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | PASS on `8dbf7d6` |
 | SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | PASS on `20c2b13` (`20c2b13`) |
 | SMK-07 | Inspect the layout | Left bar has only the TriageGraph name and the menu (Analyze, Agent Settings, App Settings); the assistant is on the right; the footer shows the version and limits | PASS on `20c2b13` |
@@ -142,6 +142,7 @@ credential key/value, named secret columns, and a private-key block.
 | E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | PASS on `20c2b13` |
 | E2E-14 | In a new session with JIRA connected, without the passcode, press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | PASS (Fixed: incidents loaded from JIRA) |
 | E2E-15 | After a run, type a question in **Ask about this run** and press Enter | Your message appears at once on the right with "You" and your local time; "TriageGraph is thinking…" shows on the left, then the answer replaces it with "TriageGraph" and the time | |
+| E2E-16 | As a visitor (not unlocked), run a sample log, then paste a log | The sample run waits for **Approve and send** and plans at most 1 ticket; the pasted log runs dry with a note saying why. With Run mode set to Dry run, every run is dry, admin included | |
 
 ### 7.1 Settings pages
 

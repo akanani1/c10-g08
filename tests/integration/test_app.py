@@ -22,7 +22,7 @@ from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
 from incident_suite.config import AdminOverrides, AppConfig, admin_overrides, set_admin_overrides
 from incident_suite.security import RateLimitError
-from incident_suite.state import Category, NotificationPlan, Severity
+from incident_suite.state import Category, NotificationPlan, RunSettings, Severity
 
 APP = Path(__file__).resolve().parents[2] / "app.py"
 MakeLLM = Callable[[Sequence[Any]], tuple[StructuredLLM, list[tuple[str, str, str]]]]
@@ -187,35 +187,58 @@ def test_several_samples_are_one_run_each(
     assert app.metric[0].value == "CRITICAL"
 
 
-def test_live_sending_needs_the_passcode(
+def test_run_mode_live_for_everyone_with_visitor_guards(
     monkeypatch: pytest.MonkeyPatch,
     keyed: AppConfig,
     make_llm: MakeLLM,
     make_tracker: MakeTracker,
     make_messenger: MakeMessenger,
 ) -> None:
-    two_runs, _ = make_llm(ANSWERS * 2)
-    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: two_runs)
-    guarded = keyed.model_copy(
+    runs, _ = make_llm(ANSWERS * 4)
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: runs)
+    live = keyed.model_copy(
         update={"live_integrations": True, "admin_passcode": SecretStr("open-sesame")}
     )
-    tracker, jira_calls = make_tracker()
+    tracker, _ = make_tracker()
     messenger, _ = make_messenger()
-    monkeypatch.setattr("incident_suite.config.load_config", lambda: guarded)
-    monkeypatch.setattr(
-        "incident_suite.graph.connect_services",
-        lambda _config, settings: (tracker, messenger) if settings.live else (None, None),
-    )
+    seen: list[RunSettings] = []
 
+    def connect(_config: AppConfig, settings: RunSettings) -> Any:
+        seen.append(settings)
+        return (tracker, messenger) if settings.live else (None, None)
+
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
+    monkeypatch.setattr("incident_suite.graph.connect_services", connect)
+
+    # a visitor, with a sample log: live, waits for approval, and at most one ticket
     visitor = _click(_app(), "Analyse")
-    assert "Dry run: nothing is sent" in _text(visitor)
-    assert jira_calls == []  # a visitor's run never touched JIRA
-    assert not [h for h in visitor.subheader if h.value == "Approval needed"]
+    assert "Live: approved runs post to Slack and JIRA" in _text(visitor)
+    assert [h for h in visitor.subheader if h.value == "Approval needed"]
+    assert [s.live for s in seen] == [True]
+    assert seen[-1].jira.max_tickets == 1
 
+    # a visitor, with pasted text: dry, and the page says why
+    visitor.radio[0].set_value("Paste text")
+    visitor = visitor.run()
+    visitor.text_area[0].input("2026-10-11T03:12:09Z ERROR payment-api Connection refused")
+    visitor = _click(visitor.run(), "Analyse")
+    assert [s.live for s in seen] == [True, False]
+    assert any("Uploads and pasted logs run as a dry run" in i.value for i in visitor.info)
+
+    # the admin, unlocked: no visitor caps
     admin = _open(_unlock(_app(), "app", "open-sesame"), "analyze")
-    assert "Live: approved runs post to Slack and JIRA" in _text(admin)
-    paused = _click(admin, "Analyse")
-    assert [h for h in paused.subheader if h.value == "Approval needed"]
+    _click(admin, "Analyse")
+    assert [s.live for s in seen][-1] is True
+    assert seen[-1].jira.max_tickets == 3
+
+    # Run mode set to Dry run: dry for everyone, the admin too
+    monkeypatch.setattr(
+        "incident_suite.config.load_config",
+        lambda: live.model_copy(update={"live_integrations": False}),
+    )
+    admin = _click(_open(_unlock(_app(), "app", "open-sesame"), "analyze"), "Analyse")
+    assert "Dry run: nothing is sent" in _text(admin)
+    assert [s.live for s in seen][-1] is False
 
 
 # ------------------------------------------------------------------ admin console

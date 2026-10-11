@@ -6,7 +6,7 @@ Upload an ops log. A small team of AI agents reads it, works out what went wrong
 
 Built for the Outskill hackathon by team c10-g08.
 
-> **Status:** hackathon build, 10 to 11 Oct 2026. Everything described here is built, tested and deployed. The public app runs in dry run, so nothing reaches Slack or JIRA. The evaluation results and the video link are filled in last.
+> **Status:** hackathon build, 10 to 11 Oct 2026. Everything described here is built, tested and deployed. The public app runs live: approved runs of the sample logs post to our Slack and JIRA. The evaluation results and the video link are filled in last.
 
 | | |
 |---|---|
@@ -159,7 +159,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `CONTEXT_LINES` | no | `3` | Log lines kept around each error (0 to 20) |
 | `RUNBOOK_TOP_K` | no | `3` | Runbooks shown to Remediation (1 to 10) |
 | `RETRY_CONFIDENCE` | no | `0.5` | Below this confidence, Remediation tries once more (0 to 1) |
-| `LIVE_INTEGRATIONS` | no | `false` | Actually send to Slack and JIRA |
+| `LIVE_INTEGRATIONS` | no | `false` | Run mode: `true` is Live (approved runs send to Slack and JIRA), `false` is Dry run for everyone. Admins can switch it in App Settings |
 | `REQUIRE_APPROVAL` | no | `true` | Ask before sending to Slack or JIRA |
 | `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` (and `channels:history` for the assistant) |
 | `SLACK_CHANNEL_ID` | for Slack | | Where to post |
@@ -173,7 +173,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `MAX_UPLOAD_MB` | no | `5` | Upload size limit (1 to 5, Streamlit's own cap) |
 | `MAX_TICKETS_PER_RUN` | no | `3` | Ticket cap (1 to 5) |
 | `RUN_TOKEN_BUDGET` | no | `200000` | Token cap per run |
-| `ADMIN_PASSCODE` | no | | Unlocks the settings pages. When set, live sending in the app also needs it, and everyone else gets a dry run |
+| `ADMIN_PASSCODE` | no | | Unlocks the settings pages. Unlocked sessions also lift the visitor guards on live runs. Visitors (not unlocked) run live only with the sample logs, 1 ticket per run and 10 live runs an hour between them; their uploads and pasted logs run dry |
 
 Models must be on the allow-list in `incident_suite/config.py`, which also holds their prices for the cost panel. Set a credit limit on your OpenRouter key. Free (`:free`) models work for trying things out, but they're rate-limited.
 
@@ -268,7 +268,7 @@ Results (filled in after the eval run):
 - **Uploads** are limited by type, size, decompressed size, row count and line length.
 - **Limits:** 5 runs per 10 minutes per visitor and 60 an hour across everyone, a token budget per run, at most 3 tickets by default (up to 5), and one retry per issue.
 - **Nothing reaches Slack or JIRA** without approval. Log text is sent as plain text, never as markup, and URLs found in logs are defanged (`https[:]//`) so they can't become links.
-- **The public deployment** keeps Slack and JIRA switched off. When we switch them on for the demo, `ADMIN_PASSCODE` keeps visitors on a dry run.
+- **The public deployment** runs live, with guards. Visitors (not unlocked) run live only with the sample logs, 1 ticket per run and 10 live runs an hour between them; their uploads and pasted logs run dry. Every live run still waits for **Approve and send**. An admin can set Run mode to Dry run for everyone in App Settings.
 - **Dependencies** are pinned and checked with pip-audit, and Bandit scans the code.
 
 To report a problem, see [SECURITY.md](.github/SECURITY.md).
@@ -350,7 +350,7 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 - It doesn't hear about changes in Slack or JIRA as they happen. It checks JIRA at the start of each run, and the Jira Automation rules handle updates in the other direction.
 - Fixes are only as good as the runbooks. When the match is weak it says so instead of guessing, but it can still be wrong. Treat the output as a first pass, not a verdict.
 - Redaction is pattern-based and can miss unusual secret formats.
-- The public app runs in dry run on purpose: it shows exactly what would go to Slack and JIRA, but sends nothing. Live sending needs the admin passcode.
+- On the public app, anyone can approve a live run of a sample log, so test tickets and Slack posts appear in our workspace. Visitors (not unlocked) run live only with the sample logs, 1 ticket per run and 10 live runs an hour between them; their uploads and pasted logs run dry.
 - Settings changed in the app last until the app sleeps, restarts or is redeployed. There's no database, so the deployment's own settings come back after that.
 - There's no run history in the app. Earlier incidents are read back from JIRA and Slack, not stored here.
 
