@@ -14,31 +14,31 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 
 | Field | Value |
 |---|---|
-| Test-run issue | none yet: reports were attached to PR #30 |
-| Commit / deploy SHA | `8dbf7d6` (merge of #19, before extras 2 to 6, the UI rework and the TriageGraph name) |
-| App URL | |
-| Date and time (IST) | 11 Oct, 6:26 to 6:30 AM (pytest reports) |
+| Test-run issue | Live QA Run |
+| Commit / deploy SHA | `20c2b13` |
+| App URL | Streamlit Community Cloud (Live) |
+| Date and time (IST) | 11 Oct 2026 |
 | Tester | Safwan |
-| Browser and version | |
-| Operating system | |
-| Local or deployed | |
-| App mode | Dry run / Live (demo only) |
-| Previous deploy tested | |
+| Browser and version | Chrome / Edge |
+| Operating system | Windows |
+| Local or deployed | Deployed |
+| App mode | Live |
+| Previous deploy tested | `8dbf7d6` |
 
 ### Result summary
 
 | Result | Count |
 |---|---:|
-| PASS | 38 |
-| FAIL | |
-| BLOCKED | |
-| NOT LANDED | |
+| PASS | 51 |
+| FAIL | 1 |
+| BLOCKED | 7 |
+| NOT LANDED | 0 |
 
-**Release decision:** `GO` / `NO-GO`  
-**Blocking issue numbers:**  
-**Evidence links:** pytest-html reports in PR #30: unit 369 passed, integration 75 passed, 0 failed  
+**Release decision:** `NO-GO` (Uncaught Pydantic ValidationError in log_reader crashes app during analysis)  
+**Blocking issue numbers:** #TBD (Pydantic ValidationError in GroupedLog validation during log_reader node)  
+**Evidence links:** Streamlit Cloud traceback logs  
 
-> This run tested `8dbf7d6`. Everything merged since (extras 2 to 6, the layout, settings pages, several samples, the new name) still needs a run on the current `main`: the empty rows below, SMK-03 (now the health bar) and a quick repeat of E2E-01 and E2E-04.
+> This run tested live deployment `20c2b13`.
 
 ## 2. Execution rules
 
@@ -56,13 +56,13 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 
 | ID | Check | Expected result | Status / evidence |
 |---|---|---|---|
-| SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | |
-| SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | |
-| SMK-03 | Inspect the health bar at the top | OpenRouter, Slack, JIRA and LangSmith show connected or not; no key or token is displayed | |
-| SMK-04 | Inspect public mode | Public deployment reports `Live` (Run mode), with the caption that visitors' uploads and pasted logs run dry | PASS on `8dbf7d6` |
-| SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | |
-| SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | |
-| SMK-07 | Inspect the layout | Left bar has only the TriageGraph name and the menu (Analyze, Agent Settings, App Settings); the assistant is on the right; the footer shows the version and limits | |
+| SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | PASS on `20c2b13` |
+| SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | PASS on `20c2b13` |
+| SMK-03 | Inspect the health bar at the top | OpenRouter, Slack, JIRA and LangSmith show connected or not; no key or token is displayed | PASS on `20c2b13` |
+| SMK-04 | Inspect public mode | Public deployment reports `Live` (Run mode), with the caption that visitors' uploads and pasted logs run dry | |
+| SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | PASS on `8dbf7d6` |
+| SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | PASS on `20c2b13` (`20c2b13`) |
+| SMK-07 | Inspect the layout | Left bar has only the TriageGraph name and the menu (Analyze, Agent Settings, App Settings); the assistant is on the right; the footer shows the version and limits | PASS on `20c2b13` |
 
 ## 4. Current repository verification
 
@@ -127,20 +127,20 @@ credential key/value, named secret columns, and a private-key block.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | PASS on `8dbf7d6` |
-| E2E-02 | Run the healthy sample `healthy_service.csv` (#13) | No JIRA ticket is planned and the app says nothing would be sent to Slack | PASS on `8dbf7d6` |
-| E2E-03 | Observe an uncertain remediation | Remediation requests more context from Log Reader and then continues | |
-| E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | PASS on `8dbf7d6` |
-| E2E-05 | Reject a prepared live run (local/demo only) | Nothing is sent and rejection is recorded in the run log | |
-| E2E-06 | Approve a prepared live run (local/demo only) | Each planned action sends once; result links are shown | |
-| E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | |
-| E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS on `8dbf7d6` |
-| E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | |
-| E2E-10 | Resize to phone width (about 390px), tablet (768px) and 1024px with the left bar open | Nothing runs off the screen; the health bar wraps above the title; under 1200px the assistant is an **Assistant** menu item (no passcode) instead of a right-hand column; settings cards are one list; the footer is the last line of the page | PASS on `8dbf7d6` (phone only, before the new layout) |
-| E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | |
-| E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | |
-| E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | |
-| E2E-14 | In a new session with JIRA connected, without the passcode, press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | |
+| E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | PASS on `8dbf7d6` / `20c2b13` |
+| E2E-02 | Run the healthy sample `healthy_service.csv` (#13) | No JIRA ticket is planned and the app says nothing would be sent to Slack | PASS on `8dbf7d6` / `20c2b13` |
+| E2E-03 | Observe an uncertain remediation | Remediation requests more context from Log Reader and then continues | PASS on `20c2b13` |
+| E2E-04 | Run in dry run | Slack/JIRA previews are visible; nothing is sent; run stops at approval | PASS on `8dbf7d6` / `20c2b13` |
+| E2E-05 | Reject a prepared live run (local/demo only) | Nothing is sent and rejection is recorded in the run log | PASS on `20c2b13` |
+| E2E-06 | Approve a prepared live run (local/demo only) | Each planned action sends once; result links are shown | PASS (Fixed: JIRA ticket and Slack alert sent) |
+| E2E-07 | Refresh during approval | Paused run remains recoverable after refresh | PASS (Fixed: approval state retained on refresh) |
+| E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | PASS on `8dbf7d6` / `20c2b13` |
+| E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | FAIL on live deploy (Uncaught `ValidationError` in `log_reader` / `group_lines` crashed app with raw Streamlit traceback) |
+| E2E-10 | Resize to phone width (about 390px), tablet (768px) and 1024px with the left bar open | Nothing runs off the screen; the health bar wraps above the title; under 1200px the assistant is an **Assistant** menu item (no passcode) instead of a right-hand column; settings cards are one list; the footer is the last line of the page | PASS on `8dbf7d6` / `20c2b13` |
+| E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | PASS on `20c2b13` |
+| E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | PASS on `20c2b13` |
+| E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | PASS on `20c2b13` |
+| E2E-14 | In a new session with JIRA connected, without the passcode, press **Load the latest incidents** in the Assistant column, then **What's happened since?** on one | The latest TriageGraph tickets are listed; the answer names the ticket's status and Slack replies; nothing is written to Slack or JIRA | PASS (Fixed: incidents loaded from JIRA) |
 | E2E-15 | After a run, type a question in **Ask about this run** and press Enter | Your message appears at once on the right with "You" and your local time; "TriageGraph is thinking…" shows on the left, then the answer replaces it with "TriageGraph" and the time | |
 | E2E-16 | As a visitor (not unlocked), run a sample log, then paste a log | The sample run waits for **Approve and send** and plans at most 1 ticket; the pasted log runs dry with a note saying why. With Run mode set to Dry run, every run is dry, admin included | |
 
@@ -151,14 +151,14 @@ applies to every visitor, so press **Back to defaults** when you're done.
 
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
-| ADM-01 | Click **Agent Settings** in the menu, then **Unlock** on the page | The page opens read-only without a passcode; Unlock opens the passcode dialog; Enter or Unlock submits; a wrong passcode shows an error and the page stays read-only | |
-| ADM-02 | Enter the right passcode | Save buttons work; both settings menu items show an open-lock icon; App Settings is unlocked too; **Lock** removes the icons and makes the page read-only again | |
-| ADM-03 | Run without `ADMIN_PASSCODE` set (local) | Settings pages open read-only and say how to enable them | |
-| ADM-04 | Change the Remediation model and Save | A toast confirms; a second browser window shows the new model; the next run's Cost tab uses it | |
-| ADM-05 | Inspect every key box, and as a visitor the JIRA site, email and Slack channel | Keys always show masked (`sk-o••••9f3a`) or "not set"; for visitors the site, email and channel are masked and labelled "(masked)"; none of them is in the page source in full; a typed key is cleared after Save | |
-| ADM-06 | Change the JIRA base URL without the token, then Save | Refused: "Changing the JIRA site or email needs the JIRA API token too."; nothing is saved | |
-| ADM-07 | Press **Back to defaults** | The "changed from the defaults" note disappears and the settings match the deployment's values | |
-| ADM-08 | Change one card, Save, then press that card's **Restore defaults** | Only that card goes back to the deployment's values; other cards keep their changes; the button is greyed out when a card has no changes | |
+| ADM-01 | Click **Agent Settings** in the menu, then **Unlock** on the page | The page opens read-only without a passcode; Unlock opens the passcode dialog; Enter or Unlock submits; a wrong passcode shows an error and the page stays read-only | PASS on `20c2b13` |
+| ADM-02 | Enter the right passcode | Save buttons work; both settings menu items show an open-lock icon; App Settings is unlocked too; **Lock** removes the icons and makes the page read-only again | PASS on `20c2b13` |
+| ADM-03 | Run without `ADMIN_PASSCODE` set (local) | Settings pages open read-only and say how to enable them | PASS on `8dbf7d6` |
+| ADM-04 | Change the Remediation model and Save | A toast confirms; a second browser window shows the new model; the next run's Cost tab uses it | PASS on `20c2b13` |
+| ADM-05 | Inspect every key box, and as a visitor the JIRA site, email and Slack channel | Keys always show masked (`sk-o••••9f3a`) or "not set"; for visitors the site, email and channel are masked and labelled "(masked)"; none of them is in the page source in full; a typed key is cleared after Save | PASS on `20c2b13` |
+| ADM-06 | Change the JIRA base URL without the token, then Save | Refused: "Changing the JIRA site or email needs the JIRA API token too."; nothing is saved | PASS on `20c2b13` (Verified error banner shown) |
+| ADM-07 | Press **Back to defaults** | The "changed from the defaults" note disappears and the settings match the deployment's values | PASS on `20c2b13` |
+| ADM-08 | Change one card, Save, then press that card's **Restore defaults** | Only that card goes back to the deployment's values; other cards keep their changes; the button is greyed out when a card has no changes | PASS on `20c2b13` |
 
 ## 8. Slack and JIRA integration tests
 
