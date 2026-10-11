@@ -133,6 +133,7 @@ div[data-testid="stMetricValue"] { font-size: 1.6rem; }
   .st-key-topbar p { white-space: normal; line-height: 2; font-size: 0.85rem; }
   .st-key-footer {
     position: static; height: auto; padding: 1rem 0 0; border: 0; background: transparent;
+    z-index: auto;  /* like the health bar: stay under the open menu */
   }
   .st-key-footer p { white-space: normal; text-align: center; }
   .block-container { padding-bottom: 2rem; }
