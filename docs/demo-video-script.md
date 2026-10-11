@@ -63,6 +63,8 @@ shot with the dry-run preview or a README architecture frame and say:
 - [ ] Confirm the critical sample, repeat-run result, and large-log metrics are real
 - [ ] Confirm redaction examples use fake values only
 - [ ] Keep the public deployment in dry run unless Raphael authorizes a disposable live test
+- [ ] For the live part, open **App Settings** (the passcode dialog), switch on **Send to Slack and JIRA** and Save; do this off camera
+- [ ] After recording, switch it off again in App Settings (or press **Back to defaults**) and press **Lock**
 
 ### Slack and JIRA
 
