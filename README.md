@@ -11,7 +11,7 @@ Built for the Outskill hackathon by team c10-g08.
 | | |
 |---|---|
 | Live demo | [triagegraph.streamlit.app](https://triagegraph.streamlit.app) |
-| Demo video | _coming soon_ |
+| Demo video | [trupeer.ai/view/yp4QmyVGW](https://app.trupeer.ai/view/yp4QmyVGW/triage-graph-incident-response) |
 
 ---
 
