@@ -18,7 +18,7 @@ from incident_suite.agents.jira_agent import ExistingTicket, TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
 from incident_suite.agents.notification import Messenger
 from incident_suite.agents.remediation import RemediationAnswer
-from incident_suite.config import AdminOverrides, AppConfig, admin_overrides
+from incident_suite.config import AdminOverrides, AppConfig, admin_overrides, set_admin_overrides
 from incident_suite.state import Category, NotificationPlan, Severity
 
 APP = Path(__file__).resolve().parents[2] / "app.py"
@@ -285,6 +285,23 @@ def test_console_saves_for_everyone(monkeypatch: pytest.MonkeyPatch) -> None:
 
     app = _button(app, "back_to_defaults").click().run()
     assert admin_overrides() == AdminOverrides()
+
+
+def test_restore_defaults_for_one_card(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(admin_passcode=SecretStr("open-sesame"))
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    set_admin_overrides(AdminOverrides(remediation_model="openai/gpt-5-nano", max_upload_mb=2))
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["admin_ok"] = True
+    app.session_state["page"] = "agents"
+    app = app.run()
+    assert _button(app, "restore_cookbook").disabled  # nothing changed on that card
+    assert app.selectbox(key="remediation_model").value == "openai/gpt-5-nano"
+
+    app = _button(app, "restore_remediation").click().run()
+    assert admin_overrides() == AdminOverrides(max_upload_mb=2)  # other cards keep theirs
+    assert app.selectbox(key="remediation_model").value == "openai/gpt-5-mini"
+    assert _button(app, "restore_remediation").disabled
 
 
 def test_console_refuses_to_redirect_the_jira_token(monkeypatch: pytest.MonkeyPatch) -> None:

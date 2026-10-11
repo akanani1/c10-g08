@@ -17,6 +17,7 @@ from incident_suite.config import (
     admin_overrides,
     effective_config,
     load_config,
+    restore_admin_defaults,
     save_admin_changes,
     set_admin_overrides,
 )
@@ -239,3 +240,13 @@ def test_save_admin_changes(monkeypatch: pytest.MonkeyPatch) -> None:
         "openai/gpt-5-nano)"
     ]
     assert save_admin_changes({"max_tickets_per_run": 9})[0].startswith("max_tickets_per_run:")
+
+
+def test_restore_drops_only_the_named_settings() -> None:
+    set_admin_overrides(
+        AdminOverrides(remediation_model="openai/gpt-5-nano", runbook_top_k=5, max_upload_mb=2)
+    )
+    restore_admin_defaults(iter(["remediation_model", "runbook_top_k"]))
+    assert admin_overrides() == AdminOverrides(max_upload_mb=2)
+    with pytest.raises(ValueError, match="not admin settings"):
+        restore_admin_defaults(["jira_issue_type"])

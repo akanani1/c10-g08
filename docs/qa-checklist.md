@@ -156,6 +156,7 @@ applies to every visitor, so press **Back to defaults** when you're done.
 | ADM-05 | Inspect every key box | Shows only a hint (first and last 4 characters) or "not set"; the full key is nowhere in the page source; a typed key is cleared after Save | |
 | ADM-06 | Change the JIRA base URL without the token, then Save | Refused: "Changing the JIRA site or email needs the JIRA API token too."; nothing is saved | |
 | ADM-07 | Press **Back to defaults** | The "changed from the defaults" note disappears and the settings match the deployment's values | |
+| ADM-08 | Change one card, Save, then press that card's **Restore defaults** | Only that card goes back to the deployment's values; other cards keep their changes; the button is greyed out when a card has no changes | |
 
 ## 8. Slack and JIRA integration tests
 

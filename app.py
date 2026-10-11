@@ -42,6 +42,7 @@ from incident_suite.config import (
     admin_overrides,
     effective_config,
     load_config,
+    restore_admin_defaults,
     save_admin_changes,
     set_admin_overrides,
 )
@@ -104,8 +105,10 @@ div[data-testid="stColumn"]:has(.st-key-assistant) {
 }
 .block-container { padding-top: 3.5rem; padding-bottom: 4.5rem; }
 .block-container h1 { padding-top: 0; }
-[data-testid="stSidebarHeader"] { height: 3rem; padding-top: 0.75rem; padding-bottom: 0; }
-[data-testid="stSidebarUserContent"] { padding-top: 0; }
+[data-testid="stSidebarHeader"] {
+  position: absolute; top: 0; right: 0; height: auto; padding: 1.1rem 1rem 0 0; z-index: 2;
+}
+[data-testid="stSidebarUserContent"] { padding-top: 1.1rem; }
 [data-testid="stSidebarUserContent"] h2 { padding-top: 0; }
 .st-key-menu button {
   justify-content: flex-start; padding: 0.4rem 0.9rem; min-height: 2.5rem; border: 0;
@@ -221,8 +224,36 @@ def _save(card: str, changes: dict[str, Any]) -> None:
     st.session_state.console_note = (card, problems)
     if not problems:
         st.session_state.secret_round = st.session_state.get("secret_round", 0) + 1
-        st.session_state.saved_toast = True
+        st.session_state.saved_toast = "Saved for everyone, until the app sleeps or restarts."
         st.rerun()
+
+
+def _restore(card: str, fields: list[str]) -> None:
+    """Drop this card's changes, so its settings come from the deployment again."""
+    restore_admin_defaults(fields)
+    for key in [k for k in st.session_state if str(k).startswith(f"{card}_")]:
+        del st.session_state[key]  # keyed pickers would otherwise keep the old choice
+    st.session_state.console_note = None
+    st.session_state.secret_round = st.session_state.get("secret_round", 0) + 1
+    st.session_state.saved_toast = "Restored the defaults for everyone."
+
+
+def _actions(card: str, changes: dict[str, Any], locked: bool) -> None:
+    """Save and Restore defaults for one card, then any problems from the last save."""
+    changed = admin_overrides().differences(load_config()).keys() & changes.keys()
+    row = st.container(horizontal=True, gap="small")
+    if row.button("Save", icon=":material/save:", key=f"save_{card}", disabled=locked):
+        _save(card, changes)
+    row.button(
+        "Restore defaults",
+        icon=":material/restart_alt:",
+        key=f"restore_{card}",
+        disabled=locked or not changed,
+        on_click=_restore,
+        args=(card, sorted(changes)),
+        help="Drop this card's changes and use the deployment's own settings again.",
+    )
+    _note(card)
 
 
 def _note(card: str) -> None:
@@ -287,17 +318,13 @@ def _agent_settings(config: AppConfig, locked: bool) -> None:
             disabled=locked,
             help="A run stops calling the models once it has used this many tokens.",
         )
-        if st.button("Save", icon=":material/save:", key="save_models", disabled=locked):
-            _save("models", {"openrouter_api_key": key, "run_token_budget": budget})
-        _note("models")
+        _actions("models", {"openrouter_api_key": key, "run_token_budget": budget}, locked)
     with right, st.container(border=True):
         st.markdown("**:material/manage_search: Log Reader / Classifier**")
         model = _model_picker("log_reader", config.classifier_model, CHAT_MODELS, locked)
         lines = st.slider("Context lines", 0, 20, config.context_lines, disabled=locked)
         st.caption("Lines kept around each error, so the model sees what led up to it.")
-        if st.button("Save", icon=":material/save:", key="save_log_reader", disabled=locked):
-            _save("log_reader", {"classifier_model": model, "context_lines": lines})
-        _note("log_reader")
+        _actions("log_reader", {"classifier_model": model, "context_lines": lines}, locked)
     with left, st.container(border=True):
         st.markdown("**:material/build: Remediation**")
         model = _model_picker("remediation", config.remediation_model, CHAT_MODELS, locked)
@@ -307,29 +334,24 @@ def _agent_settings(config: AppConfig, locked: bool) -> None:
             "Retry below this confidence", 0.0, 1.0, config.retry_confidence, 0.05, disabled=locked
         )
         st.caption("Below this, the issue goes back once with more of the log around it.")
-        if st.button("Save", icon=":material/save:", key="save_remediation", disabled=locked):
-            _save(
-                "remediation",
-                {
-                    "remediation_model": model,
-                    "runbook_top_k": top_k,
-                    "retry_confidence": threshold,
-                },
-            )
-        _note("remediation")
+        _actions(
+            "remediation",
+            {
+                "remediation_model": model,
+                "runbook_top_k": top_k,
+                "retry_confidence": threshold,
+            },
+            locked,
+        )
     with right, st.container(border=True):
         st.markdown("**:material/checklist: Cookbook**")
         current = config.cookbook_model or config.classifier_model
         model = _model_picker("cookbook", current, CHAT_MODELS, locked)
-        if st.button("Save", icon=":material/save:", key="save_cookbook", disabled=locked):
-            _save("cookbook", {"cookbook_model": model})
-        _note("cookbook")
+        _actions("cookbook", {"cookbook_model": model}, locked)
     with right, st.container(border=True):
         st.markdown("**:material/hub: Embedding (runbook search)**")
         model = _model_picker("embedding", config.embedding_model, EMBEDDING_MODELS, locked)
-        if st.button("Save", icon=":material/save:", key="save_embedding", disabled=locked):
-            _save("embedding", {"embedding_model": model})
-        _note("embedding")
+        _actions("embedding", {"embedding_model": model}, locked)
 
 
 def _app_settings(config: AppConfig, locked: bool) -> None:
@@ -348,24 +370,22 @@ def _app_settings(config: AppConfig, locked: bool) -> None:
             config.max_tickets_per_run,
             disabled=locked,
         )
-        if st.button("Save", icon=":material/save:", key="save_general", disabled=locked):
-            _save(
-                "general",
-                {
-                    "live_integrations": live,
-                    "require_approval": approval,
-                    "max_upload_mb": upload,
-                    "max_tickets_per_run": tickets,
-                },
-            )
-        _note("general")
+        _actions(
+            "general",
+            {
+                "live_integrations": live,
+                "require_approval": approval,
+                "max_upload_mb": upload,
+                "max_tickets_per_run": tickets,
+            },
+            locked,
+        )
     with left, st.container(border=True):
         st.markdown("**:material/forum: Slack**")
         token = _secret("Bot token (xoxb-...)", config.slack_bot_token, "slack_token", locked)
         channel = st.text_input("Channel ID", config.slack_channel_id or "", disabled=locked)
-        if st.button("Save", icon=":material/save:", key="save_slack", disabled=locked):
-            _save("slack", {"slack_bot_token": token, "slack_channel_id": channel.strip() or None})
-        _note("slack")
+        slack = {"slack_bot_token": token, "slack_channel_id": channel.strip() or None}
+        _actions("slack", slack, locked)
     with right, st.container(border=True):
         st.markdown("**:material/confirmation_number: JIRA**")
         url = st.text_input("Base URL", config.jira_base_url or "", disabled=locked)
@@ -373,32 +393,30 @@ def _app_settings(config: AppConfig, locked: bool) -> None:
         project = st.text_input("Project key", config.jira_project_key or "", disabled=locked)
         token = _secret("API token", config.jira_api_token, "jira_token", locked)
         st.text_input("Issue type", config.jira_issue_type, disabled=True, help="Fixed for now.")
-        if st.button("Save", icon=":material/save:", key="save_jira", disabled=locked):
-            _save(
-                "jira",
-                {
-                    "jira_base_url": url.strip().rstrip("/") or None,
-                    "jira_email": email.strip() or None,
-                    "jira_project_key": project.strip().upper() or None,
-                    "jira_api_token": token,
-                },
-            )
-        _note("jira")
+        _actions(
+            "jira",
+            {
+                "jira_base_url": url.strip().rstrip("/") or None,
+                "jira_email": email.strip() or None,
+                "jira_project_key": project.strip().upper() or None,
+                "jira_api_token": token,
+            },
+            locked,
+        )
     with right, st.container(border=True):
         st.markdown("**:material/timeline: LangSmith**")
         tracing = st.toggle("Tracing", config.langsmith_tracing, disabled=locked)
         project = st.text_input("Project", config.langsmith_project, disabled=locked)
         key = _secret("API key", config.langsmith_api_key, "ls_key", locked)
-        if st.button("Save", icon=":material/save:", key="save_langsmith", disabled=locked):
-            _save(
-                "langsmith",
-                {
-                    "langsmith_tracing": tracing,
-                    "langsmith_project": project.strip() or None,
-                    "langsmith_api_key": key,
-                },
-            )
-        _note("langsmith")
+        _actions(
+            "langsmith",
+            {
+                "langsmith_tracing": tracing,
+                "langsmith_project": project.strip() or None,
+                "langsmith_api_key": key,
+            },
+            locked,
+        )
 
 
 def _back_to_defaults() -> None:
@@ -451,8 +469,9 @@ def _settings_page(config: AppConfig, page: str) -> None:
     label, icon = PAGES[page]
     st.title(f"{icon} {label}")
     st.caption("A saved change applies to every visitor until the app sleeps or restarts.")
-    if st.session_state.pop("saved_toast", False):
-        st.toast("Saved for everyone, until the app sleeps or restarts.", icon=":material/check:")
+    toast = st.session_state.pop("saved_toast", None)
+    if toast:
+        st.toast(str(toast), icon=":material/check:")
     locked = _lock_state(base)
     if page == "agents":
         _agent_settings(config, locked)
