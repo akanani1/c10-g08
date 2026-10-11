@@ -1,6 +1,7 @@
 """Slack Web API client with a bot token. Implements the agent's :class:`Messenger`.
 
-One run makes three calls (section 6.4 of the plan):
+One run makes three calls (section 6.4 of the plan). The assistant (section 17.2) also reads a
+thread's replies with ``conversations.replies``, which needs the ``channels:history`` scope.
 
 1. ``chat.postMessage``: the summary in the channel. Its ``ts`` identifies the message.
 2. ``chat.postMessage`` with ``thread_ts``: the checklist and fixes as a thread reply.
@@ -18,12 +19,14 @@ from typing import Any
 
 import httpx
 
+from incident_suite.agents.assistant import ReaderError, ThreadMessage
 from incident_suite.config import AppConfig
 from incident_suite.integrations import TIMEOUT, Sleep, send_with_retry
 from incident_suite.integrations.payloads import slack_summary, slack_thread
 from incident_suite.state import NotificationPlan, SlackOutcome, TicketOutcome
 
 API_URL = "https://slack.com/api/"
+MAX_REPLIES = 20
 _MAX_ERROR_CHARS = 100
 
 
@@ -117,4 +120,33 @@ class SlackClient:
             permalink = self._permalink(ts)
         except SlackCallError as exc:
             errors.append(str(exc))
-        return SlackOutcome(sent=True, permalink=permalink, error="; ".join(errors) or None)
+        return SlackOutcome(
+            sent=True,
+            permalink=permalink,
+            channel=self._channel,
+            ts=ts,
+            error="; ".join(errors) or None,
+        )
+
+    def replies(self, channel: str, ts: str, limit: int = MAX_REPLIES) -> list[ThreadMessage]:
+        """The replies in a thread, oldest first, without the message that started it.
+
+        Needs the ``channels:history`` scope. Raises ``ReaderError`` if Slack says no.
+        """
+        try:
+            body = self._call(
+                "conversations.replies",
+                params={"channel": channel, "ts": ts, "limit": limit + 1},
+            )
+        except SlackCallError as exc:
+            raise ReaderError(str(exc)) from exc
+        messages = body.get("messages") or []
+        return [
+            ThreadMessage(
+                author="bot" if message.get("bot_id") else "person",
+                text=str(message.get("text", "")),
+                ts=str(message.get("ts", "")),
+            )
+            for message in messages[1 : limit + 1]
+            if isinstance(message, dict)
+        ]

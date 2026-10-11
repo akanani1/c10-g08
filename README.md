@@ -121,6 +121,8 @@ streamlit run app.py
 
 The app opens at http://localhost:8501. Pick a sample log (or upload your own) and press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
+After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
+
 The **agent settings** page in the sidebar lets you pick each agent's model (with its price), edit its prompt, and change limits for your session only. You can export and import those settings as JSON. Edited prompts make runs dry unless the admin passcode is entered.
 
 At the bottom of that page, the **Admin** card (needs `ADMIN_PASSCODE`) changes a few settings for every visitor: live mode, approval, the upload limit (up to 5 MB), tickets per run, the token budget, and the JIRA project and issue type. The values start from your `.env` or Streamlit secrets. A change lasts until the app sleeps, restarts or is redeployed. Keys, the JIRA site and account, and the Slack channel can only be set in the deployment's settings.
@@ -143,7 +145,7 @@ Settings come from `.env` locally, or from the app's Secrets on Streamlit Cloud.
 | `EMBEDDING_MODEL` | no | `openai/text-embedding-3-small` | Runbook search |
 | `LIVE_INTEGRATIONS` | no | `false` | Actually send to Slack and JIRA |
 | `REQUIRE_APPROVAL` | no | `true` | Ask before sending to Slack or JIRA |
-| `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` |
+| `SLACK_BOT_TOKEN` | for Slack | | Bot token with `chat:write` (and `channels:history` for the assistant) |
 | `SLACK_CHANNEL_ID` | for Slack | | Where to post |
 | `JIRA_BASE_URL` | for JIRA | | Your Atlassian site (https) |
 | `JIRA_EMAIL`, `JIRA_API_TOKEN` | for JIRA | | Account and API token |
@@ -162,7 +164,7 @@ Models must be on the allow-list in `incident_suite/config.py`, which also holds
 ## Connect Slack, JIRA and LangSmith (optional)
 
 **Slack**
-1. Create an app at https://api.slack.com/apps. Under OAuth & Permissions, add the bot scope `chat:write`, then install the app to your workspace.
+1. Create an app at https://api.slack.com/apps. Under OAuth & Permissions, add the bot scope `chat:write` (and `channels:history` if you want the assistant to read replies), then install the app to your workspace.
 2. Copy the bot token (`xoxb-...`) into `SLACK_BOT_TOKEN`.
 3. Invite the bot to your channel (`/invite @Incident Suite`) and put the channel ID in `SLACK_CHANNEL_ID`.
 
@@ -332,10 +334,9 @@ pip-compile --strip-extras --output-file requirements.txt pyproject.toml
 ## What's next
 
 We're adding these after the core, in this order, as time allows:
-1. A sidebar assistant that summarises the latest Slack and JIRA updates on this incident.
-2. Runbook drafting when no runbook matches.
-3. A chat about the current run.
-4. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
+1. Runbook drafting when no runbook matches.
+2. A chat about the current run.
+3. Pasting logs as text, a postmortem download, "last time this was fixed by…", and an error timeline.
 
 Later ideas:
 - Paging on-call through PagerDuty or Opsgenie.

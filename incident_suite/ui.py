@@ -58,7 +58,7 @@ PIPELINE: list[tuple[str, str, tuple[str, ...]]] = [
     ("approval", "Approval", ("notification",)),
     ("send", "Send", ("approval",)),
 ]
-LABELS = {node: label for node, label, _ in PIPELINE}
+LABELS = {node: label for node, label, _ in PIPELINE} | {"assistant": "Assistant"}
 WORKING = "working"
 WAITING = "waiting"
 _FILL = {

@@ -44,6 +44,7 @@ from incident_suite.agents.jira_agent import (
     TicketTracker,
     link_back,
     plan_tickets,
+    remember_thread,
     send_tickets,
 )
 from incident_suite.agents.log_reader import classify, widen_context
@@ -340,6 +341,8 @@ def send(state: RunState, runtime: Runtime[RunContext]) -> dict[str, Any]:
     ]
     if ctx.tracker is not None and links:
         errors += link_back(tickets, links, ctx.tracker)
+    if ctx.tracker is not None and slack.channel and slack.ts:
+        errors += remember_thread(tickets, slack.channel, slack.ts, ctx.tracker)
     sent = sum(1 for t in tickets if t.sent)
     detail = f"{sent} ticket action(s); Slack {'posted' if slack.sent else 'not posted'}"
     return {

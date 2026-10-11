@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from streamlit.testing.v1 import AppTest
 
 from incident_suite.agents import StructuredLLM
+from incident_suite.agents.assistant import AssistantAnswer
 from incident_suite.agents.cookbook import CookbookAnswer, ItemDraft
 from incident_suite.agents.jira_agent import TicketTracker
 from incident_suite.agents.log_reader import ClassifierAnswer, IssueDraft
@@ -130,7 +131,12 @@ def test_live_run_waits_for_approval_then_sends(
 
     done = _click(paused, "Approve and send")
     assert not done.exception
-    assert [method for method, _ in jira_calls] == ["find", "create", "remote_link"]
+    assert [method for method, _ in jira_calls] == [
+        "find",
+        "create",
+        "remote_link",
+        "slack_thread",
+    ]
     assert len(posts) == 1
     assert "Approved and sent" in done.success[0].value
 
@@ -295,3 +301,64 @@ def test_admin_card_rejects_a_bad_project_key(monkeypatch: pytest.MonkeyPatch) -
     page = _click(page.run(), "Save for everyone")
     assert "Not saved: jira_project_key" in page.info[-1].value
     assert admin_overrides() == AdminOverrides()
+
+
+# ------------------------------------------------------------------ assistant
+
+
+def test_assistant_reports_what_happened_since(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_llm: MakeLLM,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    summary = AssistantAnswer(summary="Priya picked it up.", updates=["OPS-101: In Progress"])
+    llm, calls = make_llm([*ANSWERS, summary])
+    monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
+    live = keyed.model_copy(
+        update={"live_integrations": True, "admin_passcode": SecretStr("open-sesame")}
+    )
+    tracker, jira_calls = make_tracker()
+    messenger, _ = make_messenger()
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
+    )
+
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["admin_ok"] = True
+    app = _click(app.run(), "Analyse")
+    before = [s.value for s in app.sidebar.subheader]
+    assert "Assistant" in before
+    assert any("posts to Slack or JIRA" in c.value for c in app.sidebar.caption)
+
+    app = _click(app, "Approve and send")
+    app = _click(app, "What's happened since?")
+
+    assert not app.exception
+    sidebar = " ".join(m.value for m in app.sidebar.markdown)
+    assert "Priya picked it up\\." in sidebar
+    assert "OPS\\-101\\: In Progress" in sidebar
+    assert ("updates", "OPS-101") in jira_calls
+    assert calls[-1][0] == "openai/gpt-5-nano"
+    usage = app.session_state["result"].usage
+    assert "assistant" in [u.agent for u in usage]
+
+
+def test_assistant_needs_the_passcode(
+    monkeypatch: pytest.MonkeyPatch,
+    keyed: AppConfig,
+    make_tracker: MakeTracker,
+    make_messenger: MakeMessenger,
+) -> None:
+    live = keyed.model_copy(update={"live_integrations": True, "require_approval": False})
+    tracker, _ = make_tracker()
+    messenger, _ = make_messenger()
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: live)
+    monkeypatch.setattr(
+        "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
+    )
+    app = _click(_app(), "Analyse")  # no ADMIN_PASSCODE: sends, but the assistant stays off
+    assert any("admin passcode" in c.value for c in app.sidebar.caption)
+    assert not [b for b in app.sidebar.button if b.label == "What's happened since?"]

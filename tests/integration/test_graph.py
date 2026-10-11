@@ -208,6 +208,7 @@ def test_live_run_pauses_then_sends_once_on_approval(
     assert jira_calls[1:] == [
         ("create", "ISS-1<--"),
         ("remote_link", "OPS-101->https://slack.example/archives/C1/p1"),
+        ("slack_thread", "OPS-101->C1/1.2"),
     ]
     (ticket,) = done.tickets
     assert ticket.sent
@@ -332,6 +333,7 @@ def _network(seen: list[str]) -> httpx.MockTransport:
             "/rest/api/3/search/jql": {"issues": [], "isLast": True},
             "/rest/api/3/issue": {"id": "10001", "key": "OPS-101"},
             "/rest/api/3/issue/OPS-101/remotelink": {"id": 1},
+            "/rest/api/3/issue/OPS-101/properties/incident_suite.slack": {},
             "/api/chat.postMessage": {"ok": True, "ts": "1700000000.000100"},
             "/api/chat.getPermalink": {"ok": True, "permalink": PERMALINK},
         }
@@ -382,6 +384,7 @@ def test_live_run_through_the_real_clients(
         "POST /api/chat.postMessage",
         "GET /api/chat.getPermalink",
         "POST /rest/api/3/issue/OPS-101/remotelink",
+        "PUT /rest/api/3/issue/OPS-101/properties/incident_suite.slack",
     ]
     (ticket,) = done.tickets
     assert ticket.key == "OPS-101"

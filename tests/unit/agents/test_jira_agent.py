@@ -11,6 +11,7 @@ from incident_suite.agents.jira_agent import (
     TicketTracker,
     link_back,
     plan_tickets,
+    remember_thread,
     send_tickets,
 )
 from incident_suite.state import Category, Issue, RunSettings, Severity, TicketAction
@@ -158,3 +159,19 @@ def test_link_back_failure_is_reported(settings: RunSettings, make_tracker: Make
     done = send_tickets(plan_tickets([_issue(1)], settings, tracker), _drafts([_issue(1)]), tracker)
     errors = link_back(done, [("https://slack.example/p1", "Slack")], tracker)
     assert errors == ["JIRA (OPS-101): link to Slack not added: JIRA returned 503"]
+
+
+def test_remember_thread_only_on_new_tickets(
+    settings: RunSettings, make_tracker: MakeTracker
+) -> None:
+    issues = [_issue(1), _issue(2)]
+    tracker, calls = make_tracker(existing={f"{2:012x}": OPEN})
+    done = send_tickets(plan_tickets(issues, settings, tracker), _drafts(issues), tracker)
+    calls.clear()
+    assert remember_thread(done, "C1", "1.2", tracker) == []
+    assert calls == [("slack_thread", "OPS-101->C1/1.2")]  # SCRUM-12 keeps its first thread
+
+    failing, _ = make_tracker(fail="slack_thread")
+    assert remember_thread(done, "C1", "1.2", failing) == [
+        "JIRA (OPS-101): Slack thread not stored: JIRA returned 503"
+    ]
