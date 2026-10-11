@@ -127,10 +127,10 @@ div[data-testid="stMetricValue"] { font-size: 1.6rem; }
 .block-container { container-type: inline-size; container-name: page; }
 @container page (max-width: 860px) {
   .st-key-topbar {
-    position: static; transform: none; max-width: 100%; width: 100%; margin: -1.5rem 0 0.5rem;
+    position: static; transform: none; max-width: 100%; width: 100%; margin: 0.6rem 0 0.25rem;
     z-index: auto;  /* a flex item keeps its z-index even when static: stay under the menu */
   }
-  .st-key-topbar p { white-space: normal; line-height: 1.9; }
+  .st-key-topbar p { white-space: normal; line-height: 2; font-size: 0.85rem; }
   .st-key-footer {
     position: static; height: auto; padding: 1rem 0 0; border: 0; background: transparent;
   }
