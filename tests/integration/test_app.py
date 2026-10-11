@@ -262,6 +262,20 @@ def test_assistant_page_for_narrow_screens(monkeypatch: pytest.MonkeyPatch) -> N
     assert not app.columns
 
 
+def test_menu_shows_when_settings_are_unlocked(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(admin_passcode=SecretStr("open-sesame"))
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    app = _unlock(_app(), "agents", "open-sesame")
+    labels = [b.label for b in app.sidebar.button]
+    assert labels[1:3] == [
+        "Agent Settings :material/lock_open:",
+        "App Settings :material/lock_open:",
+    ]
+    assert labels[0] == "Analyze"
+    app = _button(app, "lock").click().run()
+    assert [b.label for b in app.sidebar.button][1:3] == ["Agent Settings", "App Settings"]
+
+
 def test_console_is_read_only_without_a_passcode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
     app = _open(_app(), "agents")
