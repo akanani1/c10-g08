@@ -60,6 +60,11 @@ def _app() -> AppTest:
     return AppTest.from_file(str(APP), default_timeout=30).run()
 
 
+def _text(app: AppTest) -> str:
+    """All markdown on the page, wherever it sits."""
+    return " ".join(m.value for m in app.markdown)
+
+
 def _click(app: AppTest, label: str) -> AppTest:
     (button,) = [b for b in app.button if b.label == label]
     return button.click().run()
@@ -82,7 +87,7 @@ def test_app_renders_without_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app()
     assert not app.exception
     assert app.title[0].value == "Incident Suite"
-    assert "Dry run" in app.sidebar.info[0].value
+    assert "Dry run: nothing is sent" in _text(app)
 
 
 def test_analyse_without_a_key_explains_why(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -172,13 +177,13 @@ def test_live_sending_needs_the_passcode(
     )
 
     visitor = _click(_app(), "Analyse")
-    assert "Dry run" in visitor.sidebar.info[0].value
+    assert "Dry run: nothing is sent" in _text(visitor)
     assert jira_calls == []  # a visitor's run never touched JIRA
     assert not [h for h in visitor.subheader if h.value == "Approval needed"]
 
     admin = _app()
     admin.sidebar.text_input[0].input("open-sesame").run()
-    assert "Live mode" in admin.sidebar.warning[0].value
+    assert "Live: approved runs post to Slack and JIRA" in _text(admin)
     paused = _click(admin, "Analyse")
     assert [h for h in paused.subheader if h.value == "Approval needed"]
 
@@ -330,17 +335,17 @@ def test_assistant_reports_what_happened_since(
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["admin_ok"] = True
     app = _click(app.run(), "Analyse")
-    before = [s.value for s in app.sidebar.subheader]
-    assert "Assistant" in before
-    assert any("posts to Slack or JIRA" in c.value for c in app.sidebar.caption)
+    before = [s.value for s in app.subheader]
+    assert ":material/forum: Assistant" in before
+    assert any("posts to Slack or JIRA" in c.value for c in app.caption)
 
     app = _click(app, "Approve and send")
     app = _click(app, "What's happened since?")
 
     assert not app.exception
-    sidebar = " ".join(m.value for m in app.sidebar.markdown)
-    assert "Priya picked it up\\." in sidebar
-    assert "OPS\\-101\\: In Progress" in sidebar
+    panel = _text(app)
+    assert "Priya picked it up\\." in panel
+    assert "OPS\\-101\\: In Progress" in panel
     assert ("updates", "OPS-101") in jira_calls
     assert calls[-1][0] == "openai/gpt-5-nano"
     usage = app.session_state["result"].usage
@@ -361,8 +366,8 @@ def test_assistant_needs_the_passcode(
         "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
     )
     app = _click(_app(), "Analyse")  # no ADMIN_PASSCODE: sends, but the assistant stays off
-    assert any("admin passcode" in c.value for c in app.sidebar.caption)
-    assert not [b for b in app.sidebar.button if b.label == "What's happened since?"]
+    assert any("admin passcode" in c.value for c in app.caption)
+    assert not [b for b in app.button if b.label == "What's happened since?"]
 
 
 # ------------------------------------------------------------------ runbook drafts
@@ -448,14 +453,14 @@ def test_chat_about_a_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.agents.OpenRouterLLM", lambda _config: llm)
 
     app = _click(_app(), "Analyse")
-    (box,) = [t for t in app.sidebar.text_input if t.label == "Ask about this run"]
+    (box,) = [t for t in app.text_input if t.label == "Ask about this run"]
     box.input("Why did payments fail?")
     app = _click(app, "Ask")
 
     assert not app.exception
-    sidebar = " ".join(m.value for m in app.sidebar.markdown)
-    assert "**You:** Why did payments fail?" in sidebar
-    assert "L68" in sidebar
+    panel = _text(app)
+    assert "Why did payments fail?" in panel
+    assert "L68" in panel
     assert app.session_state["chat"] == [
         ("Why did payments fail?", "The DB refused connections after the deploy (L68).")
     ]
@@ -550,4 +555,4 @@ def test_a_new_run_clears_the_old_one(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _click(app, "Analyse")
     assert app.session_state["run_id"] != first
     assert app.session_state["chat"] == []
-    assert "old question" not in " ".join(m.value for m in app.sidebar.markdown)
+    assert "old question" not in _text(app)

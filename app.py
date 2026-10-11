@@ -58,6 +58,29 @@ from incident_suite.state import (
 from incident_suite.telemetry import enable_tracing, merge_usage, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
+CHAT_HEIGHT = 380
+# Layout only: a health bar pinned in the header strip, a fixed footer and a sticky assistant
+# column. Static, so it can go through st.markdown with unsafe_allow_html: no log or user text
+# ever goes in.
+STYLE = """
+<style>
+.st-key-topbar {
+  position: fixed; top: 0.7rem; left: 50%; transform: translateX(-50%); z-index: 999991;
+  width: auto; max-width: 70vw;
+}
+.st-key-topbar p { margin: 0; white-space: nowrap; }
+.st-key-footer {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 990; background: #0e1117;
+  border-top: 1px solid #262730; padding: 0.45rem 1.5rem; min-height: 2.1rem;
+  display: flex; align-items: center; overflow: visible;
+}
+.st-key-footer p { font-size: 0.78rem; color: #898781; margin: 0; line-height: 1.2; }
+div[data-testid="stColumn"]:has(.st-key-assistant) {
+  position: sticky; top: 6.5rem; align-self: flex-start;
+}
+.block-container { padding-bottom: 4.5rem; }
+</style>
+"""
 # Pasted text goes through the same checks, redaction and readers as an upload. The reader
 # detects JSON or CSV from the content, so the .log name only decides the allowed type.
 PASTED_NAME = "pasted.log"
@@ -139,27 +162,27 @@ def _live_allowed(config: AppConfig) -> bool:
 
 
 def _sidebar(config: AppConfig) -> bool:
-    """Show what's connected. Returns whether this session may send for real."""
+    """The passcode (only when live mode is on) and notes. Returns whether this session may
+    send for real."""
     with st.sidebar:
-        st.subheader("Integrations")
-        for label, ready in (
-            ("Models (OpenRouter)", config.llm_configured),
-            ("Slack", config.slack_configured),
-            ("JIRA", config.jira_configured),
-            ("LangSmith", config.langsmith_tracing and config.langsmith_api_key is not None),
-        ):
-            st.write(f"{':green-badge[connected]' if ready else ':gray-badge[off]'} {label}")
         live = _live_allowed(config)
-        if live:
-            st.warning("Live mode: approved runs post to Slack and JIRA.")
-        else:
-            st.info("Dry run: nothing is sent. You see exactly what would go out.")
         if admin_overrides().differences(load_config()):
             st.caption("An admin changed some settings until the app restarts.")
         if _settings(config) != RunSettings.from_config(config):
             st.caption("Using custom agent settings for this session.")
-        st.caption(f"Version {__version__}. Up to 5 runs per 10 minutes per visitor.")
     return live
+
+
+def _top_bar(config: AppConfig, live: bool) -> None:
+    """Sticky health bar: what's connected (never the keys) and whether runs send for real."""
+    with st.container(key="topbar"):
+        st.markdown(ui.health_markdown(config, live))
+
+
+def _footer(config: AppConfig) -> None:
+    """Fixed footer with the version and the limits that apply to every run."""
+    with st.container(key="footer"):
+        st.markdown(ui.footer_text(config, __version__))
 
 
 def _pick_log() -> tuple[bytes, str] | None:
@@ -593,9 +616,14 @@ def _ask_about_run(question: str) -> None:
 def _chat() -> None:
     """Sidebar chat about this run only (plan 17.4)."""
     chat: list[tuple[str, str]] = _session("chat", [])
-    for question, answer in chat:
-        st.markdown(f"**You:** {ui.md(question)}")
-        st.markdown(ui.md(answer) if answer else "_No answer._")
+    with st.container(height=CHAT_HEIGHT, border=False):
+        if not chat:
+            st.caption("Ask anything about this run: an issue, its evidence, the fix, the cost.")
+        for question, answer in chat:
+            with st.chat_message("user"):
+                st.markdown(ui.md(question))
+            with st.chat_message("assistant"):
+                st.markdown(ui.md(answer) if answer else "_No answer._")
     if error := st.session_state.pop("chat_error", None):
         st.warning(ui.md(error))
     with st.form("chat_form", clear_on_submit=True, border=False):
@@ -609,12 +637,16 @@ def _chat() -> None:
 
 
 def _assistant(config: AppConfig) -> None:
-    """Sidebar: a chat about this run (17.4), and Slack and JIRA updates since it (17.2)."""
+    """Right-hand column: a chat about this run (17.4), and Slack and JIRA updates (17.2)."""
+    st.subheader(":material/forum: Assistant")
+    if "result" not in st.session_state:
+        st.caption("Run an analysis, then ask about it here.")
+        return
     result: RunResult = st.session_state.result
-    with st.sidebar:
-        st.subheader("Assistant")
+    with st.container(border=True):
         _chat()
-        st.markdown("**Since the run**")
+    with st.container(border=True):
+        st.markdown("**:material/update: Since the run**")
         if not (result.slack.sent or any(t.sent for t in result.tickets)):
             st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
             return
@@ -646,23 +678,30 @@ def main() -> None:
     """Render the page."""
     st.set_page_config(page_title="Incident Suite", page_icon=":rotating_light:", layout="wide")
     config = effective_config()
+    st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
     live = _sidebar(config)
+    _top_bar(config, live)
     st.title("Incident Suite")
     st.caption(
         "Upload an ops log. Agents find the problems, suggest fixes with sources, write a "
         "checklist, and prepare the Slack post and JIRA tickets for your approval."
     )
-    picked = _pick_log()
-    area = st.empty()  # one slot: a new run replaces the old results straight away
-    if st.button("Analyse", type="primary", disabled=picked is None) and picked is not None:
-        for key in ("result", "context", "assistant", "chat", "run_note"):
-            st.session_state.pop(key, None)
-        with area.container():
-            _start(config, live, *picked)
-    elif "result" in st.session_state:
+    main_column, assistant_column = st.columns([3, 1.25], gap="large")
+    with main_column:
+        picked = _pick_log()
+        clicked = st.button("Analyse", type="primary", disabled=picked is None)
+        area = st.empty()  # one slot: a new run replaces the old results straight away
+        if clicked and picked is not None:
+            for key in ("result", "context", "assistant", "chat", "run_note"):
+                st.session_state.pop(key, None)
+            with area.container():
+                _start(config, live, *picked)
+        elif "result" in st.session_state:
+            with area.container():
+                _results(st.session_state.result, st.session_state.context)
+    with assistant_column, st.container(key="assistant"):
         _assistant(config)
-        with area.container():
-            _results(st.session_state.result, st.session_state.context)
+    _footer(config)
 
 
 main()

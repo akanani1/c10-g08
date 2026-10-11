@@ -119,9 +119,9 @@ Open `.env` and set `OPENROUTER_API_KEY`. Then:
 streamlit run app.py
 ```
 
-The app opens at http://localhost:8501. Pick a sample log, upload your own, or paste log lines, then press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
+The app opens at http://localhost:8501. The bar at the top shows what's connected and whether runs are live, and the footer shows the limits. Pick a sample log, upload your own, or paste log lines, then press **Analyse**. The graph lights up as each agent finishes. The results show one card per issue with the fix and why we trust it, the checklist, and exactly what would go to Slack and JIRA. In live mode, nothing is sent until you press **Approve and send**.
 
-After a live run has posted, the sidebar's **Assistant** answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
+After a live run has posted, the **Assistant** column on the right answers "what's happened since?". It reads the replies in the run's Slack thread (and the thread where a repeat incident was first reported) and each ticket's status, assignee and latest comments, then sums them up. It only reads, it needs the admin passcode, and its cost shows in the Cost tab.
 
 The **Replay** tab steps through a finished run with a slider. The graph lights up one step at a time, including the retry when Remediation asked for more context.
 
@@ -129,7 +129,7 @@ The **Timeline** tab shows errors over time, with deploys and config changes mar
 
 After a run, **Download postmortem draft** gives you a markdown postmortem built from the results: summary, a timeline with deploys and config changes, root causes marked as hypotheses, fixes and follow-ups. It makes no extra model call.
 
-After any run, the sidebar's **Ask about this run** box answers questions such as "why is ISS-1 critical?". It looks things up with read-only tools over this run's issues, evidence, fixes, checklist, tickets and costs, cites log line numbers, and stops after 4 lookups.
+After any run, the **Ask about this run** box in the Assistant column answers questions such as "why is ISS-1 critical?". It looks things up with read-only tools over this run's issues, evidence, fixes, checklist, tickets and costs, cites log line numbers, and stops after 4 lookups.
 
 When an issue has no good runbook, its card offers **Draft a runbook (AI)**. The draft follows our runbook template, is labelled "AI draft, not reviewed", and must pass the same checks as our own runbooks. If you approve it, later runs in your session can use it, and you can download it as a `.md` file. It isn't saved anywhere else.
 
