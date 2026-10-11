@@ -474,3 +474,19 @@ def test_chat_labels_and_pairs() -> None:
     assert ui.chat_label(bot, "Not/AZone", -330) == "TriageGraph · 14:32"  # browser's offset
     unanswered = ui.ChatMessage("assistant", "", at)
     assert ui.chat_pairs([you, bot, you, unanswered]) == [("Why?", "Because (L68).")]
+
+
+def test_slim_lines_keeps_what_the_results_need() -> None:
+    def line(n: int, level: LogLevel, message: str = "ok") -> LogLine:
+        return LogLine(line_no=n, raw=message, message=message, level=level)
+
+    small = [line(n, LogLevel.INFO) for n in range(1, 101)]
+    assert ui.slim_lines(small) == small  # small logs stay whole
+
+    big = [line(n, LogLevel.INFO) for n in range(1, ui.SLIM_ABOVE + 2001)]
+    big[ui.SLIM_ABOVE] = line(ui.SLIM_ABOVE + 1, LogLevel.ERROR, "boom")
+    big[ui.SLIM_ABOVE + 10] = line(ui.SLIM_ABOVE + 11, LogLevel.INFO, "deployed v2.15")
+    kept = ui.slim_lines(big)
+    assert len(kept) == ui.MAX_TABLE_ROWS + 2
+    assert kept[: ui.MAX_TABLE_ROWS] == big[: ui.MAX_TABLE_ROWS]  # the table is unchanged
+    assert [k.line_no for k in kept[-2:]] == [ui.SLIM_ABOVE + 1, ui.SLIM_ABOVE + 11]
