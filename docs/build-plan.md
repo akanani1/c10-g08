@@ -319,7 +319,12 @@ The page has an upload box and a sample picker. While a run is going, the graph 
 - **Abuse limits:** each visitor can start 5 runs per 10 minutes, and all visitors together 60 an hour, so opening new sessions doesn't get around it (`RunLimiter` in `security.py`).
 - **Live sending needs the passcode.** When `LIVE_INTEGRATIONS=true` and `ADMIN_PASSCODE` is set, the sidebar asks for the passcode. Without it the visitor gets a dry run, and their run never contacts Slack or JIRA.
 - **Without a key** the page still loads, and Analyse explains that `OPENROUTER_API_KEY` is needed.
-- The sidebar shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
+- **Layout:**
+  - A health bar pinned in the header strip shows which integrations are connected (never the keys) and whether the app is in dry run or live mode.
+  - A fixed footer shows the version and the limits every run works within.
+  - The assistant sits in a right-hand column that stays in view while you scroll: chat history at the top, the question box below it, then "Since the run".
+  - The sidebar holds only the admin passcode, shown only when live mode is on.
+  - The bars use a small static CSS block (`STYLE` in `app.py`), which never contains log or user text.
 
 ---
 
@@ -734,6 +739,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 5 goes up as one PR per small extra, so each is easy to review. Pasted text is treated exactly like an uploaded `.log` file |
 | 11 Oct | Extra 6 ships only as its planned fallback, a step slider, because the full player needs new files (recorded runs as JSON) and changes to every agent |
 | 11 Oct | UI review after testing: a new run clears the old results at once; the assistant, chat and runbook drafting show progress; the severity legend is a one-line row above the results; redaction types have plain names. Next: a layout PR (top health bar, sticky footer, assistant in a right-hand column) and an Admin Console in the sidebar (settings for everyone, behind the passcode) |
+| 11 Oct | Layout: health bar in the header strip, fixed footer, assistant in a right-hand column. Sticky positioning didn't work for the top bar, so it's fixed in the header strip, and the column itself is sticky. The admin passcode only appears when live mode is on |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 

@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from incident_suite import ui
+from incident_suite.config import AppConfig
 from incident_suite.state import (
     AgentUsage,
     Category,
@@ -472,3 +473,17 @@ def test_legend_and_redaction_labels() -> None:
     )
     assert ":gray-badge[LOW] nothing is sent. results stay in the app" in legend
     assert set(ui.REDACTION_LABELS) == set(RedactionType)
+
+
+def test_health_bar_and_footer(config: AppConfig) -> None:
+    bar = ui.health_markdown(config, live=False)
+    assert ":green-badge[:material/check_circle: OpenRouter]" in bar
+    assert ":gray-badge[:material/cancel: JIRA]" in bar
+    assert bar.endswith(":blue-badge[:material/visibility: Dry run: nothing is sent]")
+    assert "Live: approved runs" in ui.health_markdown(config, live=True)
+    assert "sk-or" not in bar  # never the key
+    assert ui.footer_text(config, "0.1.0") == (
+        "Incident Suite 0.1.0 · uploads up to 5 MB · 5 runs per 10 min per visitor, "
+        "60 per hour in total · 200,000 tokens per run · secrets are redacted before any AI "
+        "sees the log"
+    )

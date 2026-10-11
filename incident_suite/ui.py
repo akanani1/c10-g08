@@ -16,9 +16,10 @@ from pydantic import ValidationError
 
 from incident_suite.agents.jira_agent import TicketDraft
 from incident_suite.agents.remediation import MIN_RUNBOOK_SCORE
-from incident_suite.config import CHAT_MODELS
+from incident_suite.config import CHAT_MODELS, AppConfig
 from incident_suite.integrations.payloads import defang, jira_summary
 from incident_suite.parsing.grouping import group_lines
+from incident_suite.security import RUNS_PER_WINDOW, SHARED_RUNS_PER_HOUR, WINDOW_SECONDS
 from incident_suite.state import (
     AgentUsage,
     Issue,
@@ -620,4 +621,35 @@ def legend_markdown() -> str:
             SEVERITY_LEGEND,
             strict=True,
         )
+    )
+
+
+# ------------------------------------------------------------------ top bar and footer
+
+
+def health_markdown(config: AppConfig, live: bool) -> str:
+    """One row of badges: each integration connected or off, then the mode. Never the keys."""
+    items = (
+        ("OpenRouter", config.llm_configured),
+        ("Slack", config.slack_configured),
+        ("JIRA", config.jira_configured),
+        ("LangSmith", config.langsmith_tracing and config.langsmith_api_key is not None),
+    )
+    on, off = ":green-badge[:material/check_circle: {}]", ":gray-badge[:material/cancel: {}]"
+    badges = [(on if ready else off).format(label) for label, ready in items]
+    mode = (
+        ":orange-badge[:material/send: Live: approved runs post to Slack and JIRA]"
+        if live
+        else ":blue-badge[:material/visibility: Dry run: nothing is sent]"
+    )
+    return " ".join([*badges, mode])
+
+
+def footer_text(config: AppConfig, version: str) -> str:
+    """The version and the limits every run works within."""
+    return (
+        f"Incident Suite {version} · uploads up to {config.max_upload_mb} MB · "
+        f"{RUNS_PER_WINDOW} runs per {WINDOW_SECONDS // 60} min per visitor, "
+        f"{SHARED_RUNS_PER_HOUR} per hour in total · {config.run_token_budget:,} tokens per run · "
+        "secrets are redacted before any AI sees the log"
     )
