@@ -58,6 +58,10 @@ from incident_suite.state import (
 from incident_suite.telemetry import enable_tracing, merge_usage, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
+# Pasted text goes through the same checks, redaction and readers as an upload. The reader
+# detects JSON or CSV from the content, so the .log name only decides the allowed type.
+PASTED_NAME = "pasted.log"
+PASTE_MAX_CHARS = 1_000_000
 TEXT_FORMATS = {
     LogFormat.PLAIN,
     LogFormat.NGINX_ACCESS,
@@ -168,12 +172,20 @@ def _sidebar(config: AppConfig) -> bool:
 
 
 def _pick_log() -> tuple[bytes, str] | None:
-    """The chosen sample or upload, as bytes and its file name."""
-    source = st.radio("Log", ["Sample log", "Upload your own"], horizontal=True)
+    """The chosen sample, upload or pasted text, as bytes and a file name."""
+    source = st.radio("Log", ["Sample log", "Upload your own", "Paste text"], horizontal=True)
     if source == "Sample log":
         samples = _samples()
         name = st.selectbox("Sample", list(samples), format_func=lambda f: f"{f}: {samples[f]}")
         return ((SAMPLES / name).read_bytes(), name) if name else None
+    if source == "Paste text":
+        text = st.text_area(
+            "Paste log lines (JSON lines and CSV work too)",
+            height=220,
+            max_chars=PASTE_MAX_CHARS,
+            placeholder="2026-10-11T03:12:09Z ERROR payment-api Connection refused to db:5432",
+        )
+        return (text.encode("utf-8"), PASTED_NAME) if text.strip() else None
     upload = st.file_uploader(
         "Ops log: text, JSON lines, JSON, CSV, TSV or Parquet, optionally gzipped",
     )

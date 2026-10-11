@@ -459,3 +459,24 @@ def test_chat_about_a_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         ("Why did payments fail?", "The DB refused connections after the deploy (L68).")
     ]
     assert "ChatStep" in llm.asked
+
+
+# ------------------------------------------------------------------ paste logs
+
+
+@pytest.mark.usefixtures("keyed")
+def test_pasted_text_goes_through_the_same_path() -> None:
+    app = _app()
+    app.radio[0].set_value("Paste text")
+    app = app.run()
+    assert next(b for b in app.button if b.label == "Analyse").disabled  # nothing pasted yet
+    sample = (APP.parent / "sample_logs" / "payment_db_conn_refused.log").read_text()
+    app.text_area[0].input(sample + "\nuser=bob password=hunter2\n")
+    app = _click(app.run(), "Analyse")
+
+    assert not app.exception
+    context = app.session_state["context"]
+    assert context.parsed.name == "pasted.log"
+    assert context.parsed.redactions  # redacted like an upload
+    assert not any("hunter2" in line.raw for line in context.parsed.lines)
+    assert app.metric[0].value == "CRITICAL"

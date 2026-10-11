@@ -525,7 +525,7 @@ Extras add `pages/agent_settings.py` (shipped), `incident_suite/agents/assistant
 | H5 | Slack and JIRA clients. Dry run first, then live with Raphael. The team sets up the Jira Slack app and the automation rules at the same time | Done. Live test passed on 10 Oct |
 | H6 to H7 | Streamlit UI (section 9), sample picker, approval panel, deploy | Done. Redeploy pending |
 | H8 | LangSmith, eval run, clean-code and security pass | Done. Gulam runs the eval |
-| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3 and 4 in review |
+| Extras | Section 17, in order, until the freeze | 1 merged. 2, 3, 4 and 5a (paste) in review |
 
 **Sunday 11 Oct (IST)**
 
@@ -627,7 +627,7 @@ A chat box in the sidebar that answers questions about this run only. It uses to
 
 | Extra | Time | What it adds |
 |---|---|---|
-| Paste logs as text | about 15 min | A text box next to the uploader, with the same checks and redaction |
+| Paste logs as text | about 15 min | A third choice, **Paste text**, next to the sample picker and the uploader. Pasted text becomes `pasted.log` (at most 1,000,000 characters) and goes through the same checks, redaction and format detection as an upload, so pasted JSON lines or CSV work too. In review |
 | Postmortem download | about 30 min | A markdown postmortem (summary, timeline, root cause, fixes, follow-ups) built from the run |
 | "Seen before" fix | 30 to 45 min | When a closed ticket has the same signature, show its resolution comment: "last time this was fixed by…". It's also another real reason for the confidence score |
 | Error timeline | about 45 min | Errors per minute across the log, with deploy and config-change lines marked |
@@ -730,6 +730,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Extra 2, the assistant, ships read-only. It's a three-step LangGraph on the cheap model; it reads only this run's threads and tickets, redacted and inside tags. New tickets store their Slack thread as a JIRA issue property. Replying in the original Slack thread is left out for time. Extras go up as stacked PRs overnight, to merge in order |
 | 11 Oct | Extra 3: the model fills the runbook template's fields and our code writes the markdown, so drafts always have the template's shape. `check_runbook()` is shared with our own runbooks. The drafting instructions live in `assistant.md` as a second task, rather than a new prompt file |
 | 11 Oct | Extra 4: the chat is a small tool loop that works through our structured-output client (the model picks one tool or answers), so the same fakes test it. It's open after any run, because it reads only that run |
+| 11 Oct | Extra 5 goes up as one PR per small extra, so each is easy to review. Pasted text is treated exactly like an uploaded `.log` file |
 
 **Still open:** the Streamlit Cloud redeploy (Raphael), and the eval run and README results (Gulam).
 
