@@ -976,7 +976,7 @@ def _assistant(config: AppConfig) -> None:
             st.caption("After a live run posts to Slack or JIRA, ask what has happened since.")
             return
         if not st.session_state.get("admin_ok"):
-            st.caption("Enter the admin passcode above to ask about Slack and JIRA.")
+            st.caption("Open a settings page with the admin passcode to ask about Slack and JIRA.")
             return
         if st.button("What's happened since?"):
             with st.status("Checking Slack and JIRA...", expanded=True) as status:

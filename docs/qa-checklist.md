@@ -56,10 +56,11 @@ Copy this section into a GitHub issue titled `Test run <date> <time>`.
 |---|---|---|---|
 | SMK-01 | Open the app URL | App opens; if asleep, it wakes within two minutes | |
 | SMK-02 | Inspect the page title and main content | Title is `TriageGraph`; no red error box or raw traceback | |
-| SMK-03 | Inspect the integrations panel | Models, Slack, and JIRA show connected/not connected status; no key or token is displayed | |
+| SMK-03 | Inspect the health bar at the top | OpenRouter, Slack, JIRA and LangSmith show connected or not; no key or token is displayed | |
 | SMK-04 | Inspect public mode | Public deployment reports `dry run` | |
 | SMK-05 | Run the keyless app smoke test locally | `tests/integration/test_app.py::test_app_renders_without_keys` passes | |
 | SMK-06 | Confirm the tested commit | Streamlit Cloud's deployed commit matches the SHA in this record | |
+| SMK-07 | Inspect the layout | Left bar has only the TriageGraph name and the menu (Analyze, Agent Settings, App Settings); the assistant is on the right; the footer shows the version and limits | |
 
 ## 4. Current repository verification
 
@@ -122,8 +123,6 @@ credential key/value, named secret columns, and a private-key block.
 
 ## 7. End-to-end flow and approval gate
 
-These tests are `NOT LANDED` until the final graph and UI are available.
-
 | ID | Test | Expected result | Status / evidence |
 |---|---|---|---|
 | E2E-01 | Run critical sample `payment_db_conn_refused.log` (#1) | Graph nodes light up in order; parsed issues include evidence; JIRA path is selected | |
@@ -136,6 +135,24 @@ These tests are `NOT LANDED` until the final graph and UI are available.
 | E2E-08 | Inspect results | Incident cards show severity, service, run ID, root cause, fix, confidence, evidence, status, cost, and sources | |
 | E2E-09 | Check failure handling | User sees a clear message, not a Python traceback or success-shaped fallback | |
 | E2E-10 | Resize to phone width | Layout remains usable and does not hide critical controls | |
+| E2E-11 | Pick three samples and press Analyse | Each sample runs on its own; a switch above the results moves between them; a fourth sample can't be picked | |
+| E2E-12 | Pick the 50,000-line sample with the upload limit set to 1 MB, plus one other sample | The large one is refused with a clear message that stays above the other run's results | |
+| E2E-13 | Start a new run after one has finished | The old results disappear at once; the graph shows progress | |
+
+### 7.1 Settings pages
+
+Run these locally with `ADMIN_PASSCODE` set, or on the deploy with Raphael. A saved change
+applies to every visitor, so press **Back to defaults** when you're done.
+
+| ID | Test | Expected result | Status / evidence |
+|---|---|---|---|
+| ADM-01 | Click **Agent Settings** in the menu | A passcode dialog opens; a wrong passcode shows an error and the page doesn't open | |
+| ADM-02 | Enter the right passcode | The page opens; App Settings then opens without asking again; **Lock** returns to Analyze | |
+| ADM-03 | Run without `ADMIN_PASSCODE` set (local) | Settings pages open read-only and say how to enable them | |
+| ADM-04 | Change the Remediation model and Save | A toast confirms; a second browser window shows the new model; the next run's Cost tab uses it | |
+| ADM-05 | Inspect every key box | Shows only "set" or "not set"; a typed key is cleared after Save | |
+| ADM-06 | Change the JIRA base URL without the token, then Save | Refused: "Changing the JIRA site or email needs the JIRA API token too."; nothing is saved | |
+| ADM-07 | Press **Back to defaults** | The "changed from the defaults" note disappears and the settings match the deployment's values | |
 
 ## 8. Slack and JIRA integration tests
 
