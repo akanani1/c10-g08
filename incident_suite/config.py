@@ -10,7 +10,7 @@ Secrets are held as ``SecretStr``: they never show up in ``repr``, logs or the U
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -295,6 +295,16 @@ def set_admin_overrides(overrides: AdminOverrides) -> None:
     """Replace the overrides for every visitor, until the app restarts."""
     global _admin  # noqa: PLW0603 - one shared value per process is the point
     _admin = overrides
+
+
+def restore_admin_defaults(fields: Iterable[str]) -> None:
+    """Drop the overrides for some settings, for every visitor. The rest stay."""
+    names = list(fields)
+    unknown = set(names) - set(AdminOverrides.model_fields)
+    if unknown:
+        msg = f"not admin settings: {sorted(unknown)}"
+        raise ValueError(msg)
+    set_admin_overrides(_admin.model_copy(update=dict.fromkeys(names)))
 
 
 def effective_config() -> AppConfig:
