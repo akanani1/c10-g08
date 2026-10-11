@@ -325,6 +325,7 @@ The page has an upload box, a paste box and a sample picker. Up to three samples
   - The assistant sits in a right-hand column that stays in view while you scroll: chat history at the top, the question box below it, then "Since the run".
   - The left bar is only the app's name and a menu: Analyze, Agent Settings and App Settings. The middle shows the chosen page, and the assistant stays on the right on every page.
   - The bars use a small static CSS block (`STYLE` in `app.py`), which never contains log or user text.
+  - **Narrow screens:** on screens under 1200px the assistant leaves its column and becomes a fourth menu item, **Assistant**, which opens it as a page in the middle; the menu item is hidden on wider screens. The rest reacts to the room the page actually has (a CSS container query, so an open left bar counts): below 860px of page width the health bar moves into the page and wraps, the settings cards go to one column, the result numbers get smaller, and the footer becomes the last line of the page. Checked at 390, 768, 1024 and 1366px wide.
 
 ---
 
@@ -739,6 +740,7 @@ We record at 1080p and upload it unlisted.
 | 11 Oct | Polish after testing: less space at the top, the footer centred in its bar and lined up with the content, the menu icons aligned, Enter submits the passcode, and key boxes show a hint (first and last 4 characters) instead of just "set" |
 | 11 Oct | The assistant can be asked about earlier incidents without a run: it lists our latest `incident-suite` tickets from JIRA and reads the picked one and its stored Slack thread. Read-only, behind the passcode, on the cheap model. Asked for after testing showed the assistant was empty in a new session |
 | 11 Oct | Each settings card gets **Restore defaults** beside Save, for that card only. The left bar's title sits on the same line as the collapse button |
+| 11 Oct | Responsive pass. Under 1200px the assistant becomes its own menu item and page instead of a squeezed column (Ashvin's call). The rest is CSS on the page's own width (860px), because the left bar takes 300px. Result numbers are a little smaller everywhere so all five fit. Measured before and after at 390, 768, 1024 and 1366px |
 | 11 Oct | The app is called TriageGraph. Only names people see change: the page title, header and footer, the "Opened by" line in JIRA tickets, the assistant prompt, the LangSmith run name, the OpenRouter app title and the docs. The package (`incident_suite`), the repo name and the `incident-suite` JIRA label stay, because repeat detection searches by that label. Our existing Slack app keeps working; renaming its display name is optional |
 | 11 Oct | Several samples at once: up to three, one run each, with a switch between the results. We don't merge logs into one run, because formats differ and the results would mix. If one log fails, its error stays above the other runs' results |
 | 11 Oct | Everything up to #36 is merged. Final docs pass: the QA checklist gets the layout, settings-page and several-samples checks, and the video script switches live mode on and off from App Settings, off camera |
