@@ -78,6 +78,7 @@ from incident_suite.state import (
 from incident_suite.telemetry import enable_tracing, merge_usage, new_run_id, trace_link
 
 SAMPLES = Path(__file__).resolve().parent / "sample_logs"
+ICON = Path(__file__).resolve().parent / "assets" / "triagegraph.svg"
 CHAT_HEIGHT = 380
 # Layout only: a health bar pinned in the header strip, a fixed footer and a sticky assistant
 # column. Static, so it can go through st.markdown with unsafe_allow_html: no log or user text
@@ -464,7 +465,9 @@ def _menu() -> str:
     """Left bar: the app's name and the menu, nothing else. Returns the chosen page."""
     current = str(st.session_state.get("page", "analyze"))
     with st.sidebar:
-        st.markdown("## :material/emergency_home: TriageGraph")
+        with st.container(horizontal=True, vertical_alignment="center", gap="small", key="brand"):
+            st.image(str(ICON), width=34)
+            st.markdown("## TriageGraph")
         st.caption("Multi-agent incident triage")
         unlocked = bool(st.session_state.get("admin_ok"))
         with st.container(key="menu"):
@@ -1185,7 +1188,7 @@ def _analyze(config: AppConfig, live: bool) -> None:
 
 def main() -> None:
     """Render the page."""
-    st.set_page_config(page_title="TriageGraph", page_icon=":rotating_light:", layout="wide")
+    st.set_page_config(page_title="TriageGraph", page_icon=str(ICON), layout="wide")
     config = effective_config()
     st.markdown(STYLE, unsafe_allow_html=True)  # static CSS only, never user data
     page = _menu()
