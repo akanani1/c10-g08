@@ -228,8 +228,9 @@ def _open(app: AppTest, page: str) -> AppTest:
 
 
 def _unlock(app: AppTest, page: str, passcode: str) -> AppTest:
-    """Pick a settings page and answer the passcode dialog."""
+    """Open a settings page, press Unlock and answer the passcode dialog."""
     app = _open(app, page)
+    app = app.button(key="unlock_page").click().run()
     app.text_input(key="passcode").input(passcode)  # in a form: sent with the button
     return app.button(key="unlock").click().run()
 
@@ -276,6 +277,33 @@ def test_menu_shows_when_settings_are_unlocked(monkeypatch: pytest.MonkeyPatch) 
     assert [b.label for b in app.sidebar.button][1:3] == ["Agent Settings", "App Settings"]
 
 
+def test_settings_open_read_only_for_visitors(monkeypatch: pytest.MonkeyPatch) -> None:
+    base = AppConfig(
+        admin_passcode=SecretStr("open-sesame"),
+        openrouter_api_key=SecretStr("sk-or-v1-" + "x" * 20 + "9f3a"),
+        jira_base_url="https://ours.atlassian.net",
+        jira_email="raphael@example.com",
+    )
+    monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
+    visitor = _open(_app(), "app")  # no passcode on the way in
+    assert visitor.session_state["page"] == "app"
+    assert _button(visitor, "save_jira").disabled
+    shown = str(visitor)
+    assert "raphael@example.com" not in shown  # who our keys belong to stays hidden
+    assert "ours.atlassian.net" not in shown
+    assert "raph••••.com" in shown  # masked, so visitors can see a value is set
+    visitor = _open(visitor, "agents")
+    key_box = next(t for t in visitor.text_input if t.label == "OpenRouter API key")
+    assert key_box.proto.placeholder == "sk-o••••9f3a; type to replace"  # masked, never the key
+
+    admin = _unlock(_app(), "app", "open-sesame")
+    assert admin.session_state["page"] == "app"  # stays on the page it was opened from
+    assert "raphael@example.com" in str(admin)
+    admin = _button(admin, "lock").click().run()
+    assert admin.session_state["page"] == "app"
+    assert _button(admin, "save_jira").disabled
+
+
 def test_console_is_read_only_without_a_passcode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", AppConfig)
     app = _open(_app(), "agents")
@@ -290,7 +318,7 @@ def test_console_saves_for_everyone(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("incident_suite.config.load_config", lambda: base)
     app = _unlock(_app(), "agents", "wrong")
     assert [e.value for e in app.error] == ["That passcode isn't right."]
-    assert not [b for b in app.button if b.key == "save_models"]  # still on Analyze
+    assert _button(app, "save_models").disabled  # the page is open, but read-only
 
     app = _unlock(_app(), "agents", "open-sesame")
     assert not _button(app, "save_models").disabled
@@ -408,7 +436,7 @@ def test_assistant_needs_the_passcode(
         "incident_suite.graph.connect_services", lambda _config, _settings: (tracker, messenger)
     )
     app = _click(_app(), "Analyse")  # no ADMIN_PASSCODE: sends, but the assistant stays off
-    assert any("admin passcode" in c.value for c in app.caption)
+    assert any("Unlock in Agent or App Settings" in c.value for c in app.caption)
     assert not [b for b in app.button if b.label == "What's happened since?"]
 
 
@@ -439,7 +467,7 @@ def test_ask_about_an_earlier_incident_without_a_run(
     )
 
     locked = _app()
-    assert any("read earlier incidents" in c.value for c in locked.caption)
+    assert any("reads your team" in c.value for c in locked.caption)
 
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["admin_ok"] = True
