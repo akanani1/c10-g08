@@ -152,7 +152,7 @@ pydantic==2.14.0
     #   langgraph
     #   langsmith
     #   openai
-pydantic-core==2.50.0
+pydantic-core==2.50.1
     # via pydantic
 pydeck==0.9.3
     # via streamlit
