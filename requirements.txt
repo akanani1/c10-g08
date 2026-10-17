@@ -200,7 +200,7 @@ tiktoken==0.14.0
     # via langchain-openai
 toml==0.10.2
     # via streamlit
-truststore==0.10.4
+truststore==0.10.5
     # via
     #   httpcore2
     #   httpx2
