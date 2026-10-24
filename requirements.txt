@@ -76,9 +76,9 @@ jsonschema==4.26.0
     # via altair
 jsonschema-specifications==2025.9.1
     # via jsonschema
-langchain==1.4.4
+langchain==1.4.6
     # via incident-suite (pyproject.toml)
-langchain-core==1.6.9
+langchain-core==1.6.12
     # via
     #   incident-suite (pyproject.toml)
     #   langchain
@@ -87,25 +87,25 @@ langchain-core==1.6.9
     #   langgraph-checkpoint
     #   langgraph-prebuilt
     #   langgraph-sdk
-langchain-openai==1.7.0
+langchain-openai==1.7.2
     # via incident-suite (pyproject.toml)
-langchain-protocol==0.0.19
+langchain-protocol==0.0.20
     # via
     #   langchain-core
     #   langgraph-sdk
-langgraph==1.2.14
+langgraph==1.2.16
     # via
     #   incident-suite (pyproject.toml)
     #   langchain
-langgraph-checkpoint==4.2.0
+langgraph-checkpoint==4.3.0
     # via
     #   langgraph
     #   langgraph-prebuilt
-langgraph-prebuilt==1.1.0
+langgraph-prebuilt==1.1.1
     # via langgraph
-langgraph-sdk==0.4.6
+langgraph-sdk==0.4.8
     # via langgraph
-langsmith==0.14.7
+langsmith==0.14.11
     # via
     #   incident-suite (pyproject.toml)
     #   langchain-core
